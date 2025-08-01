@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "bolt-expo-nativewind",
+    "slug": "bolt-expo-nativewind",
+    "version": "1.0.0",
+    "sdkVersion": "52.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "myapp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "assetBundlePatterns": [
+      "assets/fonts/rudawregular2.ttf"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kurddev.juulaapp"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.kurddev.juulaapp"
+    },
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F9FAFB"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-router",
+        {
+          "origin": false,
+          "root": "./app"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
