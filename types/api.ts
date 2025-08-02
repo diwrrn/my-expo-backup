@@ -21,6 +21,11 @@ export interface UserProfile {
   updatedAt: string;
   goalsWaterUpdate?: number;
     gender?: 'male' | 'female'; // Add this line
+      // ADD THESE PREMIUM FIELDS
+  isPremium?: boolean;
+  premiumUpdatedAt?: string;
+  revenueCatUserId?: string; // Optional: track RevenueCat user ID
+
 }
 
 export interface FoodRequest {

@@ -1,12 +1,11 @@
-import { View, Text, StyleSheet, Image, ImageSourcePropType } from 'react-native'; // ADD ImageSourcePropType
+import { View, Text, StyleSheet, Image, ImageSourcePropType } from 'react-native';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { useTranslation, TFunction } from 'react-i18next';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useTranslation } from 'react-i18next';
 
 interface ProfileCardProps {
   name: string;
   phoneNumber: string;
-  avatar: ImageSourcePropType; // CHANGE THIS LINE
+  avatar: ImageSourcePropType;
   stats: {
     weight: number;
     height: number;
@@ -15,12 +14,7 @@ interface ProfileCardProps {
   };
 }
 
-export function ProfileCard({ name, phoneNumber, avatar, stats }: ProfileCardProps) {
-  const isRTL = useRTL();
-  const {t, i18n} = useTranslation();
-    const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
-
-  const styles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
@@ -54,8 +48,6 @@ export function ProfileCard({ name, phoneNumber, avatar, stats }: ProfileCardPro
     color: '#111827',
     marginBottom: 6,
     textAlign: 'center',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
   },
   phoneNumber: {
     fontSize: 15,
@@ -82,7 +74,6 @@ export function ProfileCard({ name, phoneNumber, avatar, stats }: ProfileCardPro
     fontWeight: '400',
   },
   stats: {
-    flexDirection: getFlexDirection(isRTL),
     justifyContent: 'space-between',
   },
   statItem: {
@@ -98,26 +89,36 @@ export function ProfileCard({ name, phoneNumber, avatar, stats }: ProfileCardPro
     color: '#6B7280',
     fontWeight: '500',
     marginTop: 4,
-        fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
   },
 });
+
+export function ProfileCard({ name, phoneNumber, avatar, stats }: ProfileCardProps) {
+  const isRTL = useRTL();
+  const {t, i18n} = useTranslation();
+  const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
+
   return (
     <View style={styles.container}>
       <View style={styles.centerContent}>
-        <Image source={avatar} style={styles.avatar} /> {/* CHANGE THIS LINE */}
-        <Text style={styles.name}>{name}</Text>
+        <Image source={avatar} style={styles.avatar} />
+        <Text style={[styles.name, useKurdishFont && { fontFamily: 'rudawregular2' }]}>{String(name)}</Text>
+        <Text style={[styles.phoneNumber, useKurdishFont && { fontFamily: 'rudawregular2' }]}>{String(phoneNumber)}</Text>
       </View>
       
       <View style={styles.physicalStats}>
         <Text style={styles.physicalStatsText}>
-          <Text style={styles.statHighlight}>{stats.weight}{t("common:kg")} </Text>
+          <Text style={styles.statHighlight}>{String(stats.weight)}</Text>
+          <Text>{t("common:kg")} </Text>
           <Text style={styles.separator}> • </Text>
-          <Text style={styles.statHighlight}>{stats.height}{t("common:cm")}</Text>
+          <Text style={styles.statHighlight}>{String(stats.height)}</Text>
+          <Text>{t("common:cm")}</Text>
           <Text style={styles.separator}> • </Text>
-          <Text style={styles.statHighlight}>{stats.age}{t("common:year")} </Text>
+          <Text style={styles.statHighlight}>{String(stats.age)}</Text>
+          <Text>{t("common:year")} </Text>
         </Text>
       </View>
     </View>
   );
 }
+
+ 

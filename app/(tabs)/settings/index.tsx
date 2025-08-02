@@ -1,7 +1,7 @@
 // app/(tabs)/settings/index.tsx
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Bell, User, Settings as SettingsIcon, Circle as HelpCircle, Smartphone, Languages, CircleQuestionMark  } from 'lucide-react-native';
+import { ArrowLeft, Bell, User, Settings as SettingsIcon, Circle as HelpCircle, Smartphone, Languages, CircleQuestionMark, Crown, Package } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { SettingsItem } from '@/components/SettingsItem';
@@ -54,6 +54,79 @@ export default function SettingsScreen() {
   };
 
   const settingsItems = [
+    {
+      icon: <Crown size={20} color="#F59E0B" />,
+      title: t('subscription:title'),
+      subtitle: 'Manage your premium subscription',
+      onPress: () => router.push('/(tabs)/subscription'),
+    },
+    {
+      icon: <Package size={20} color="#10B981" />,
+      title: 'Test RevenueCat',
+      subtitle: 'Check if products are accessible',
+            onPress: async () => {
+        try {
+          console.log('🧪 Testing RevenueCat connection...');
+          
+          // Import RevenueCat directly for testing
+          const PurchasesModule = require('react-native-purchases');
+          const Purchases = PurchasesModule.default;
+          
+          // Check if Purchases is available
+          console.log('🔍 Purchases module:', Purchases);
+          console.log('🔍 Purchases type:', typeof Purchases);
+          console.log('🔍 Purchases keys:', Object.keys(Purchases));
+          
+          if (!Purchases) {
+            console.log('❌ Purchases module is null');
+            alert('Purchases module is null');
+            return;
+          }
+          
+          // Check if we can access the native module
+          console.log('🔍 Checking native module access...');
+          console.log('📱 Platform:', Platform.OS);
+          console.log('🔧 Purchases methods:', Object.keys(Purchases));
+          
+          // Check if RevenueCat is configured
+          console.log('🔍 Checking if RevenueCat is configured...');
+          let isConfigured = false;
+          try {
+            isConfigured = await Purchases.isConfigured();
+            console.log('✅ isConfigured result:', isConfigured);
+          } catch (error) {
+            console.log('⚠️ isConfigured check failed:', error);
+          }
+          
+          if (!isConfigured) {
+            console.log('⚙️ RevenueCat not configured, configuring now...');
+            await Purchases.configure({
+              apiKey: Platform.OS === 'ios' ? 'appl_rrHcIDjifMqESTYYVaMhKyEEtCA' : 'goog_TVHMPnPthYyBPlVzigjneKJakMv',
+            });
+            console.log('✅ RevenueCat configured successfully');
+          }
+          
+          // Try to get offerings
+          console.log('📦 Attempting to get offerings...');
+          const offerings = await Purchases.getOfferings();
+          console.log('✅ Offerings:', offerings);
+          
+          if (offerings && offerings.current) {
+            console.log('🎯 Current offering:', offerings.current);
+            console.log('📋 Available packages:', offerings.current.availablePackages);
+            alert(`Found ${offerings.current.availablePackages?.length || 0} packages`);
+          } else {
+            console.log('⚠️ No current offering found');
+            alert('No current offering found');
+          }
+          
+        } catch (error) {
+          console.error('❌ RevenueCat test failed:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          alert(`RevenueCat test failed: ${errorMessage}`);
+        }
+      },
+    },
     {
       icon: <Bell size={20} color="#3B82F6" />,
       title: t('common:notifications'),

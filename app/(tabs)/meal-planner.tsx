@@ -1,9 +1,9 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState, useEffect } from 'react'; // Import useEffect
-import { UtensilsCrossed, Target, Zap, Clock, ChefHat, Sparkles, RefreshCw, ChevronDown, ChevronUp, ListFilter as Filter } from 'lucide-react-native';
+import { useState, useEffect } from 'react';
+import { UtensilsCrossed, Target, Zap, Clock, ChefHat, Sparkles, RefreshCw, ChevronDown, ChevronUp, ListFilter as Filter, Crown } from 'lucide-react-native';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
-import { router, usePathname } from 'expo-router'; // Import usePathname
+import { router, usePathname } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFirebaseData } from '@/hooks/useFirebaseData';
 import { MealPlanningService, GeneratedMealPlan, ProcessedFood } from '@/services/mealPlanningService';
@@ -11,9 +11,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { getTodayDateString } from '@/utils/dateUtils';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useTranslation, TFunction } from 'react-i18next';
+import { usePurchases } from '@/hooks/usePurchases';
+import { CustomPaywall } from '@/components/CustomPaywall';
 
 // Helper function to get display name based on language
- const getDisplayName = (food: any, i18n: any) => {
+const getDisplayName = (food: any, i18n: any) => {
   const lang = i18n.language;
   if (lang === 'ku' && food.kurdishName) {
     return food.kurdishName;
@@ -26,6 +28,7 @@ import { useTranslation, TFunction } from 'react-i18next';
 export default function MealPlannerScreen() {
   const { user } = useAuth();
   const { foodCache, getMealPlanCountForDate, saveMealPlan } = useFirebaseData();
+  const { hasPremium, customerInfo } = usePurchases();
   
   const [calorieTarget, setCalorieTarget] = useState('');
   const [proteinTarget, setProteinTarget] = useState('');
@@ -35,15 +38,28 @@ export default function MealPlannerScreen() {
   const [isKeto, setIsKeto] = useState(false);
   const [isVegan, setIsVegan] = useState(false);
   const [excludedFoodBaseNames, setExcludedFoodBaseNames] = useState<string[]>([]);
-  
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState<GeneratedMealPlan | null>(null);
-  const isRTL = useRTL(); // Add this line
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  const isRTL = useRTL();
   const { t, i18n } = useTranslation();
   const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
-  const currentPathname = usePathname(); // Get current pathname
-
+  const currentPathname = usePathname();
+  const checkPurchaseStatus = async () => {
+    console.log('🔍 BEFORE REFRESH:');
+    console.log('hasPremium:', hasPremium);
+    
+    await refreshCustomerInfo();
+    
+    console.log('🔍 AFTER REFRESH:');
+    console.log('hasPremium:', hasPremium);
+    console.log('Customer Info:', JSON.stringify(customerInfo, null, 2));
+    console.log('Active Entitlements:', customerInfo?.entitlements?.active);
+  };
+  
   // --- ADDED LOGGING ---
   useEffect(() => {
     console.log('MealPlannerScreen: Mounted');
@@ -57,13 +73,22 @@ export default function MealPlannerScreen() {
   }, [generatedPlan]);
   // --- END ADDED LOGGING ---
 
-  const toggleExcludedFood = (baseName: string) => {
+  const toggleExcludedFood = (baseName: string) => { 
     setExcludedFoodBaseNames(prev => 
       prev.includes(baseName) 
         ? prev.filter(name => name !== baseName) 
         : [...prev, baseName]
     );
   };
+  useEffect(() => {
+    console.log('🔍 DEBUG - Premium Status:');
+    console.log('hasPremium:', hasPremium);
+    console.log('customerInfo exists:', !!customerInfo);
+    console.log('entitlements:', customerInfo?.entitlements);
+    console.log('active entitlements:', customerInfo?.entitlements?.active);
+    console.log('premium entitlement:', customerInfo?.entitlements?.active?.premium);
+  }, [hasPremium, customerInfo]);
+  
 
 const styles = StyleSheet.create({
   container: {
@@ -103,22 +128,34 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
     fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
     marginLeft: isRTL ? 0 : 12,
     marginRight: isRTL ? 12 : 0,
-
   },
   headerSubtitle: {
     fontSize: 16,
     color: '#6B7280',
     fontWeight: '500',
-        fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   headerIcon: {
     padding: 8,
     backgroundColor: '#F0FDF4',
     borderRadius: 12,
+  },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  premiumBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 4,
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   
   // Input Section
@@ -129,8 +166,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '600',
     color: '#111827',
-        fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   sectionHeader: {
     flexDirection: getFlexDirection(isRTL),
@@ -147,7 +183,7 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 8,
     textAlign: getTextAlign(isRTL),
-      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   required: {
     color: '#EF4444',
@@ -169,13 +205,12 @@ const styles = StyleSheet.create({
     marginLeft: isRTL ? 0 : 12,
     marginRight: isRTL ? 12 : 0,
     textAlign: isRTL ? 'right' : 'left',
-      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-},
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+  },
   inputUnit: {
     fontSize: 14,
     color: '#6B7280',
     fontWeight: '500'
-    
   },
   
   // Advanced Options Toggle
@@ -201,7 +236,7 @@ const styles = StyleSheet.create({
     color: '#22C55E',
     marginLeft: isRTL ? 0 : 12,
     marginRight: isRTL ? 12 : 0,
-      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   
   // Advanced Section
@@ -223,17 +258,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     marginBottom: 8,
-        textAlign: getTextAlign(isRTL),
-      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    textAlign: getTextAlign(isRTL),
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   dietaryDescription: {
     fontSize: 14,
     color: '#6B7280',
     marginBottom: 16,
-        textAlign: getTextAlign(isRTL),
-      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    textAlign: getTextAlign(isRTL),
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   dietaryGrid: {
     flexDirection: getFlexDirection(isRTL),
@@ -273,17 +306,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
     marginBottom: 8,
-        textAlign: getTextAlign(isRTL),
+    textAlign: getTextAlign(isRTL),
     fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
   },
   exclusionDescription: {
     fontSize: 14,
     color: '#6B7280',
     marginBottom: 16,
-        textAlign: getTextAlign(isRTL),
+    textAlign: getTextAlign(isRTL),
     fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
   },
   exclusionOptions: {
     flexDirection: getFlexDirection(isRTL),
@@ -361,6 +392,58 @@ const styles = StyleSheet.create({
   },
   savedPlansButtonText: {
     color: '#374151',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+  },
+  
+  // Premium Feature Gate
+  premiumGate: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    marginHorizontal: 24,
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    alignItems: 'center',
+  },
+  premiumGateIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  premiumGateTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 8,
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+  },
+  premiumGateDescription: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 20,
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+  },
+  premiumGateButton: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 12,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  premiumGateButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
     fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
@@ -461,8 +544,6 @@ const styles = StyleSheet.create({
     fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   
-  
-  
   // Meal Section
   mealSection: {
     backgroundColor: '#FFFFFF',
@@ -481,9 +562,8 @@ const styles = StyleSheet.create({
     width: 4,
     height: 20,
     borderRadius: 2,
-        marginRight: isRTL ? 0 : 12,
+    marginRight: isRTL ? 0 : 12,
     marginLeft: isRTL ? 12 : 0,
-
   },
   mealTitle: {
     fontSize: 18,
@@ -510,7 +590,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 8,
-        marginRight: isRTL ? 0 : 12,
+    marginRight: isRTL ? 0 : 12,
     marginLeft: isRTL ? 12 : 0,
   },
   mealInfo: {
@@ -521,17 +601,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
     marginBottom: 4,
-        textAlign: getTextAlign(isRTL),
+    textAlign: getTextAlign(isRTL),
     fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
   },
   mealPortion: {
     fontSize: 14,
     color: '#6B7280',
     marginBottom: 4,
-        textAlign: getTextAlign(isRTL),
+    textAlign: getTextAlign(isRTL),
     fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
   },
   mealNutrition: {
     flexDirection: getFlexDirection(isRTL),
@@ -542,7 +620,6 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontWeight: '500',
     fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-    
   },
   mealCaloriesContainer: {
     alignItems: 'center',
@@ -597,7 +674,14 @@ const styles = StyleSheet.create({
     fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
 });
+
   const handleGeneratePlan = async () => {
+    // Check if user has premium access
+    if (!hasPremium) {
+      setShowPaywall(true);
+      return;
+    }
+
     // Validation
     if (!calorieTarget || parseInt(calorieTarget) < 800 || parseInt(calorieTarget) > 5000) {
       Alert.alert('Invalid Input', 'Please enter a calorie target between 800 and 5000');
@@ -673,7 +757,7 @@ const styles = StyleSheet.create({
       console.log(`[MealPlanner] Meal plan save initiated successfully for user ID: ${user.id}`);
       
       Alert.alert('Success', 'Meal plan saved successfully');
-      router.push('/(tabs)/saved-meal-plans'); // ADD THIS LINE: Navigate to saved meals screen
+      router.push('/(tabs)/saved-meal-plans');
     } catch (error) {
       console.error('Error saving meal plan:', error);
       Alert.alert('Error', 'Failed to save meal plan');
@@ -695,20 +779,19 @@ const styles = StyleSheet.create({
           {meals.reduce((sum, meal) => sum + meal.calories, 0)} kcal
         </Text>
       </View>
-        {meals.map((meal) => (
+      {meals.map((meal) => (
         <TouchableOpacity
           key={meal.id}
           style={styles.mealItem}
           onPress={() => {
-            // Navigate to the meal planner food details screen
             router.push({
               pathname: '/(tabs)/meal-planner-food-details',
               params: {
                 foodId: meal.id,
                 quantity: meal.grams.toString(),
                 unit: 'g',
-                fromMealPlan: 'true', // Keep this if it's used for other logic
-                origin: 'meal-planner' // NEW: Indicate origin
+                fromMealPlan: 'true',
+                origin: 'meal-planner'
               }
             });
           }}
@@ -740,348 +823,392 @@ const styles = StyleSheet.create({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.scrollViewContent}>
-        {/* Header */}
-        <LinearGradient
-          colors={['#F0FDF4', '#F9FAFB']}
-          style={styles.headerGradient}
-        >
-          <View style={styles.header}>
-            <View style={styles.headerTop}>
-              <HamburgerMenu currentRoute="/(tabs)/meal-planner" />
-              <View style={styles.headerContent}>
-                <View style={styles.titleRow}>
-                  <UtensilsCrossed size={28} color="#22C55E" />
-                  <Text style={styles.headerTitle}>{t('mealPlanner:headerTitle')}</Text>
+          {/* Header */}
+          <LinearGradient
+            colors={['#F0FDF4', '#F9FAFB']}
+            style={styles.headerGradient}
+          >
+            <View style={styles.header}>
+              <View style={styles.headerTop}>
+                <HamburgerMenu currentRoute="/(tabs)/meal-planner" />
+                <View style={styles.headerContent}>
+                  <View style={styles.titleRow}>
+                    <UtensilsCrossed size={28} color="#22C55E" />
+                    <Text style={styles.headerTitle}>{t('mealPlanner:headerTitle')}</Text>
+                  </View>
                 </View>
-              </View>
-            
-            </View>
-          </View>
-        </LinearGradient>
-
-        {!generatedPlan ? (
-          <>
-            
-
-            {/* Input Section */}
-            <View style={styles.inputSection}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{t('mealPlanner:targetsTitle')}</Text>
-              </View>
-              
-              {/* Calorie Target */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>
-                  {t('mealPlanner:dailyCalories')} <Text style={styles.required}>*</Text>
-                </Text>
-                <View style={styles.inputContainer}>
-                  <Target size={20} color="#22C55E" />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="2000"
-                    value={calorieTarget}
-                    onChangeText={setCalorieTarget}
-                    keyboardType="numeric"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                  <Text style={styles.inputUnit}>kcal</Text>
-                </View>
-              </View>
-              
-              {/* Advanced Options Toggle */}
-              <TouchableOpacity 
-                style={styles.advancedToggle}
-                onPress={() => setShowAdvancedOptions(!showAdvancedOptions)}
-              >
-                <View style={styles.advancedToggleContent}>
-                  <Filter size={18} color="#22C55E" />
-                  <Text style={styles.advancedToggleText}>{t('mealPlanner:advancedOptions')}</Text>
-                </View>
-                {showAdvancedOptions ? (
-                  <ChevronUp size={20} color="#6B7280" />
-                ) : (
-                  <ChevronDown size={20} color="#6B7280" />
+                {hasPremium && (
+                  <View style={styles.premiumBadge}>
+                    <Crown size={16} color="#333" />
+                    <Text style={styles.premiumBadgeText}>Premium</Text>
+                  </View>
                 )}
-              </TouchableOpacity>
-              
-              {/* Advanced Options Section */}
-              {showAdvancedOptions && (
-                <View style={styles.advancedSection}>
-                  {/* Protein Target */}
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>{t('mealPlanner:proteinTarget')}</Text>
-                    <View style={styles.inputContainer}>
-                      <Zap size={20} color="#3B82F6" />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="150"
-                        value={proteinTarget}
-                        onChangeText={setProteinTarget}
-                        keyboardType="numeric"
-                        placeholderTextColor="#9CA3AF"
-                      />
-                      <Text style={styles.inputUnit}>g</Text>
-                    </View>
+              </View>
+            </View>
+          </LinearGradient>
+
+          {!generatedPlan ? (
+            <>
+              {/* Premium Feature Gate for Non-Premium Users */}
+              {!hasPremium && (
+                <View style={styles.premiumGate}>
+                  <View style={styles.premiumGateIcon}>
+                    <Crown size={40} color="#FFFFFF" />
                   </View>
-                  
-                  {/* Dietary Preferences */}
-                  <View style={styles.dietarySection}>
-                    <Text style={styles.dietarySectionTitle}>{t('mealPlanner:dietaryPreferences')}</Text>
-                    <Text style={styles.dietaryDescription}>
-                      {t('mealPlanner:dietaryDescription')}
+                  <Text style={styles.premiumGateTitle}>
+                    {t('mealPlanner:premiumRequired')}
+                  </Text>
+                  <Text style={styles.premiumGateDescription}>
+                    {t('mealPlanner:premiumDescription')}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.premiumGateButton}
+                    onPress={() => setShowPaywall(true)}
+                  >
+                    <Crown size={20} color="#FFFFFF" />
+                    <Text style={styles.premiumGateButtonText}>
+                      {t('mealPlanner:upgradeToPremium')}
                     </Text>
-                    
-                    <View style={styles.dietaryGrid}>
-                      <TouchableOpacity 
-                        style={[
-                          styles.dietaryOption,
-                          isGlutenFree && styles.dietaryOptionSelected
-                        ]}
-                        onPress={() => setIsGlutenFree(!isGlutenFree)}
-                      >
-                        <Text 
-                          style={[
-                            styles.dietaryOptionText,
-                            isGlutenFree && styles.dietaryOptionTextSelected
-                          ]}
-                        >
-                          {t('mealPlanner:glutenFree')}
-                        </Text>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity 
-                        style={[
-                          styles.dietaryOption,
-                          isDairyFree && styles.dietaryOptionSelected
-                        ]}
-                        onPress={() => setIsDairyFree(!isDairyFree)}
-                      >
-                        <Text 
-                          style={[
-                            styles.dietaryOptionText,
-                            isDairyFree && styles.dietaryOptionTextSelected
-                          ]}
-                        >
-                         {t('mealPlanner:dairyFree')}
-                        </Text>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity 
-                        style={[
-                          styles.dietaryOption,
-                          isKeto && styles.dietaryOptionSelected
-                        ]}
-                        onPress={() => setIsKeto(!isKeto)}
-                      >
-                        <Text 
-                          style={[
-                            styles.dietaryOptionText,
-                            isKeto && styles.dietaryOptionTextSelected
-                          ]}
-                        >
-                          {t('mealPlanner:ketoDiet')}
-                        </Text>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity 
-                        style={[
-                          styles.dietaryOption,
-                          isVegan && styles.dietaryOptionSelected
-                        ]}
-                        onPress={() => setIsVegan(!isVegan)}
-                      >
-                        <Text 
-                          style={[
-                            styles.dietaryOptionText,
-                            isVegan && styles.dietaryOptionTextSelected
-                          ]}
-                        >
-                          {t('mealPlanner:veganDiet')}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  
-                  {/* Food Exclusions */}
-                  <View style={styles.exclusionSection}>
-                    <Text style={styles.exclusionSectionTitle}>{t('mealPlanner:excludeFoods')}</Text>
-                    <Text style={styles.exclusionDescription}>
-                      {t('mealPlanner:exclusionDescription')}
-                    </Text>
-                    
-                    <View style={styles.exclusionOptions}>
-                      <TouchableOpacity 
-                        style={[
-                          styles.exclusionOption,
-                          excludedFoodBaseNames.includes('chicken') && styles.exclusionOptionSelected
-                        ]}
-                        onPress={() => toggleExcludedFood('chicken')}
-                      >
-                        <Text 
-                          style={[
-                            styles.exclusionOptionText,
-                            excludedFoodBaseNames.includes('chicken') && styles.exclusionOptionTextSelected
-                          ]}
-                        >
-                          {t('mealPlanner:chicken')}
-                        </Text>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity 
-                        style={[
-                          styles.exclusionOption,
-                          excludedFoodBaseNames.includes('beef') && styles.exclusionOptionSelected
-                        ]}
-                        onPress={() => toggleExcludedFood('beef')}
-                      >
-                        <Text 
-                          style={[
-                            styles.exclusionOptionText,
-                            excludedFoodBaseNames.includes('beef') && styles.exclusionOptionTextSelected
-                          ]}
-                        >
-                          {t('mealPlanner:beef')}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[
-                          styles.exclusionOption,
-                          excludedFoodBaseNames.includes('samun') && styles.exclusionOptionSelected
-                        ]}
-                        onPress={() => toggleExcludedFood('samun')}
-                      >
-                        <Text 
-                          style={[
-                            styles.exclusionOptionText,
-                            excludedFoodBaseNames.includes('samun') && styles.exclusionOptionTextSelected
-                          ]}
-                        >
-                          {t('mealPlanner:samun')}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[
-                          styles.exclusionOption,
-                          excludedFoodBaseNames.includes('rice') && styles.exclusionOptionSelected
-                        ]}
-                        onPress={() => toggleExcludedFood('rice')}
-                      >
-                        <Text 
-                          style={[
-                            styles.exclusionOptionText,
-                            excludedFoodBaseNames.includes('rice') && styles.exclusionOptionTextSelected
-                          ]}
-                        >
-                          {t('mealPlanner:rice')}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               )}
-            </View>
 
-            {/* Generate Button */}
-            <View style={styles.generateSection}>
-              <TouchableOpacity
-                style={[styles.generateButton, isGenerating && styles.generateButtonDisabled]}
-                onPress={handleGeneratePlan}
-                disabled={isGenerating}
-              >
-                <LinearGradient
-                  colors={['#22C55E', '#16A34A']}
-                  style={styles.generateButtonGradient}
+              {/* Input Section - Always show but disabled for non-premium */}
+              <View style={styles.inputSection}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>{t('mealPlanner:targetsTitle')}</Text>
+                </View>
+                
+                {/* Calorie Target */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>
+                    {t('mealPlanner:dailyCalories')} <Text style={styles.required}>*</Text>
+                  </Text>
+                  <View style={[styles.inputContainer, !hasPremium && { opacity: 0.5 }]}>
+                    <Target size={20} color="#22C55E" />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="2000"
+                      value={calorieTarget}
+                      onChangeText={setCalorieTarget}
+                      keyboardType="numeric"
+                      placeholderTextColor="#9CA3AF"
+                      editable={hasPremium}
+                    />
+                    <Text style={styles.inputUnit}>kcal</Text>
+                  </View>
+                </View>
+                
+                {/* Advanced Options Toggle */}
+                <TouchableOpacity 
+                  style={[styles.advancedToggle, !hasPremium && { opacity: 0.5 }]}
+                  onPress={() => hasPremium && setShowAdvancedOptions(!showAdvancedOptions)}
+                  disabled={!hasPremium}
                 >
-                  {isGenerating ? (
-                    <>
-                      <RefreshCw size={20} color="#FFFFFF" />
-                      <Text style={styles.generateButtonText}>{t('mealPlanner:calculating')}</Text>
-                    </>
+                  <View style={styles.advancedToggleContent}>
+                    <Filter size={18} color="#22C55E" />
+                    <Text style={styles.advancedToggleText}>{t('mealPlanner:advancedOptions')}</Text>
+                  </View>
+                  {showAdvancedOptions ? (
+                    <ChevronUp size={20} color="#6B7280" />
                   ) : (
-                    <>
-                      <ChefHat size={20} color="#FFFFFF" />
-                      <Text style={styles.generateButtonText}>{t('mealPlanner:generatePlan')}</Text>
-                    </>
+                    <ChevronDown size={20} color="#6B7280" />
                   )}
-                </LinearGradient>
-              </TouchableOpacity>
-              
-             
-              <TouchableOpacity 
-                style={styles.savedPlansButton}
-                onPress={navigateToSavedPlans}
-              >
-                <UtensilsCrossed size={20} color="#374151" />
-                <Text style={styles.savedPlansButtonText}>{t('mealPlanner:mySavedPlans')}</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        ) : (
-          /* Generated Plan Display */
-          <View style={styles.planSection}>
-            {/* Plan Header */}
-            <View style={styles.planHeader}>
-              <View style={styles.planTitleRow}>
-                <Text style={styles.planTitle}>{generatedPlan.name}</Text>
+                </TouchableOpacity>
+                
+                {/* Advanced Options Section */}
+                {showAdvancedOptions && hasPremium && (
+                  <View style={styles.advancedSection}>
+                    {/* Protein Target */}
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.inputLabel}>{t('mealPlanner:proteinTarget')}</Text>
+                      <View style={styles.inputContainer}>
+                        <Zap size={20} color="#3B82F6" />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="150"
+                          value={proteinTarget}
+                          onChangeText={setProteinTarget}
+                          keyboardType="numeric"
+                          placeholderTextColor="#9CA3AF"
+                        />
+                        <Text style={styles.inputUnit}>g</Text>
+                      </View>
+                    </View>
+                    
+                    {/* Dietary Preferences */}
+                    <View style={styles.dietarySection}>
+                      <Text style={styles.dietarySectionTitle}>{t('mealPlanner:dietaryPreferences')}</Text>
+                      <Text style={styles.dietaryDescription}>
+                        {t('mealPlanner:dietaryDescription')}
+                      </Text>
+                      
+                      <View style={styles.dietaryGrid}>
+                        <TouchableOpacity 
+                          style={[
+                            styles.dietaryOption,
+                            isGlutenFree && styles.dietaryOptionSelected
+                          ]}
+                          onPress={() => setIsGlutenFree(!isGlutenFree)}
+                        >
+                          <Text 
+                            style={[
+                              styles.dietaryOptionText,
+                              isGlutenFree && styles.dietaryOptionTextSelected
+                            ]}
+                          >
+                            {t('mealPlanner:glutenFree')}
+                          </Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                          style={[
+                            styles.dietaryOption,
+                            isDairyFree && styles.dietaryOptionSelected
+                          ]}
+                          onPress={() => setIsDairyFree(!isDairyFree)}
+                        >
+                          <Text 
+                            style={[
+                              styles.dietaryOptionText,
+                              isDairyFree && styles.dietaryOptionTextSelected
+                            ]}
+                          >
+                           {t('mealPlanner:dairyFree')}
+                          </Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                          style={[
+                            styles.dietaryOption,
+                            isKeto && styles.dietaryOptionSelected
+                          ]}
+                          onPress={() => setIsKeto(!isKeto)}
+                        >
+                          <Text 
+                            style={[
+                              styles.dietaryOptionText,
+                              isKeto && styles.dietaryOptionTextSelected
+                            ]}
+                          >
+                            {t('mealPlanner:ketoDiet')}
+                          </Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                          style={[
+                            styles.dietaryOption,
+                            isVegan && styles.dietaryOptionSelected
+                          ]}
+                          onPress={() => setIsVegan(!isVegan)}
+                        >
+                          <Text 
+                            style={[
+                              styles.dietaryOptionText,
+                              isVegan && styles.dietaryOptionTextSelected
+                            ]}
+                          >
+                            {t('mealPlanner:veganDiet')}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    
+                    {/* Food Exclusions */}
+                    <View style={styles.exclusionSection}>
+                      <Text style={styles.exclusionSectionTitle}>{t('mealPlanner:excludeFoods')}</Text>
+                      <Text style={styles.exclusionDescription}>
+                        {t('mealPlanner:exclusionDescription')}
+                      </Text>
+                      
+                      <View style={styles.exclusionOptions}>
+                        <TouchableOpacity 
+                          style={[
+                            styles.exclusionOption,
+                            excludedFoodBaseNames.includes('chicken') && styles.exclusionOptionSelected
+                          ]}
+                          onPress={() => toggleExcludedFood('chicken')}
+                        >
+                          <Text 
+                            style={[
+                              styles.exclusionOptionText,
+                              excludedFoodBaseNames.includes('chicken') && styles.exclusionOptionTextSelected
+                            ]}
+                          >
+                            {t('mealPlanner:chicken')}
+                          </Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                          style={[
+                            styles.exclusionOption,
+                            excludedFoodBaseNames.includes('beef') && styles.exclusionOptionSelected
+                          ]}
+                          onPress={() => toggleExcludedFood('beef')}
+                        >
+                          <Text 
+                            style={[
+                              styles.exclusionOptionText,
+                              excludedFoodBaseNames.includes('beef') && styles.exclusionOptionTextSelected
+                            ]}
+                          >
+                            {t('mealPlanner:beef')}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[
+                            styles.exclusionOption,
+                            excludedFoodBaseNames.includes('samun') && styles.exclusionOptionSelected
+                          ]}
+                          onPress={() => toggleExcludedFood('samun')}
+                        >
+                          <Text 
+                            style={[
+                              styles.exclusionOptionText,
+                              excludedFoodBaseNames.includes('samun') && styles.exclusionOptionTextSelected
+                            ]}
+                          >
+                            {t('mealPlanner:samun')}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[
+                            styles.exclusionOption,
+                            excludedFoodBaseNames.includes('rice') && styles.exclusionOptionSelected
+                          ]}
+                          onPress={() => toggleExcludedFood('rice')}
+                        >
+                          <Text 
+                            style={[
+                              styles.exclusionOptionText,
+                              excludedFoodBaseNames.includes('rice') && styles.exclusionOptionTextSelected
+                            ]}
+                          >
+                            {t('mealPlanner:rice')}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              {/* Generate Button */}
+              <View style={styles.generateSection}>
                 <TouchableOpacity
-                  style={styles.regenerateButton}
-                  onPress={handleRegeneratePlan}
+                  style={[styles.generateButton, (isGenerating || !hasPremium) && styles.generateButtonDisabled]}
+                  onPress={handleGeneratePlan}
+                  disabled={isGenerating || !hasPremium}
                 >
-                  <RefreshCw size={16} color="#22C55E" />
+                  <LinearGradient
+                    colors={hasPremium ? ['#22C55E', '#16A34A'] : ['#9CA3AF', '#6B7280']}
+                    style={styles.generateButtonGradient}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <RefreshCw size={20} color="#FFFFFF" />
+                        <Text style={styles.generateButtonText}>{t('mealPlanner:calculating')}</Text>
+                      </>
+                    ) : (
+                      <>
+                        {hasPremium ? (
+                          <ChefHat size={20} color="#FFFFFF" />
+                        ) : (
+                          <Crown size={20} color="#FFFFFF" />
+                        )}
+                        <Text style={styles.generateButtonText}>
+                          {hasPremium ? t('mealPlanner:generatePlan') : t('mealPlanner:premiumRequired')}
+                        </Text>
+                      </>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.savedPlansButton}
+                  onPress={navigateToSavedPlans}
+                >
+                  <UtensilsCrossed size={20} color="#374151" />
+                  <Text style={styles.savedPlansButtonText}>{t('mealPlanner:mySavedPlans')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+  style={{ backgroundColor: 'red', padding: 20, margin: 20 }}
+  onPress={checkPurchaseStatus}
+>
+  <Text style={{ color: 'white' }}>DEBUG: Check Purchase Status</Text>
+</TouchableOpacity>
+
+              </View>
+            </>
+          ) : (
+            /* Generated Plan Display */
+            <View style={styles.planSection}>
+              {/* Plan Header */}
+              <View style={styles.planHeader}>
+                <View style={styles.planTitleRow}>
+                  <Text style={styles.planTitle}>{generatedPlan.name}</Text>
+                  <TouchableOpacity
+                    style={styles.regenerateButton}
+                    onPress={handleRegeneratePlan}
+                  >
+                    <RefreshCw size={16} color="#22C55E" />
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.planStats}>
+                  <View style={styles.planStat}>
+                    <Text style={styles.planStatValue}>{generatedPlan.totalCalories}</Text>
+                    <Text style={styles.planStatLabel}>{t('mealPlanner:caloriesTotal')}</Text>
+                  </View>
+                  <View style={styles.planStat}>
+                    <Text style={styles.planStatValue}>{generatedPlan.totalProtein}g</Text>
+                    <Text style={styles.planStatLabel}>{t('mealPlanner:proteinTotal')}</Text>
+                  </View>
+                  <View style={styles.planStat}>
+                    <Text style={styles.planStatValue}>{generatedPlan.totalCarbs}g</Text>
+                    <Text style={styles.planStatLabel}>{t('mealPlanner:carbsTotal')}</Text>
+                  </View>
+                  <View style={styles.planStat}>
+                    <Text style={styles.planStatValue}>{generatedPlan.totalFat}g</Text>
+                    <Text style={styles.planStatLabel}>{t('mealPlanner:fatTotal')}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Meals */}
+              {renderMealSection(t('mealPlanner:breakFast'), generatedPlan.meals.breakfast, '#F59E0B')}
+              {renderMealSection(t('mealPlanner:lunch'), generatedPlan.meals.lunch, '#EF4444')}
+              {renderMealSection(t('mealPlanner:dinner'), generatedPlan.meals.dinner, '#8B5CF6')}
+
+              {/* Action Buttons */}
+              <View style={styles.actionButtons}>
+                <TouchableOpacity 
+                  style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+                  onPress={handleSavePlan}
+                  disabled={isSaving}
+                >
+                  <Text style={styles.saveButtonText}>
+                    {isSaving ? 'Saving...' : t('mealPlanner:savePlan')}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.newPlanButton}
+                  onPress={() => setGeneratedPlan(null)}
+                >
+                  <Text style={styles.newPlanButtonText}>{t('mealPlanner:createNewPlan')}</Text>
                 </TouchableOpacity>
               </View>
-              
-              <View style={styles.planStats}>
-                <View style={styles.planStat}>
-                  <Text style={styles.planStatValue}>{generatedPlan.totalCalories}</Text>
-                  <Text style={styles.planStatLabel}>{t('mealPlanner:caloriesTotal')}</Text>
-                </View>
-                <View style={styles.planStat}>
-                  <Text style={styles.planStatValue}>{generatedPlan.totalProtein}g</Text>
-                  <Text style={styles.planStatLabel}>{t('mealPlanner:proteinTotal')}</Text>
-                </View>
-                <View style={styles.planStat}>
-                  <Text style={styles.planStatValue}>{generatedPlan.totalCarbs}g</Text>
-                  <Text style={styles.planStatLabel}>{t('mealPlanner:carbsTotal')}</Text>
-                </View>
-                <View style={styles.planStat}>
-                  <Text style={styles.planStatValue}>{generatedPlan.totalFat}g</Text>
-                  <Text style={styles.planStatLabel}>{t('mealPlanner:fatTotal')}</Text>
-                </View>
-              </View>
-
-              {/* Accuracy Display */}
-             
             </View>
-
-            {/* Meals */}
-            {renderMealSection(t('mealPlanner:breakFast'), generatedPlan.meals.breakfast, '#F59E0B')}
-            {renderMealSection(t('mealPlanner:lunch'), generatedPlan.meals.lunch, '#EF4444')}
-            {renderMealSection(t('mealPlanner:dinner'), generatedPlan.meals.dinner, '#8B5CF6')}
-
-            {/* Action Buttons */}
-            <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-                onPress={handleSavePlan}
-                disabled={isSaving}
-              >
-                <Text style={styles.saveButtonText}>
-                  {isSaving ? 'Saving...' : t('mealPlanner:savePlan')}
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.newPlanButton}
-                onPress={() => setGeneratedPlan(null)}
-              >
-                <Text style={styles.newPlanButtonText}>{t('mealPlanner:createNewPlan')}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+          )}
         </View>
       </ScrollView>
+
+      {/* Custom Paywall Modal */}
+      <CustomPaywall
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+      />
     </SafeAreaView>
   );
 }

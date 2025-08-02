@@ -175,6 +175,7 @@ export default function ActivityLevelScreen() {
       onBack={() => router.back()}
       hideProgressBar={showSuccessAnimation}
       hideHeaderContent={showSuccessAnimation}
+      showBackButton={!showSuccessAnimation} // This will hide the back button during animation
     >
       <Animated.View style={[styles.container, contentStyle]}>
         <Text style={[styles.description, { textAlign: getTextAlign(isRTL) }]}>

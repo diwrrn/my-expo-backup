@@ -222,9 +222,10 @@ export default function RegisterScreen() {
             <Text style={styles.inputLabel}>Phone Number</Text>
             <View style={styles.inputContainer}>
               <Phone size={20} color="#6B7280" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Phone Number"
+              <Text style={styles.phonePrefix}>+964</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="7XX XXX XXXX"
                 value={phoneNumber}
                 onChangeText={(text) => {
                   setPhoneNumber(text);
@@ -423,6 +424,13 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 8,
   },
+  phonePrefix: { /* ADDED STYLE */
+    fontSize: 16,
+    color: '#9CA3AF', // Grayed out
+    fontWeight: '500',
+    marginRight: 8, // Space between prefix and input
+  },
+
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',

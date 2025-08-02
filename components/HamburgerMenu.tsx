@@ -252,6 +252,13 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
       description: t('hamburgerMenu:profileDescription')
     },
     {
+      id: 'test',
+      title: 'test',
+      icon: <User size={24} color="#374151" />,
+      route: '/(tabs)/subscription',
+      description: t('hamburgerMenu:profileDescription')
+    },
+    {
       id: 'sign-out',
       title: t('hamburgerMenu:signOut'),
       icon: <LogOut size={24} color="#EF4444" />,
@@ -435,6 +442,7 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
                         ]}>
                           {item.description}
                         </Text>
+                        
                       </View>
                       {isActive && <View style={[styles.activeIndicator, { right: isRTL ? 'auto' : 20, left: isRTL ? 20 : 'auto' }]} />}
                     </TouchableOpacity>

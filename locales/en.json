@@ -79,6 +79,38 @@
     "confirmLanguageChange": "Are you sure you want to change the language to {{language}}?",
         "settings": "Settings"
   },
+  "subscription": {
+    "title": "Premium Subscription",
+    "loading": "Loading subscription status...",
+    "premiumActive": "Premium Active",
+    "freePlan": "Free Plan",
+    "premiumDescription": "You have access to all premium features",
+    "freeDescription": "Upgrade to unlock premium features",
+    "premiumFeatures": "Premium Features",
+    "feature1": "Unlimited meal plans",
+    "feature2": "AI-powered food recommendations",
+    "feature3": "Advanced nutrition tracking",
+    "feature4": "Custom workout plans",
+    "feature5": "Priority support",
+    "feature6": "Ad-free experience",
+    "upgradeToPremium": "Upgrade to Premium",
+    "restorePurchases": "Restore Purchases",
+    "error": "Error",
+    "success": "Success",
+    "paywallError": "Failed to show paywall. Please try again.",
+    "restoreSuccess": "Purchases restored successfully!",
+    "restoreError": "Failed to restore purchases. Please try again.",
+    "unavailable": "Premium Unavailable",
+    "unavailableMessage": "Premium features are currently unavailable. Please try again later or contact support if the issue persists.",
+    "retry": "Retry",
+    "unlockPremium": "Unlock Premium",
+    "whatYouGet": "What You Get",
+    "choosePlan": "Choose Plan",
+    "perMonth": "per month",
+    "monthlyPlan": "Monthly Plan",
+    "monthlyDescription": "Get 1 month of premium",
+    "subscriptionTerms": "Subscription Terms" 
+  },
   "faq": {
     "calorieTitle": "Calorie Tracking",
     "calorieQ1": "How do I set my daily calorie goal?",
@@ -123,6 +155,7 @@
     "waterGoalUpdated": "Water goal updated successfully!",
     "failedToUpdateWaterGoal": "Failed to update water goal. Please try again."
   },
+
   "hamburgerMenu": {
     "calculator": "Calculator",
     "calculatorDescription": "Calculate your daily needs",
@@ -195,7 +228,11 @@
     "saving":"saving....",
     "savedSuccess":"Meal plan saved successfully",
     "generateMealPlan":"Generate Meal Plan",
-    "mySavedPlan":"My Saved Plan"
+    "mySavedPlan":"My Saved Plan",
+    "upgradeToPremium":"Upgrade to Premium",
+    "premiumRequired": "Premium Required",
+    "premiumDescription": "Upgrade to unlock premium features"
+
 
 
   },

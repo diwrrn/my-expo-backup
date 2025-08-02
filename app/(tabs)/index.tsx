@@ -51,10 +51,6 @@ const isHomeDataReady = (
 export default function HomeScreen() {
   const { user, loading: authLoading, profileCache } = useAuth();
   const { updateProfile } = useProfile();
-    console.log('🔍🔍🔍🔍🔍🔍 HomeScreen profileCache.profile:', profileCache.profile);
-console.log('🔍🔍🔍🔍🔍 HomeScreen profileCache.profile.goalsWaterUpdate:', profileCache.profile?.goalsWaterUpdate);
-console.log('XXXXXXXXX HomeScreen user.profile.goalsWaterUpdate:', user?.profile?.goalsWaterUpdate);
-console.log('XXXXXXXXXXXX HomeScreen user object timestamp:', user?.profile?.updatedAt);
 
 
   const { t, i18n } = useTranslation(); // Add i18n here
@@ -76,7 +72,6 @@ console.log('XXXXXXXXXXXX HomeScreen user object timestamp:', user?.profile?.upd
   const { currentStreak } = useStreak(user?.id);
   // Add this new useEffect hook
   useEffect(() => {
-console.log('HomeScreen: Passing dailyGoal to WaterIntakeCard:', user?.profile?.goalsWaterUpdate);
 
   }, [user]); // This useEffect will run whenever the profile object within profileCache changes
 
@@ -507,8 +502,6 @@ const progressPercentage = (caloriesConsumed / caloriesGoal) * 100;
     profileCache.refreshCache(); // Refresh user profile data
   };
 
-  // Add logging for water goal debugging
-console.log('HomeScreen: Passing dailyGoal to WaterIntakeCard:', user?.profile?.goalsWaterUpdate);
 
   const renderMealCard = (mealConfig: typeof mealConfigs[0]) => {
     const mealData = mealTotals[mealConfig.id] || { calories: 0, items: 0 };

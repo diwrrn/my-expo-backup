@@ -2476,4 +2476,18 @@ static async getDailyMealDatesForMonth(userId: string, year: number, month: numb
       throw new Error('Failed to fetch daily meal dates for month.');
     }
   }
+
+  // Add this method to FirebaseService
+  static async updateUserPremiumStatus(userId: string, isPremium: boolean): Promise<void> {
+    try {
+      await updateDoc(doc(db, 'userProfiles', userId), {
+        isPremium,
+        premiumUpdatedAt: new Date().toISOString(),
+      });
+      console.log('✅ Premium status updated for user:', userId, isPremium);
+    } catch (error) {
+      console.error('❌ Failed to update premium status:', error);
+      throw error;
+    }
+  }
 }

@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { FooterNavigation } from '@/components/FooterNavigation';
 import { useAuth } from '@/hooks/useAuth';
 import { router, usePathname } from 'expo-router';
-import { View, Text } from 'react-native';
+import { View, Text, Platform } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { I18nextProvider } from 'react-i18next';
@@ -12,6 +12,7 @@ import i18n from '@/services/i18n';
 import { useFonts } from 'expo-font';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { useNotifications } from '@/hooks/useNotifications';
+import Purchases from 'react-native-purchases';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -25,6 +26,8 @@ import {
   ReanimatedLogLevel,
 } from 'react-native-reanimated'; 
 
+import { revenueCatService } from '@/services/revenueCatService';
+
 // Configure Reanimated logger
 configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,
@@ -33,7 +36,33 @@ configureReanimatedLogger({
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
-  
+
+// RevenueCat Configuration
+const REVENUECAT_API_KEYS = {
+  apple: 'appl_rrHcIDjifMqESTYYVaMhKyEEtCA',
+  google: 'goog_TVHMPnPthYyBPlVzigjneKJakMv'
+};
+
+const initRevenueCat = async (userId?: string): Promise<void> => {
+  try {
+    console.log('🚀 Initializing RevenueCat...');
+    
+    if (Platform.OS === 'ios') {
+      await Purchases.configure({ apiKey: REVENUECAT_API_KEYS.apple });
+    } else if (Platform.OS === 'android') {
+      await Purchases.configure({ apiKey: REVENUECAT_API_KEYS.google });
+    }
+
+    // Set user ID if provided
+    if (userId) {
+      await Purchases.logIn(userId);
+    }
+    
+    console.log('✅ RevenueCat configured successfully');
+  } catch (error) {
+    console.error('❌ Error configuring RevenueCat:', error);
+  }
+};
 
 export default function RootLayout() {
   
@@ -47,6 +76,7 @@ export default function RootLayout() {
   const footerOpacity = useSharedValue(0);
 
   const [i18nInitialized, setI18nInitialized] = useState(false);
+  const [revenueCatInitialized, setRevenueCatInitialized] = useState(false);
 
   const hasNavigatedRef = useRef(false);
   const lastUserIdRef = useRef<string | null>(null);
@@ -56,8 +86,7 @@ export default function RootLayout() {
   });
 
   // Define isAuthScreen early
-const isAuthScreen = pathname?.includes('/(auth)') || pathname === '/login' || pathname === '/register' || pathname?.includes('/onboarding') || pathname?.includes('/workout') || pathname?.includes('/meal-selection');
-
+  const isAuthScreen = pathname?.includes('/(auth)') || pathname === '/login' || pathname === '/register' || pathname?.includes('/onboarding') || pathname?.includes('/workout') || pathname?.includes('/meal-selection');
 
   const footerAnimatedStyle = useAnimatedStyle(() => {
     return {
@@ -83,6 +112,28 @@ const isAuthScreen = pathname?.includes('/(auth)') || pathname === '/login' || p
   }, []);
 
   useEffect(() => {
+    // Initialize RevenueCat when user is available and app is ready
+    if (user?.id && i18nInitialized && fontsLoaded && !loading && !revenueCatInitialized) {
+      console.log('🚀 Initializing RevenueCat in app layout...');
+      revenueCatService.initialize(user.id).then(() => {
+        setRevenueCatInitialized(true);
+      }).catch(error => {
+        console.error('❌ Failed to initialize RevenueCat:', error);
+        setRevenueCatInitialized(true);
+      });
+    } else if (!user && i18nInitialized && fontsLoaded && !loading && !revenueCatInitialized) {
+      // Initialize RevenueCat without user ID for anonymous users
+      console.log('🚀 Initializing RevenueCat for anonymous user...');
+      revenueCatService.initialize().then(() => {
+        setRevenueCatInitialized(true);
+      }).catch(error => {
+        console.error('❌ Failed to initialize RevenueCat:', error);
+        setRevenueCatInitialized(true);
+      });
+    }
+  }, [user?.id, i18nInitialized, fontsLoaded, loading, revenueCatInitialized]);
+
+  useEffect(() => {
     // Reset navigation flag if user changes
     if (user?.id !== lastUserIdRef.current) {
       hasNavigatedRef.current = false;
@@ -91,7 +142,7 @@ const isAuthScreen = pathname?.includes('/(auth)') || pathname === '/login' || p
 
     const handleNavigation = async () => {
       // Only proceed if core resources are loaded AND auth state is settled
-      if (!i18nInitialized || !fontsLoaded || loading || !profileLoaded) {
+      if (!i18nInitialized || !fontsLoaded || loading || !profileLoaded || !revenueCatInitialized) {
         return;
       }
 
@@ -140,15 +191,15 @@ const isAuthScreen = pathname?.includes('/(auth)') || pathname === '/login' || p
     };
 
     handleNavigation();
-  }, [user, loading, profileCache.profile, profileCache.isLoading, i18nInitialized, fontsLoaded, pathname, profileLoaded]);
+  }, [user, loading, profileCache.profile, profileCache.isLoading, i18nInitialized, fontsLoaded, pathname, profileLoaded, revenueCatInitialized]);
 
   useEffect(() => {
-    if (!loading && i18nInitialized && fontsLoaded) {
+    if (!loading && i18nInitialized && fontsLoaded && revenueCatInitialized) {
       SplashScreen.hideAsync();
     }
-  }, [loading, i18nInitialized, fontsLoaded]);
+  }, [loading, i18nInitialized, fontsLoaded, revenueCatInitialized]);
 
-  if (loading || !i18nInitialized || !fontsLoaded) {
+  if (loading || !i18nInitialized || !fontsLoaded || !revenueCatInitialized) {
     return (
       <View style={{ flex: 1, backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center' }}>
         <Text>Loading application resources...</Text>

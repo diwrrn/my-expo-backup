@@ -38,6 +38,7 @@ export default function TabLayout() {
       <Tabs.Screen name="add/meal-selection"  />
       <Tabs.Screen name="food-details"  />
       <Tabs.Screen name="saved-meal-plans" />
+      <Tabs.Screen name="subscription" />
       <Tabs.Screen name="meal-plan-details"  />
       <Tabs.Screen name="meal-planner-food-details" />
       <Tabs.Screen name="profile" options={{ title: t('common:profile') }} />
