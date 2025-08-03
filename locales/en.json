@@ -77,7 +77,18 @@
     "platform": "Platform",
     "languageAlreadySelected": "This language is already selected.",
     "confirmLanguageChange": "Are you sure you want to change the language to {{language}}?",
-        "settings": "Settings"
+    "settings": "Settings",
+    "days": {
+        "monday": "Monday",
+        "tuesday": "Tuesday", 
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday",
+        "sunday": "Sunday",
+        "unknown": "Unknown"
+      }
+    
   },
   "subscription": {
     "title": "Premium Subscription",
@@ -568,5 +579,55 @@
     "requestHistorySubtitle": "View your submitted food requests",
     "viewHistory": "View History",
     "noRequests": "No food requests submitted yet."
+  },
+  "weeklyReport": {
+    "title": "WEEKLY REPORT",
+    "subtitle": "Here's a snapshot of your week, {{name}}",
+    "dailyAverage": "Daily Average",
+    "daysTracked": "Days Tracked",
+    "ofSevenDays": "of 7 days",
+    "foodGroups": "Food Groups",
+    "tracked": "tracked",
+    "foodCategoriesTitle": "Food Categories",
+    "categoryDescription": "You have eaten {{category}} {{count}} times this week",
+    "totalCalories": "total calories",
+    "dailyBreakdownTitle": "Daily Breakdown",
+    "target": "Target",
+    "cal": "cal",
+    "caloriesConsumed": "calories consumed",
+    "weekSummaryTitle": "Week Summary",
+    "summaryText": "You tracked {{daysTracked}} out of 7 days this week. Your daily average was {{averageCalories}} calories, which is within your healthy range."
+  },
+  "foodCategories": {
+    "proteins": "proteins",
+    "vegetables": "vegetables",
+    "grains": "grains", 
+    "fruits": "fruits",
+    "dairy": "dairy"
+  },
+
+
+  "pdf": {
+    "title": "Weekly Report",
+    "name": "Name",
+    "from": "From",
+    "to": "To",
+    "dailyAverage": "Daily Average",
+    "calories": "calories",
+    "daysTracked": "Days Tracked",
+    "of7Days": "of 7 days",
+    "foodGroups": "Food Groups",
+    "tracked": "tracked",
+    "foodCategories": "Food Categories",
+    "dailyBreakdown": "Daily Breakdown",
+    "target": "Target",
+    "cal": "cal",
+    "weekSummary": "Week Summary",
+    "summaryText": "You tracked {days} out of 7 days this week. Your daily average was {calories} calories, which is within your healthy range. Keep up the great work maintaining consistent nutrition tracking!",
+    "generatedOn": "Generated on",
+    "nutritionReport": "Nutrition Report PDF",
+    "totalCalories": "total calories",
+    "itemsEaten": "You have eaten {category} {count} times during this week",
+    "targetCalories": "Target: {calories} cal"
   }
 }

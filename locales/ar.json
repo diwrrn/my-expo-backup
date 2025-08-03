@@ -67,9 +67,46 @@
     "platform": "المنصة",
     "languageAlreadySelected": "هذه اللغة محددة بالفعل.",
     "confirmLanguageChange": "هل أنت متأكد أنك تريد تغيير اللغة إلى {{language}}؟",
-      "settings": "الإعدادات"
+      "settings": "الإعدادات",
+      "days": {
+        "monday": "الاثنين",
+        "tuesday": "الثلاثاء",
+        "wednesday": "الأربعاء", 
+        "thursday": "الخميس",
+        "friday": "الجمعة",
+        "saturday": "السبت",
+        "sunday": "الأحد",
+        "unknown": "غير معروف"
+      }
+  
 
   },
+  "weeklyReport": {
+    "title": "التقرير الأسبوعي",
+    "subtitle": "إليك لمحة عن أسبوعك، {{name}}",
+    "dailyAverage": "المتوسط اليومي",
+    "daysTracked": "الأيام المتتبعة",
+    "ofSevenDays": "من 7 أيام",
+    "foodGroups": "مجموعات الطعام",
+    "tracked": "متتبع",
+    "foodCategoriesTitle": "فئات الطعام",
+    "categoryDescription": "لقد تناولت {{category}} {{count}} مرة هذا الأسبوع",
+    "totalCalories": "إجمالي السعرات",
+    "dailyBreakdownTitle": "التفصيل اليومي",
+    "target": "الهدف",
+    "cal": "سعرة",
+    "caloriesConsumed": "السعرات المستهلكة",
+    "weekSummaryTitle": "ملخص الأسبوع",
+    "summaryText": "لقد تتبعت {{daysTracked}} من أصل 7 أيام هذا الأسبوع. متوسطك اليومي كان {{averageCalories}} سعرة حرارية، وهو ضمن النطاق الصحي."
+  },
+  "foodCategories": {
+    "proteins": "البروتينات",
+    "vegetables": "الخضروات",
+    "grains": "الحبوب",
+    "fruits": "الفواكه", 
+    "dairy": "الألبان"
+  },
+
   "waterIntakeCard": {
     "editWaterGoal": "تعديل هدف الماء",
     "enterWaterGoal": "أدخل هدف الماء اليومي (لتر)",
@@ -513,5 +550,28 @@
     "requestHistorySubtitle": "عرض طلبات الطعام التي أرسلتها",
     "viewHistory": "عرض السجل",
     "noRequests": "لم يتم إرسال أي طلبات طعام بعد."
+  },
+  "pdf": {
+    "title": "التقرير الأسبوعي",
+    "name": "الاسم",
+    "from": "من",
+    "to": "إلى",
+    "dailyAverage": "المتوسط اليومي",
+    "calories": "سعرات حرارية",
+    "daysTracked": "الأيام المسجلة",
+    "of7Days": "من 7 أيام",
+    "foodGroups": "مجموعات الطعام",
+    "tracked": "مسجل",
+    "foodCategories": "فئات الطعام",
+    "dailyBreakdown": "التفصيل اليومي",
+    "target": "الهدف",
+    "cal": "سعرة",
+    "weekSummary": "ملخص الأسبوع",
+    "summaryText": "لقد سجلت {days} يوم من أصل 7 أيام هذا الأسبوع. كان متوسطك اليومي {calories} سعرة حرارية، وهو ضمن نطاقك الصحي. استمر في العمل الجيد للحفاظ على تتبع التغذية المتسق!",
+    "generatedOn": "تم إنشاؤه في",
+    "nutritionReport": "تقرير التغذية PDF",
+    "totalCalories": "إجمالي السعرات الحرارية",
+    "itemsEaten": "لقد أكلت {category} {count} مرات خلال هذا الأسبوع",
+    "targetCalories": "الهدف: {calories} سعرة"
   }
 }

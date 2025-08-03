@@ -67,7 +67,7 @@ export const usePurchases = (): UsePurchasesReturn => {
   // Load RevenueCat data
   useEffect(() => {
     const loadRevenueCatData = async () => {
-      try {
+      try { 
         setLoading(true);
         const [customerInfo, offerings] = await Promise.all([
           Purchases.getCustomerInfo(),

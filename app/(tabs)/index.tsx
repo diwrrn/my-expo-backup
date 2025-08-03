@@ -502,7 +502,7 @@ const progressPercentage = (caloriesConsumed / caloriesGoal) * 100;
     profileCache.refreshCache(); // Refresh user profile data
   };
 
-
+  
   const renderMealCard = (mealConfig: typeof mealConfigs[0]) => {
     const mealData = mealTotals[mealConfig.id] || { calories: 0, items: 0 };
     const foods = getFoodsFromMeal(mealConfig.id);
@@ -518,6 +518,8 @@ const progressPercentage = (caloriesConsumed / caloriesGoal) * 100;
         mealType={mealConfig.id as 'breakfast' | 'lunch' | 'dinner' | 'snacks'}
         foods={foods}
         onRemoveFood={(foodKey) => handleRemoveFood(mealConfig.id, foodKey)}
+        currentViewDate={currentViewDate} // ← Add this line
+
       />
     );
   };

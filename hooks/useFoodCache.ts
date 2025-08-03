@@ -43,8 +43,8 @@ export function useFoodCache() {
       // If no foods in database, initialize with sample data
       if (foods.length === 0) {
         console.log('No foods found in database, initializing sample data...');
-        await FirebaseService.initializeSampleData();
-        foods = await FirebaseService.getAllFoods();
+        //await FirebaseService.initializeSampleData();
+        //foods = await FirebaseService.getAllFoods();
       }
       
       // Extract unique categories

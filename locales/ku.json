@@ -72,8 +72,45 @@
     "platform": "پلاتفۆرم",
     "languageAlreadySelected": "ئەم زمانە پێشتر هەڵبژێردراوە.",
     "confirmLanguageChange": "دڵنیایت دەتەوێت زمان بگۆڕیت بۆ {{language}}؟",
-    "settings": "ڕێكخستنەکان"
+    "settings": "ڕێكخستنەکان",
+    "days": {
+      "monday": "دووشەممە",
+      "tuesday": "سێشەممە",
+      "wednesday": "چوارشەممە",
+      "thursday": "پێنجشەممە", 
+      "friday": "هەینی",
+      "saturday": "شەممە",
+      "sunday": "یەکشەممە",
+      "unknown": "نەناسراو"
+    }
+
   },
+  "weeklyReport": {
+    "title": "ڕاپۆرتی هەفتانە",
+    "subtitle": "ئەمە پوختەیەکی هەفتەکەتە، {{name}}",
+    "dailyAverage": "تێکڕای ڕۆژانە",
+    "daysTracked": "ڕۆژانی بەکارهێنان",
+    "ofSevenDays": "لە ٧ ڕۆژ",
+    "foodGroups": "گرووپەکانی خۆراک",
+    "tracked": "بەکارهێنان",
+    "foodCategoriesTitle": "جۆرەکانی خۆراک",
+    "categoryDescription": "تۆ {{category}}ت {{count}} جار لەم هەفتەیەدا خواردووە",
+    "totalCalories": "کۆی کالۆری",
+    "dailyBreakdownTitle": "تێکچوونی ڕۆژانە",
+    "target": "ئامانج",
+    "cal": "کالۆری",
+    "caloriesConsumed": "کالۆری بەکارهێنراو",
+    "weekSummaryTitle": "پوختەی هەفتە",
+    "summaryText": "تۆ {{daysTracked}} لە 7 ڕۆژ لەم هەفتەیەدا شوێنت کەوتووە. ناوەندی ڕۆژانەت {{averageCalories}} کالۆری بووە، کە لە ناوەڕاستی تەندروستدایە."
+  },
+  "foodCategories": {
+    "proteins": "پرۆتینەکان",
+    "vegetables": "سەوزەکان",
+    "grains": "دانەوێڵەکان",
+    "fruits": "میوەکان",
+    "dairy": "شیر و دەرهێنراوەکانی"
+  },
+
   "faq": {
     "calorieTitle": "بەدواداچوونی کالۆری",
     "calorieQ1": "چۆن ئامانجی کالۆری ڕۆژانەم دیاری بکەم؟",
@@ -514,5 +551,28 @@
     "requestHistorySubtitle": "بینینی داواکارییەکانی خواردنی نێردراو",
     "viewHistory": "بینینی مێژوو",
     "noRequests": "هێشتا هیچ داواکارییەکی خواردن نەنێردراوە."
+  },
+  "pdf": {
+    "title": "ڕاپۆرتی هەفتانە",
+    "name": "ناو",
+    "from": "لە",
+    "to": "بۆ",
+    "dailyAverage": "تێکڕای ڕۆژانە",
+    "calories": "کالۆری",
+    "daysTracked": "ڕۆژە بەدواداچووەکان",
+    "of7Days": "لە ٧ ڕۆژ",
+    "foodGroups": "گروپەکانی خۆراک",
+    "tracked": "بەدواداچوو",
+    "foodCategories": "پۆلەکانی خۆراک",
+    "dailyBreakdown": "شکاندنی ڕۆژانە",
+    "target": "ئامانج",
+    "cal": "کال",
+    "weekSummary": "کورتەی هەفتانە",
+    "summaryText": "تۆ {days} ڕۆژ لە ٧ ڕۆژی هەفتانە بەدواداچوویت. تێکڕای ڕۆژانت {calories} کالۆری بوو، کە لە پێوەری تەندروستتدا هەیە. بەردەوام بە لە باشترین کارەکەت بۆ پاراستنی بەدواداچوونی خۆراکی جێگیر!",
+    "generatedOn": "دروستکراوە لە",
+    "nutritionReport": "ڕاپۆرتی خۆراک PDF",
+    "totalCalories": "کۆی کالۆری",
+    "itemsEaten": "تۆ {category} {count} جار لەم هەفتانەدا خواردووەتەوە",
+    "targetCalories": "ئامانج: {calories} کال"
   }
 }

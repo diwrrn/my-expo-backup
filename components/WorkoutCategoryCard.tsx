@@ -8,7 +8,7 @@ const CARD_MARGIN = 12; // Consistent margin for grid spacing
 
 interface WorkoutCategoryCardProps {
   category: {
-    id: string;
+    id: string;  
     name: string;
     nameKurdish: string;
     nameArabic: string;

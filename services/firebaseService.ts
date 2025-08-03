@@ -1223,7 +1223,204 @@ export class FirebaseService {
       return [];
     }
   }
+  // Add this after the getWeeklyStats method (around line 1227)
+static async getWeeklyCategoryStats(userId: string, startDate: string, endDate: string): Promise<any> {
+  try {
+    console.log('📊 getWeeklyCategoryStats: Starting weekly aggregation for:', { userId, startDate, endDate });
+    
+    const dailyData: { [date: string]: any } = {};
+    const weeklyTotals: { [category: string]: { totalCalories: number; totalCount: number; totalProtein: number; totalCarbs: number; totalFat: number; totalFiber: number } } = {};
+    const weeklyAverages: { [category: string]: { avgCalories: number; avgCount: number; avgProtein: number; avgCarbs: number; avgFat: number; avgFiber: number } } = {};
+    
+    // Generate array of dates for the week
+    const dates: string[] = [];
+    const currentDate = new Date(startDate);
+    const endDateObj = new Date(endDate);
+    
+    while (currentDate <= endDateObj) {
+      dates.push(currentDate.toISOString().split('T')[0]);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    console.log('📅 getWeeklyCategoryStats: Processing dates:', dates);
+    
+    // Fetch data for each day
+    for (const date of dates) {
+      try {
+        const dailyMeals = await this.getDailyMeals(userId, date);
+        
+        if (dailyMeals && dailyMeals.meals) {
+          // Calculate category totals for this day using the existing method
+          const dayCategoryTotals = this.calculateMealCategoryTotals(dailyMeals.meals);
+          
+          dailyData[date] = dayCategoryTotals;
+          
+          console.log(`📊 getWeeklyCategoryStats: Day ${date} totals:`, dayCategoryTotals);
+          
+          // Add to weekly totals
+          Object.keys(dayCategoryTotals).forEach(category => {
+            const dayData = dayCategoryTotals[category];
+            
+            if (!weeklyTotals[category]) {
+              weeklyTotals[category] = {
+                totalCalories: 0,
+                totalCount: 0,
+                totalProtein: 0,
+                totalCarbs: 0,
+                totalFat: 0,
+                totalFiber: 0
+              };
+            }
+            
+            weeklyTotals[category].totalCalories += dayData.calories || 0;
+            weeklyTotals[category].totalCount += dayData.count || 0;
+            weeklyTotals[category].totalProtein += dayData.protein || 0;
+            weeklyTotals[category].totalCarbs += dayData.carbs || 0;
+            weeklyTotals[category].totalFat += dayData.fat || 0;
+            weeklyTotals[category].totalFiber += dayData.fiber || 0;
+          });
+        } else {
+          console.log(`📊 getWeeklyCategoryStats: No data for ${date}`);
+          dailyData[date] = {};
+        }
+      } catch (error) {
+        console.error(`❌ getWeeklyCategoryStats: Error fetching data for ${date}:`, error);
+        dailyData[date] = {};
+      }
+    }
+    
+    // Calculate weekly averages
+    const daysWithData = dates.filter(date => Object.keys(dailyData[date]).length > 0).length || 1;
+    
+    Object.keys(weeklyTotals).forEach(category => {
+      const totals = weeklyTotals[category];
+      weeklyAverages[category] = {
+        avgCalories: Math.round(totals.totalCalories / daysWithData),
+        avgCount: Math.round((totals.totalCount / daysWithData) * 10) / 10, // Round to 1 decimal
+        avgProtein: Math.round((totals.totalProtein / daysWithData) * 10) / 10,
+        avgCarbs: Math.round((totals.totalCarbs / daysWithData) * 10) / 10,
+        avgFat: Math.round((totals.totalFat / daysWithData) * 10) / 10,
+        avgFiber: Math.round((totals.totalFiber / daysWithData) * 10) / 10
+      };
+    });
+    
+    const result = {
+      weekStart: startDate,
+      weekEnd: endDate,
+      dailyData,
+      weeklyTotals,
+      weeklyAverages,
+      daysWithData,
+      totalDays: dates.length
+    };
+    
+    console.log('✅ getWeeklyCategoryStats: Weekly aggregation completed:', {
+      categories: Object.keys(weeklyTotals),
+      totalDays: dates.length,
+      daysWithData
+    });
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ getWeeklyCategoryStats error:', error);
+    throw error;
+  }
+}
+// Add this function after getWeeklyCategoryStats
+static filterWeeklyStatsForReport(weeklyStats: any) {
 
+  const allowedCategories = ['vegetables', 'fruits', 'proteins', 'carb rich foods'];
+  const normalizeCategoryName = (category: string) => {
+    return category.toLowerCase();
+  };
+  
+  // Filter daily data
+  const filteredDailyData: { [date: string]: any } = {};
+  Object.keys(weeklyStats.dailyData).forEach(date => {
+    const dayData = weeklyStats.dailyData[date];
+    filteredDailyData[date] = {};
+    
+    Object.keys(dayData).forEach(category => {
+      if (allowedCategories.includes(category)) {
+        filteredDailyData[date][category] = dayData[category];
+      }
+    });
+  });
+  
+  // Filter weekly totals
+  const filteredWeeklyTotals: any = {};
+  Object.keys(weeklyStats.weeklyTotals).forEach(category => {
+    if (allowedCategories.includes(category)) {
+      filteredWeeklyTotals[category] = weeklyStats.weeklyTotals[category];
+    }
+  });
+  
+  // Filter weekly averages
+  const filteredWeeklyAverages: any = {};
+  Object.keys(weeklyStats.weeklyAverages).forEach(category => {
+    if (allowedCategories.includes(category)) {
+      filteredWeeklyAverages[category] = weeklyStats.weeklyAverages[category];
+    }
+  });
+  
+// Calculate daily calories for chart - FIXED: Use ALL categories, not just filtered ones
+const dailyCalories: { [date: string]: number } = {};
+Object.keys(weeklyStats.dailyData).forEach(date => {
+  let totalCalories = 0;
+  
+  // Add debugging
+  console.log(`🔍 Processing date: ${date}`);
+  console.log(`�������� All categories for ${date}:`, Object.keys(weeklyStats.dailyData[date]));
+  
+  // Use the original dailyData, not filteredDailyData
+  Object.keys(weeklyStats.dailyData[date]).forEach(category => { 
+    const categoryCalories = weeklyStats.dailyData[date][category].calories || 0;
+    totalCalories += categoryCalories;
+    
+    // Add debugging for each category
+    console.log(`🔍 Category ${category}: ${categoryCalories} calories`);
+  });
+  
+  dailyCalories[date] = totalCalories;
+  console.log(`�� Total calories for ${date}: ${totalCalories}`);
+});  
+  // Calculate overall averages
+  const totalDays = weeklyStats.totalDays;
+  const daysWithData = weeklyStats.daysWithData;
+  
+  const overallAverageCaloriesPerDay = Object.values(dailyCalories).reduce((sum: number, calories: number) => sum + calories, 0) / daysWithData;
+  
+  const averageCaloriesPerCategory: any = {};
+  Object.keys(filteredWeeklyAverages).forEach(category => {
+    averageCaloriesPerCategory[category] = filteredWeeklyAverages[category].avgCalories;
+  });
+  
+  return {
+    weekStart: weeklyStats.weekStart,
+    weekEnd: weeklyStats.weekEnd,
+    daysWithData,
+    totalDays,
+    
+    // Filtered data
+    dailyData: filteredDailyData,
+    weeklyTotals: filteredWeeklyTotals,
+    weeklyAverages: filteredWeeklyAverages,
+    
+    // Chart data - Now includes ALL calories
+    dailyCalories,
+    
+    // Summary data
+    overallAverageCaloriesPerDay: Math.round(overallAverageCaloriesPerDay),
+    averageCaloriesPerCategory,
+    
+    // Food counts
+    foodCountsPerCategory: Object.keys(filteredWeeklyTotals).reduce((acc: any, category: string) => {
+      acc[category] = filteredWeeklyTotals[category].totalCount;
+      return acc;
+    }, {})
+  };
+}
   // Daily Meals Management
   static async addDailyMeal(userId: string, date: string, meal: string, foodData: {
     foodId: string;
@@ -1234,17 +1431,30 @@ export class FirebaseService {
     fat: number;
     quantity: number;
     unit: string;
-    kurdishName?: string; // Explicitly add these to the type definition
-    arabicName?: string;   // Explicitly add these to the type definition
-    [key: string]: any; // For additional nutrition data
+    kurdishName?: string;
+    arabicName?: string;
+    [key: string]: any;
   }): Promise<void> {
     try {
-      // Get the full food object to extract micronutrients
+      console.log('🍽️ addDailyMeal: Starting to add food:', {
+        userId,
+        date,
+        meal,
+        foodName: foodData.foodName,
+        foodId: foodData.foodId
+      });
+  
+      // Get the full food object to extract micronutrients and category
       const foodDoc = await getDoc(doc(db, 'foods', foodData.foodId));
       let micronutrients = {};
+      let foodCategory = '';
       
       if (foodDoc.exists()) {
         const food = foodDoc.data();
+        foodCategory = food.category || '';
+        
+        console.log('🍽️ addDailyMeal: Food category found:', foodCategory);
+        
         if (food.nutritionPer100) {
           // Calculate the multiplier based on quantity and unit
           let totalGrams = foodData.quantity;
@@ -1257,7 +1467,6 @@ export class FirebaseService {
           const multiplier = totalGrams / 100;
           
           // Extract micronutrients and calculate based on portion size
-          
           micronutrients = {
             fiber: (food.nutritionPer100.fiber || 0) * multiplier,
             sugar: (food.nutritionPer100.sugar || 0) * multiplier,
@@ -1267,8 +1476,9 @@ export class FirebaseService {
             potassium: (food.nutritionPer100.potassium || 0) * multiplier,
             iron: (food.nutritionPer100.iron || 0) * multiplier,
           };
-          
         }
+      } else {
+        console.warn('⚠️ addDailyMeal: Food document not found for ID:', foodData.foodId);
       }
       
       const dailyMealRef = doc(db, 'dailyMeals', `${userId}_${date}`);
@@ -1285,7 +1495,7 @@ export class FirebaseService {
         const nextFoodIndex = existingFoodKeys.length + 1;
         const foodKey = `food${nextFoodIndex}`;
         
-        // Create the food entry structure: food1: '0' with nested nutrition data
+        // Create the food entry structure with category information
         const newFoodEntry = {
           [foodKey]: {
             '0': {
@@ -1306,21 +1516,39 @@ export class FirebaseService {
               vitaminD: micronutrients.vitaminD || 0,
               potassium: micronutrients.potassium || 0,
               iron: micronutrients.iron || 0,
-              // Additional data
-              kurdishName: foodData.kurdishName || '', // Use kurdishName
-              arabicName: foodData.arabicName || '',   // Use arabicName
-              category: foodData.category || '',
+              // Category information
+              category: foodCategory,
+              kurdishName: foodData.kurdishName || '',
+              arabicName: foodData.arabicName || '',
             }
           }
         };
         
+        // Calculate category totals for this meal
+        const updatedMealData = {
+          ...currentMealData,
+          ...newFoodEntry
+        };
+        
+// Should calculate for ALL meals in the day
+const allMealsData = {
+  ...currentData.meals,
+  [meal]: updatedMealData
+};
+const categoryTotals = this.calculateMealCategoryTotals(allMealsData);        
+        console.log('🍽️ addDailyMeal: Category totals for meal:', {
+          meal,
+          categoryTotals
+        });
+        
         await updateDoc(dailyMealRef, {
-          [`meals.${meal}`]: {
-            ...currentMealData,
-            ...newFoodEntry
-          },
+          [`meals.${meal}`]: updatedMealData,
+          [`categoryTotals.${meal}`]: categoryTotals,
           updatedAt: Timestamp.now(),
         });
+        
+        console.log('✅ addDailyMeal: Food added successfully with category totals');
+        
       } else {
         // Document doesn't exist, create new one with food1 structure
         const newFoodEntry = {
@@ -1343,13 +1571,21 @@ export class FirebaseService {
               vitaminD: micronutrients.vitaminD || 0,
               potassium: micronutrients.potassium || 0,
               iron: micronutrients.iron || 0,
-              // Additional data
-              kurdishName: foodData.kurdishName || '', // Use kurdishName
-              arabicName: foodData.arabicName || '',   // Use arabicName
-              category: foodData.category || '',
+              // Category information
+              category: foodCategory,
+              kurdishName: foodData.kurdishName || '',
+              arabicName: foodData.arabicName || '',
             }
           }
         };
+        
+        // Calculate category totals for the new meal
+        const categoryTotals = this.calculateMealCategoryTotals(newFoodEntry);
+        
+        console.log('��️ addDailyMeal: New meal category totals:', {
+          meal,
+          categoryTotals
+        });
         
         const dailyMealData = {
           userId,
@@ -1357,18 +1593,62 @@ export class FirebaseService {
           meals: {
             [meal]: newFoodEntry
           },
+          categoryTotals: {
+            [meal]: categoryTotals
+          },
           waterIntake: 0,
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now(),
         };
         
         await setDoc(dailyMealRef, dailyMealData);
+        console.log('✅ addDailyMeal: New daily meal document created with category totals');
       }
     } catch (error) {
-      console.error('Add daily meal error:', error);
+      console.error('❌ addDailyMeal error:', error);
       throw error;
     }
   }
+  
+// Replace the calculateMealCategoryTotals function (lines 1414-1446)
+static calculateMealCategoryTotals(allMealsData: any): any {
+  const categoryTotals: { [category: string]: { count: number; calories: number; protein: number; carbs: number; fat: number; fiber: number } } = {};
+  
+  // Iterate through all meals (breakfast, lunch, dinner, snacks)
+  Object.keys(allMealsData).forEach(mealKey => {
+    const mealData = allMealsData[mealKey];
+    
+    // Iterate through all food items in this meal
+    Object.keys(mealData).forEach(foodKey => {
+      if (foodKey.startsWith('food')) {
+        const foodItem = mealData[foodKey]['0'];
+        const category = foodItem.category || 'Unknown';
+        
+        if (!categoryTotals[category]) {
+          categoryTotals[category] = {
+            count: 0,
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            fiber: 0
+          };
+        }
+        
+        // Add this food's nutrition to the category totals
+        categoryTotals[category].count += 1;
+        categoryTotals[category].calories += foodItem.calories || 0;
+        categoryTotals[category].protein += foodItem.protein || 0;
+        categoryTotals[category].carbs += foodItem.carbs || 0;
+        categoryTotals[category].fat += foodItem.fat || 0;
+        categoryTotals[category].fiber += foodItem.fiber || 0;
+      }
+    });
+  });
+  
+  console.log('📊 calculateMealCategoryTotals: Calculated totals:', categoryTotals);
+  return categoryTotals;
+}
 
   static async getDailyMeals(userId: string, date: string): Promise<any> {
     try {

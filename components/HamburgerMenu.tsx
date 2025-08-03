@@ -259,6 +259,13 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
       description: t('hamburgerMenu:profileDescription')
     },
     {
+      id: 'stats',
+      title: 'stats',
+      icon: <User size={24} color="#374151" />,
+      route: '/(tabs)/stats',
+      description: t('hamburgerMenu:profileDescription')
+    },
+    {
       id: 'sign-out',
       title: t('hamburgerMenu:signOut'),
       icon: <LogOut size={24} color="#EF4444" />,
