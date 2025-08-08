@@ -230,7 +230,7 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
       route: '/(tabs)/daily-goals',
       description: t('hamburgerMenu:dailyGoalsDescription')
     },
-    {
+    { 
       id: 'food-request', // NEW: Add this item
       title: t('hamburgerMenu:requestFood'), // NEW: Translation key
       icon: <MessageSquarePlus size={24} color="#374151" />, // NEW: Icon
@@ -244,26 +244,13 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
       route: '/(tabs)/settings',
       description: t('hamburgerMenu:settingsDescription')
     },
-    {
-      id: 'profile',
-      title: t('hamburgerMenu:profile'),
-      icon: <User size={24} color="#374151" />,
-      route: '/(tabs)/profile',
-      description: t('hamburgerMenu:profileDescription')
-    },
-    {
-      id: 'test',
-      title: 'test',
-      icon: <User size={24} color="#374151" />,
-      route: '/(tabs)/subscription',
-      description: t('hamburgerMenu:profileDescription')
-    },
+    
     {
       id: 'stats',
-      title: 'stats',
+      title: t('hamburgerMenu:statsTitle'),
       icon: <User size={24} color="#374151" />,
       route: '/(tabs)/stats',
-      description: t('hamburgerMenu:profileDescription')
+      description: t('hamburgerMenu:stats')
     },
     {
       id: 'sign-out',

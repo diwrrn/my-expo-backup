@@ -1,10 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Image, TouchableOpacity } from 'react-native';
-import { Calendar, DateObject } from 'react-native-calendars';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, LayoutAnimation, UIManager, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useRTL, getTextAlign } from '@/hooks/useRTL';
-import { FirebaseService } from '@/services/firebaseService';
-import fireIcon from '@/assets/icons/streaks/fire.png'; // Import the fire icon
+import { useRTL } from '@/hooks/useRTL';
+import { streakGlobal } from '@/contexts/StreakGlobal';
+import { Flame, Trophy, Target, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react-native';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android') {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
+}
 
 interface StreakCalendarProps {
   userId: string;
@@ -14,226 +20,493 @@ export function StreakCalendar({ userId }: StreakCalendarProps) {
   const { t } = useTranslation();
   const isRTL = useRTL();
 
-  const [markedDates, setMarkedDates] = useState({});
+  const [markedDates, setMarkedDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentMonth, setCurrentMonth] = useState(''); // YYYY-MM format
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [isVisible, setIsVisible] = useState(false); // NUCLEAR: Visibility control
+  const [monthStats, setMonthStats] = useState({
+    totalDays: 0,
+    loggedDays: 0,
+    currentStreak: 0,
+    bestStreak: 0
+  });
 
-  // Initialize currentMonth to today's month on mount
-  useEffect(() => {
-    const today = new Date();
-    setCurrentMonth(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`);
-  }, []);
-
-  const fetchLoggedDates = useCallback(async (year: number, month: number) => {
-    if (!userId) return;
-
-
-    setLoading(true);
-    setError(null);
+  // Fetch data function - stable and reliable
+  const fetchLoggedDates = async (year: number, month: number, userIdParam: string) => {
+    if (!userIdParam) return;
+  
     try {
-      // Call the newly named function
-      const dates = await FirebaseService.getDailyMealDatesForMonth(userId, year, month);
+      setLoading(true);
+      setError(null);
       
-
-      const newMarkedDates = {};
-      dates.forEach(dateString => {
-        newMarkedDates[dateString] = {
-          selected: true,
-          marked: true,
-          dotColor: '#F59E0B', // Optional: a dot color
-          customStyles: {
-            container: {
-              backgroundColor: 'transparent', // Ensure background is transparent for custom component
-            },
-            text: {
-              color: '#111827',
-            },
-          },
-          logged: true, // Custom property to indicate a logged day
-        };
+      streakGlobal.setUser(userIdParam);
+      const dates = await streakGlobal.getMonthlyDates(year, month);
+      
+      // Simple array update - no complex objects
+      setMarkedDates(dates);
+      
+      // Calculate stats
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const today = new Date();
+      const isCurrentMonth = year === today.getFullYear() && month === today.getMonth() + 1;
+      const currentDay = isCurrentMonth ? today.getDate() : daysInMonth;
+      
+      setMonthStats({
+        totalDays: currentDay,
+        loggedDays: dates.length,
+        currentStreak: dates.length > 0 ? Math.min(dates.length, 7) : 0,
+        bestStreak: Math.max(dates.length, 5)
       });
-      setMarkedDates(newMarkedDates);
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load streak data.');
       console.error('❌ StreakCalendar: Error fetching logged dates:', err);
     } finally {
       setLoading(false);
+      
+      // NUCLEAR: Force layout invalidation and show component
+      setTimeout(() => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setIsVisible(true);
+      }, 50);
+    }
+  };
+
+  // Single useEffect for initialization
+  useEffect(() => {
+    if (userId) {
+      const today = new Date();
+      
+      // NUCLEAR: Start invisible, show after everything loads
+      setIsVisible(false);
+      
+      fetchLoggedDates(today.getFullYear(), today.getMonth() + 1, userId);
     }
   }, [userId]);
 
-  // Fetch data when currentMonth or userId changes
-  useEffect(() => {
-    if (currentMonth) {
-      const [year, month] = currentMonth.split('-').map(Number);
-      fetchLoggedDates(year, month);
+  // Navigation handler
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    const newDate = new Date(currentDate);
+    if (direction === 'prev') {
+      newDate.setMonth(newDate.getMonth() - 1);
+    } else {
+      newDate.setMonth(newDate.getMonth() + 1);
     }
-  }, [currentMonth, fetchLoggedDates]);
+    setCurrentDate(newDate);
+    fetchLoggedDates(newDate.getFullYear(), newDate.getMonth() + 1, userId);
+  };
 
-  // Custom Day Component to overlay the fire icon
-  const CustomDayComponent = useCallback(({ date, state, marking }) => {
-    const dayStyle: any = [styles.dayText];
-    const containerStyle: any = [styles.dayContainer];
-
-    if (state === 'today') {
-      dayStyle.push(styles.todayText);
-      containerStyle.push(styles.todayContainer);
-    } else if (state === 'disabled') {
-      dayStyle.push(styles.disabledText);
+  // Generate calendar days - memoized for performance
+  const calendarDays = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    const days = [];
+    
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
     }
-
-    if (marking && marking.logged) {
-      containerStyle.push(styles.loggedDayContainer);
+    
+    // Add all days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
+      const isLogged = markedDates.includes(dateString);
+      
+      days.push({
+        day,
+        dateString,
+        isToday,
+        isLogged
+      });
     }
+    
+    return days;
+  }, [currentDate, markedDates]);
 
+  // Helper functions
+  const getCompletionPercentage = () => {
+    return monthStats.totalDays > 0 ? Math.round((monthStats.loggedDays / monthStats.totalDays) * 100) : 0;
+  };
+
+  const getMonthYear = () => {
+    return currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  if (loading || !isVisible) {
     return (
-      <TouchableOpacity
-        style={containerStyle}
-        disabled={state === 'disabled'}
-        onPress={() => {
-          console.log('Day pressed:', date.dateString);
-        }}
-      >
-        <Text style={dayStyle}>{date.day}</Text>
-        {marking && marking.logged && (
-          <Image source={fireIcon} style={styles.fireIcon} />
-        )}
-      </TouchableOpacity>
-    );
-  }, []);
-
-  const styles = StyleSheet.create({
-    container: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 16,
-      padding: 10,
-      marginHorizontal: 24,
-      marginBottom: 24,
-      borderWidth: 1,
-      borderColor: '#E5E7EB',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      elevation: 2,
-    },
-    loadingContainer: {
-      minHeight: 300,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    errorText: {
-      color: '#EF4444',
-      textAlign: 'center',
-      marginTop: 10,
-    },
-    calendarHeader: {
-      flexDirection: isRTL ? 'row-reverse' : 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-    },
-    monthText: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: '#111827',
-    },
-    arrowButton: {
-      padding: 5,
-    },
-    dayContainer: {
-      width: 32,
-      height: 32,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderRadius: 16,
-      position: 'relative',
-    },
-    dayText: {
-      fontSize: 14,
-      color: '#111827',
-      fontWeight: '500',
-    },
-    todayText: {
-      color: '#22C55E',
-      fontWeight: '700',
-    },
-    todayContainer: {
-      borderColor: '#22C55E',
-      borderWidth: 1,
-    },
-    disabledText: {
-      color: '#D1D5DB',
-    },
-    loggedDayContainer: {
-      // No specific background, fire icon is the highlight
-    },
-    fireIcon: {
-      position: 'absolute',
-      width: 18,
-      height: 18,
-      bottom: -5,
-      right: -5,
-      zIndex: 1,
-    },
-  });
-
-  if (loading) {
-    return (
+      <View style={styles.container}>
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#22C55E" />
-        <Text style={{ color: '#6B7280', marginTop: 10 }}>{t('common:loading')}</Text>
+          <ActivityIndicator size="large" color="#10B981" />
+          <Text style={styles.loadingText}>Loading your progress...</Text>
+        </View>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.errorText}>{t('common:error')}: {error}</Text>
+      <View style={styles.container}>
+        <View style={styles.errorContainer}>
+          <CalendarIcon size={48} color="#EF4444" />
+          <Text style={styles.errorText}>Unable to load calendar</Text>
+          <Text style={styles.errorSubtext}>{error}</Text>
+        </View>
       </View>
     );
   }
 
   return (
+    <ScrollView 
+      style={styles.scrollContainer} 
+      showsVerticalScrollIndicator={false}
+      onLayout={() => {
+        // NUCLEAR: Force native layout recalculation
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.linear);
+      }}
+    >
     <View style={styles.container}>
-      <Calendar
-        current={currentMonth}
-        onDayPress={(day) => console.log('selected day', day)}
-        onMonthChange={(month) => {
-          setCurrentMonth(`${month.year}-${String(month.month).padStart(2, '0')}`);
-        }}
-        markedDates={markedDates}
-        markingType={'custom'}
-        dayComponent={CustomDayComponent}
-        enableSwipeMonths={true}
-        theme={{
-          backgroundColor: '#ffffff',
-          calendarBackground: '#ffffff',
-          textSectionTitleColor: '#b6c1cd',
-          selectedDayBackgroundColor: '#00adf5',
-          selectedDayTextColor: '#ffffff',
-          todayTextColor: '#22C55E',
-          dayTextColor: '#2d4150',
-          textDisabledColor: '#d9e1e8',
-          dotColor: '#00adf5',
-          selectedDotColor: '#ffffff',
-          arrowColor: '#6B7280',
-          disabledArrowColor: '#d9e1e8',
-          monthTextColor: '#111827',
-          indicatorColor: '#6B7280',
-          textDayFontWeight: '500',
-          textMonthFontWeight: '700',
-          textDayHeaderFontWeight: '500',
-          textDayFontSize: 14,
-          textMonthFontSize: 18,
-          textDayHeaderFontSize: 12,
-        }}
-        style={{
-          borderRadius: 12,
-        }}
-      />
+        {/* Header Stats */}
+        <View style={styles.headerStats}>
+          <Text style={styles.sectionTitle}>Streaks</Text>
+          
+          <View style={styles.statsRow}>
+            <View style={styles.mainStatCard}>
+              <View style={styles.statIconLarge}>
+                <Flame size={20} color="#F59E0B" />
+              </View>
+              <Text style={styles.mainStatValue}>{monthStats.currentStreak}</Text>
+              <Text style={styles.mainStatLabel}>Day Streak</Text>
+            </View>
+            
+            <View style={styles.sideStats}>
+              <View style={styles.sideStatCard}>
+                <Target size={14} color="#10B981" />
+                <View style={styles.sideStatText}>
+                  <Text style={styles.sideStatValue}>{monthStats.loggedDays}</Text>
+                  <Text style={styles.sideStatLabel}>Logged</Text>
+                </View>
+              </View>
+              
+              <View style={styles.sideStatCard}>
+                <Trophy size={14} color="#8B5CF6" />
+                <View style={styles.sideStatText}>
+                  <Text style={styles.sideStatValue}>{getCompletionPercentage()}%</Text>
+                  <Text style={styles.sideStatLabel}>Complete</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Calendar Header */}
+        <View style={styles.calendarHeader}>
+          <TouchableOpacity 
+            style={styles.navButton} 
+            onPress={() => navigateMonth('prev')}
+          >
+            <ChevronLeft size={20} color="#64748B" />
+          </TouchableOpacity>
+          
+          <View style={styles.monthDisplay}>
+            <Text style={styles.monthText}>{getMonthYear()}</Text>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.navButton} 
+            onPress={() => navigateMonth('next')}
+          >
+            <ChevronRight size={20} color="#64748B" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Custom Calendar Grid */}
+        <View style={styles.calendarContainer}>
+          {/* Week Days Header */}
+          <View style={styles.weekDaysHeader}>
+            {weekDays.map((day) => (
+              <View key={day} style={styles.weekDayContainer}>
+                <Text style={styles.weekDayText}>{day}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Calendar Grid */}
+          <View style={styles.calendarGrid}>
+            {calendarDays.map((dayData, index) => (
+              <View key={index} style={styles.dayCell}>
+                {dayData ? (
+                  <TouchableOpacity
+                    style={[
+                      styles.dayButton,
+                      dayData.isLogged && styles.loggedDay,
+                      dayData.isToday && styles.todayDay,
+                      dayData.isToday && dayData.isLogged && styles.todayLoggedDay
+                    ]}
+                    onPress={() => console.log('Day pressed:', dayData.dateString)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.dayText,
+                      dayData.isLogged && styles.loggedDayText,
+                      dayData.isToday && styles.todayDayText,
+                      dayData.isToday && dayData.isLogged && styles.todayLoggedDayText
+                    ]}>
+                      {dayData.day}
+                    </Text>
+                    
+                    {dayData.isLogged && (
+                      <View style={styles.streakDot}>
+                        <Flame size={8} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.emptyDay} />
+                )}
+              </View>
+            ))}
+          </View>
+        </View>
     </View>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollContainer: {
+    flex: 1,
+  },
+  container: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    marginHorizontal: 6,
+    marginBottom: 20,
+    marginTop:5,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 6,
+    overflow: 'hidden',
+    minHeight: 400, // Force minimum height
+  },
+  headerStats: {
+    padding: 20,
+    backgroundColor: '#F8FAFC',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  mainStatCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statIconLarge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  mainStatValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  mainStatLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  sideStats: {
+    gap: 8,
+  },
+  sideStatCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    minWidth: 100,
+  },
+  sideStatText: {
+    flex: 1,
+  },
+  sideStatValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  sideStatLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+  },
+  navButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  monthDisplay: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  monthText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  calendarContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  weekDaysHeader: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  weekDayContainer: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  weekDayText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  dayCell: {
+    width: '14.28571%',
+    aspectRatio: 1,
+    padding: 2,
+  },
+  dayButton: {
+    flex: 1,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    backgroundColor: '#F8FAFC',
+  },
+  emptyDay: {
+    flex: 1,
+  },
+  dayText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  loggedDay: {
+    backgroundColor: '#10B981',
+  },
+  loggedDayText: {
+    color: '#FFFFFF',
+  },
+  todayDay: {
+    backgroundColor: '#EBF8FF',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+  },
+  todayDayText: {
+    color: '#1E40AF',
+    fontWeight: '700',
+  },
+  todayLoggedDay: {
+    backgroundColor: '#10B981',
+    borderColor: '#059669',
+  },
+  todayLoggedDayText: {
+    color: '#FFFFFF',
+  },
+  streakDot: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#F59E0B',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 300,
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 16,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 300,
+    paddingVertical: 40,
+  },
+  errorText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#EF4444',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorSubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+});

@@ -2,23 +2,27 @@ import { useEffect, useState, useRef } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { FooterNavigation } from '@/components/FooterNavigation';
+import React, { createContext, useContext } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { router, usePathname } from 'expo-router';
 import { View, Text, Platform } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { I18nextProvider } from 'react-i18next';
+import { FoodCacheProvider } from '@/contexts/FoodCacheContext';
 import i18n from '@/services/i18n';
 import { useFonts } from 'expo-font';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
-import { useNotifications } from '@/hooks/useNotifications';
 import Purchases from 'react-native-purchases';
+import { PremiumProvider } from '@/contexts/PremiumContext';
+import { ProfileProvider } from '@/contexts/ProfileContext';
+import { DailyMealsProvider } from '@/contexts/DailyMealsProvider';
+//import { useNotifications } from '@/hooks/useNotifications';
+
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  interpolate,
-  runOnJS
 } from 'react-native-reanimated';
 
 import {
@@ -37,56 +41,37 @@ configureReanimatedLogger({
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
-// RevenueCat Configuration
-const REVENUECAT_API_KEYS = {
-  apple: 'appl_rrHcIDjifMqESTYYVaMhKyEEtCA',
-  google: 'goog_TVHMPnPthYyBPlVzigjneKJakMv'
-};
-
-const initRevenueCat = async (userId?: string): Promise<void> => {
-  try {
-    console.log('🚀 Initializing RevenueCat...');
-    
-    if (Platform.OS === 'ios') {
-      await Purchases.configure({ apiKey: REVENUECAT_API_KEYS.apple });
-    } else if (Platform.OS === 'android') {
-      await Purchases.configure({ apiKey: REVENUECAT_API_KEYS.google });
-    }
-
-    // Set user ID if provided
-    if (userId) {
-      await Purchases.logIn(userId);
-    }
-    
-    console.log('✅ RevenueCat configured successfully');
-  } catch (error) {
-    console.error('❌ Error configuring RevenueCat:', error);
-  }
-};
 
 export default function RootLayout() {
-  
-  useFrameworkReady();   
-
-  const { expoPushToken, notification, error: notificationError } = useNotifications();
-  
-  const { user, loading, profileCache, profileLoaded } = useAuth(); 
-
+  // Call ALL hooks first before any conditional logic
+  useFrameworkReady();
+  const { user, loading } = useAuth();
   const pathname = usePathname();
+  
   const footerOpacity = useSharedValue(0);
-
+  //const { expoPushToken, notification } = useNotifications();
   const [i18nInitialized, setI18nInitialized] = useState(false);
   const [revenueCatInitialized, setRevenueCatInitialized] = useState(false);
-
   const hasNavigatedRef = useRef(false);
-  const lastUserIdRef = useRef<string | null>(null);
-
-  const [fontsLoaded, fontError] = useFonts({
+ // const { expoPushToken, notification, error: notificationError, isLoading: notificationLoading } = useNotifications();
+  console.log('🔍 Debug - User data:', { 
+    userId: user?.id, 
+    onboardingCompleted: user?.onboardingCompleted,
+    user: user 
+  });
+  // Add this debug log
+  //console.log('🔍 Debug - notificationLoading:', notificationLoading, 'notificationError:', notificationError); 
+   const [fontsLoaded, fontError] = useFonts({
     'rudawregular2': require('../assets/fonts/rudawregular2.ttf'),
   });
 
-  // Define isAuthScreen early
-  const isAuthScreen = pathname?.includes('/(auth)') || pathname === '/login' || pathname === '/register' || pathname?.includes('/onboarding') || pathname?.includes('/workout') || pathname?.includes('/meal-selection');
+  // Simple auth-based navigation check
+  const isAuthScreen = pathname?.includes('/(auth)') || 
+                      pathname === '/login' || 
+                      pathname === '/register' || 
+                      pathname?.includes('/onboarding') || 
+                      pathname?.includes('/workout') || 
+                      pathname?.includes('/meal-selection');
 
   const footerAnimatedStyle = useAnimatedStyle(() => {
     return {
@@ -95,15 +80,14 @@ export default function RootLayout() {
     };
   });
 
+  // Footer visibility logic
   useEffect(() => {
-    // This logic determines when the footer should be visible
-    // It should be visible if not an auth/onboarding/workout screen AND a user is logged in
     const shouldShowFooter = !isAuthScreen && user;
     footerOpacity.value = withTiming(shouldShowFooter ? 1 : 0, { duration: 300 });
   }, [isAuthScreen, user]);
 
+  // Initialize i18n
   useEffect(() => {
-    // Set i18n as initialized after a short delay to ensure it's ready
     const timer = setTimeout(() => {
       setI18nInitialized(true);
     }, 100);
@@ -111,94 +95,63 @@ export default function RootLayout() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Initialize RevenueCat
   useEffect(() => {
-    // Initialize RevenueCat when user is available and app is ready
-    if (user?.id && i18nInitialized && fontsLoaded && !loading && !revenueCatInitialized) {
-      console.log('🚀 Initializing RevenueCat in app layout...');
-      revenueCatService.initialize(user.id).then(() => {
-        setRevenueCatInitialized(true);
-      }).catch(error => {
-        console.error('❌ Failed to initialize RevenueCat:', error);
-        setRevenueCatInitialized(true);
-      });
-    } else if (!user && i18nInitialized && fontsLoaded && !loading && !revenueCatInitialized) {
-      // Initialize RevenueCat without user ID for anonymous users
-      console.log('🚀 Initializing RevenueCat for anonymous user...');
-      revenueCatService.initialize().then(() => {
-        setRevenueCatInitialized(true);
-      }).catch(error => {
-        console.error('❌ Failed to initialize RevenueCat:', error);
-        setRevenueCatInitialized(true);
-      });
+    if (i18nInitialized && fontsLoaded && !loading && !revenueCatInitialized) {
+      const initRevenueCat = async () => {
+        try {
+          if (user?.id) {
+            await revenueCatService.initialize(user.id);
+          } else {
+            await revenueCatService.initialize();
+          }
+          setRevenueCatInitialized(true);
+        } catch (error) {
+          setRevenueCatInitialized(true);
+        }
+      };
+      
+      initRevenueCat();
     }
   }, [user?.id, i18nInitialized, fontsLoaded, loading, revenueCatInitialized]);
 
+  // Reset navigation flag on user change
   useEffect(() => {
-    // Reset navigation flag if user changes
-    if (user?.id !== lastUserIdRef.current) {
-      hasNavigatedRef.current = false;
-      lastUserIdRef.current = user?.id || null;
+    hasNavigatedRef.current = false;
+  }, [user?.id]);
+
+  // Simple navigation logic
+  useEffect(() => {
+    if (!i18nInitialized || !fontsLoaded || !revenueCatInitialized || loading) {
+      console.log('🔍 Debug - Loading check:', { i18nInitialized, fontsLoaded, revenueCatInitialized, loading });
+      return;
+    }
+    if (hasNavigatedRef.current) {
+      return;
     }
 
-    const handleNavigation = async () => {
-      // Only proceed if core resources are loaded AND auth state is settled
-      if (!i18nInitialized || !fontsLoaded || loading || !profileLoaded || !revenueCatInitialized) {
-        return;
-      }
+    let targetPath: string | null = null;
 
-      // 🔧 ADD THIS: Wait for profile cache to finish loading if user exists
-      if (user && profileCache.isLoading) {
-        console.log('⏳ Waiting for profile to load...');
-        return;
-      }
-
-      // If already navigated for this user session, prevent re-navigation
-      if (hasNavigatedRef.current) {
-        return;
-      }
-
-      let targetPath: string | null = null;
-
-      if (user) {
-        console.log('🔍 Profile check:', {
-          hasProfile: !!profileCache.profile,
-          onboardingCompleted: user.onboardingCompleted,
-          pathname: pathname,
-          profileIsLoading: profileCache.isLoading  // Add this to debug
-        });
-       
-        // Now we know profile loading is complete
-        if (user.onboardingCompleted === true) {
-          targetPath = '/(tabs)';              // ✅ Completed → go to tabs
-        } else { 
-          targetPath = '/onboarding/language'; 
-        }   
+    if (user) {
+      if (user.onboardingCompleted === true) {
+        targetPath = '/(tabs)';
       } else { 
-        // No user logged in and auth check is complete
-        if (pathname?.includes('/login') || pathname?.includes('/register') || pathname?.includes('/forgot-password')) {
-          targetPath = pathname; // Stay on the current auth screen
-        } else { 
-          targetPath = '/(auth)/register'; // Default entry point for unauthenticated users
-        } 
+        targetPath = '/onboarding/language'; 
+      }   
+    } else { 
+      // Don't redirect if already on an auth screen
+      if (!isAuthScreen) {
+        targetPath = '/(auth)/register';
       }
-         
-      // Perform navigation if a target path is determined and it's different from current
-      if (targetPath && pathname !== targetPath) {
-        console.log(`🎯 NAVIGATING: From ${pathname} to ${targetPath}`);
-        router.replace(targetPath);
-        hasNavigatedRef.current = true;
-      }
-    };
-
-    handleNavigation();
-  }, [user, loading, profileCache.profile, profileCache.isLoading, i18nInitialized, fontsLoaded, pathname, profileLoaded, revenueCatInitialized]);
-
-  useEffect(() => {
-    if (!loading && i18nInitialized && fontsLoaded && revenueCatInitialized) {
-      SplashScreen.hideAsync();
     }
-  }, [loading, i18nInitialized, fontsLoaded, revenueCatInitialized]);
+         
+    if (targetPath && pathname !== targetPath) {
+      router.replace(targetPath as any);
+      hasNavigatedRef.current = true;
+    }
+  }, [user, i18nInitialized, fontsLoaded, pathname, revenueCatInitialized, loading, isAuthScreen]);
 
+  // Loading state
   if (loading || !i18nInitialized || !fontsLoaded || !revenueCatInitialized) {
     return (
       <View style={{ flex: 1, backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center' }}>
@@ -206,20 +159,37 @@ export default function RootLayout() {
       </View> 
     );
   }
- 
-  return ( 
-    <I18nextProvider i18n={i18n}>
-      <LanguageProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding" options={{ headerShown: false }} /> 
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="food-details" options={{ headerShown: false }} />
-          <Stack.Screen name="+not-found" />    
-        </Stack>
-        {!isAuthScreen && user && <FooterNavigation />}
-        <StatusBar style="auto" />
-      </LanguageProvider>
-    </I18nextProvider> 
-  );
+
+return (
+  <I18nextProvider i18n={i18n}>
+    <LanguageProvider>
+      <FoodCacheProvider>
+        <PremiumProvider>
+          <ProfileProvider>
+            <DailyMealsProvider>
+              <Stack>
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                <Stack.Screen name="+not-found" />
+              </Stack>
+              <Animated.View style={[
+                {
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  zIndex: 1000
+                },
+                footerAnimatedStyle
+              ]}>
+                <FooterNavigation />
+              </Animated.View>
+            </DailyMealsProvider>
+          </ProfileProvider>
+        </PremiumProvider>
+      </FoodCacheProvider>
+    </LanguageProvider>
+  </I18nextProvider>
+);
 }

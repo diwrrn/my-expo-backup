@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Modal, TextInput, Alert } from 'react-native'; // Add Image
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Target, Flame, Zap, Plus, Trash2, ChevronDown, ChevronUp, TrendingUp, Award, Droplet, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react-native';
 import { ProgressRingSkeleton } from '@/components/ProgressRingSkeleton';
@@ -11,36 +11,34 @@ import { WaterIntakeCardSkeleton } from '@/components/WaterIntakeCardSkeleton';
 import { WaterIntakeCard } from '@/components/WaterIntakeCard';
 import { HomeSkeleton } from '@/components/HomeSkeleton';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
-import { useFirebaseData } from '@/hooks/useFirebaseData';
+import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
 import { useAuth } from '@/hooks/useAuth';
 import { useStreak } from '@/hooks/useStreak';
-import { useProfile } from '@/hooks/useProfile';
-import { useState, useEffect } from 'react';
+import { useProfileContext } from '@/contexts/ProfileContext';
+import { useState, useEffect, useMemo } from 'react';
 import { getTodayDateString, addDays, formatDisplayDate, isToday, parseDateString, formatDateToString } from '@/utils/dateUtils';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next'; 
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFirebaseData } from '@/hooks/useFirebaseData';
+import { useStreakGlobal } from '@/hooks/useStreakGlobal';
 
-
-// Helper function to check if homepage data is ready
+// Simplified function to check if homepage data is ready
 const isHomeDataReady = (
   authLoading: boolean,
-  profileLoading: boolean,
   mealsLoading: boolean,
   user: any,
   dailyMeals: any
 ) => {
-  // Check if any loading state is active
-  if (authLoading || profileLoading || mealsLoading) {
+  if (authLoading || mealsLoading) {
     return false;
   }
   
-  // Check if user and profile data is available
-  if (!user || !user.profile) {
+  if (!user) {
     return false;
   }
   
-  // Check if daily meals data structure is initialized
   if (!dailyMeals || !dailyMeals.meals) {
     return false;
   }
@@ -49,31 +47,146 @@ const isHomeDataReady = (
 };
 
 export default function HomeScreen() {
-  const { user, loading: authLoading, profileCache } = useAuth();
-  const { updateProfile } = useProfile();
-
-
-  const { t, i18n } = useTranslation(); // Add i18n here
+  const { user, loading: authLoading } = useAuth();
+  const { updateProfile } = useProfileContext();
+  const { t, i18n } = useTranslation();
   const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
   const isRTL = useRTL();
-  const [currentViewDate, setCurrentViewDate] = useState(getTodayDateString());
+
+  // Stable currentViewDate with useMemo
+  const [selectedDate, setSelectedDate] = useState(() => getTodayDateString());
+  const currentViewDate = useMemo(() => selectedDate, [selectedDate]);
+
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateInput, setDateInput] = useState('');
+  
   const { 
     dailyTotals, 
     mealTotals, 
     getFoodsFromMeal, 
     removeFoodFromDailyMeal, 
-    updateWaterIntake, 
-    loading, 
     dailyMeals,
-    dailyMealsCache
+    changeDate,
+  } = useDailyMealsContext(); 
+  const { 
+    updateWaterIntake, 
+    loading 
   } = useFirebaseData(currentViewDate);
-  const { currentStreak } = useStreak(user?.id);
-  // Add this new useEffect hook
-  useEffect(() => {
+  const { currentStreak } = useStreakGlobal();
+    const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>({
+    breakfast: false,
+    lunch: false,  
+    dinner: false,
+    snacks: false,
+  });
+  
+  const [showContent, setShowContent] = useState(false);
 
-  }, [user]); // This useEffect will run whenever the profile object within profileCache changes
+  // Simplified data ready check
+  const dataReady = isHomeDataReady(
+    authLoading, 
+    loading, 
+    user, 
+    dailyMeals
+  );
+  useEffect(() => {
+    changeDate(currentViewDate);
+  }, [currentViewDate, changeDate]);
+  // Wait for initial data to be ready
+  useEffect(() => {
+    if (dataReady) {
+      setShowContent(true);
+    }
+  }, [dataReady]);
+  // DEBUG: Check AsyncStorage contents
+  // Navigation functions for date
+  const handlePreviousDay = () => {
+    setSelectedDate(prevDate => addDays(prevDate, -1));
+  };
+
+  const handleNextDay = () => {
+    // Only allow navigating up to today
+    if (!isToday(currentViewDate)) {
+      setSelectedDate(prevDate => addDays(prevDate, 1));
+    }
+  };
+
+  const handleDateSelect = () => {
+    setDateInput(currentViewDate);
+    setShowDatePicker(true);
+  };
+
+  const handleDateConfirm = () => {
+    try {
+      // Validate date format (YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(dateInput)) {
+        Alert.alert('Invalid Format', 'Please use YYYY-MM-DD format');
+        return;
+      }
+
+      // Check if date is valid
+      const date = parseDateString(dateInput);
+      if (isNaN(date.getTime())) {
+        Alert.alert('Invalid Date', 'Please enter a valid date');
+        return;
+      }
+
+      // Check if date is in the future
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (date > today) {
+        Alert.alert('Invalid Date', 'Cannot select future dates');
+        return;
+      }
+
+      // Set the date and close the picker
+      setSelectedDate(dateInput);
+      setShowDatePicker(false);
+    } catch (error) {
+      Alert.alert('Error', 'Invalid date format. Please use YYYY-MM-DD');
+    }
+  };
+
+  const toggleMealExpansion = (mealId: string) => {
+    setExpandedMeals(prev => ({
+      ...prev,
+      [mealId]: !prev[mealId]
+    }));
+  };
+
+  const handleRemoveFood = async (mealType: string, foodKey: string) => {
+    try {
+      await removeFoodFromDailyMeal(mealType as 'breakfast' | 'lunch' | 'dinner' | 'snacks', foodKey);
+    } catch (error) {
+      // Silent error handling
+    }
+  };
+  const debugAsyncStorage = async () => {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      console.log('📱 AsyncStorage Keys:', keys);
+      
+      for (const key of keys) {
+        const value = await AsyncStorage.getItem(key);
+        console.log(`📱 ${key}:`, JSON.parse(value || '{}'));
+      }
+    } catch (error) {
+      console.error('Error reading AsyncStorage:', error);
+    }
+  };
+
+  const handleUpdateWaterIntake = async (glasses: number) => {
+    try {
+      await updateWaterIntake(glasses);
+    } catch (error) {
+      // Silent error handling
+    }
+  };
+
+  const handleRefreshWaterCard = () => {
+    // Refresh functionality if needed
+  };
 
   const styles = StyleSheet.create({
   container: {
@@ -82,10 +195,10 @@ export default function HomeScreen() {
   },
   scrollView: {
     flex: 1,
-    paddingBottom: 100, // Space for footer navigation
+      paddingBottom: 100,
   },
   scrollViewContent: {
-    paddingBottom: 90, // Space for footer navigation
+      paddingBottom: 90,
   },
   headerGradient: {
     paddingBottom: 20,
@@ -110,7 +223,7 @@ export default function HomeScreen() {
     color: '#111827',
     marginBottom: 4,
     letterSpacing: -0.5,
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined, // Add this line
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   headerDate: {
     textAlign: getTextAlign(isRTL),
@@ -162,16 +275,14 @@ export default function HomeScreen() {
     fontSize: 14,
     color: '#6B7280',
     fontWeight: '500',
-        fontFamily: useKurdishFont ? 'rudawregular2' : undefined, // Add this line
-
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   caloriesRemaining: {
     fontSize: 13,
     color: '#22C55E',
     fontWeight: '600',
     marginTop: 4,
-        fontFamily: useKurdishFont ? 'rudawregular2' : undefined, // Add this line
-
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   progressPercentage: {
     flexDirection: 'row',
@@ -219,64 +330,8 @@ export default function HomeScreen() {
     fontWeight: '800',
     color: '#111827',
     letterSpacing: -0.3,
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined, // Add this line
-
-  },
-  loadingContainer: {
-    flex: 1,
-  },
-  skeletonTitle: {
-    height: 32,
-    width: 200,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
-    marginBottom: 8,
-  },
-  skeletonSubtitle: {
-    height: 17,
-    width: 150,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
-  },
-  skeletonBadge: {
-    height: 32,
-    width: 50,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 16,
-  },
-  skeletonProgressRing: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: '#E5E7EB',
-  },
-  quickStatsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    marginBottom: 32,
-    gap: 12,
-  },
-  skeletonStatItem: {
-    flex: 1,
-    height: 80,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 16,
-  },
-  skeletonSectionTitle: {
-    height: 22,
-    width: 150,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
-    marginBottom: 16,
-  },
-  skeletonMealCard: {
-    height: 80,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 16,
-    marginBottom: 16,
-  },
-  // Date Picker Modal Styles
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -327,7 +382,6 @@ export default function HomeScreen() {
   },
   modalActions: {
     flexDirection: getFlexDirection(isRTL),
-
     justifyContent: 'flex-end',
     gap: 12,
   },
@@ -354,82 +408,64 @@ export default function HomeScreen() {
     fontWeight: '600',
     color: '#FFFFFF',
   },
-});
-  // Combined loading state
-  const isDataReady = isHomeDataReady(
-    authLoading,
-    profileCache.isLoading,
-    dailyMealsCache.isLoading,
-    user,
-    dailyMealsCache.dailyMeals
-  );
-  
-  // State to track which meals are expanded
-  const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>({
-    breakfast: false,
-    lunch: false,
-    dinner: false,
-    snacks: false,
+    // Expandable Food List Styles
+    foodListContainer: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 8,
+      marginTop: -8,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: '#E5E7EB',
+      borderTopWidth: 0,
+      borderTopLeftRadius: 0,
+      borderTopRightRadius: 0,
+    },
+    expandButton: {
+      flexDirection: getFlexDirection(isRTL),
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: '#F3F4F6',
+    },
+    expandButtonText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: '#6B7280',
+    },
+    foodList: {
+      padding: 12,
+      paddingTop: 0,
+    },
+    foodItem: {
+      flexDirection: getFlexDirection(isRTL),
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: '#F3F4F6',
+    },
+    foodInfo: {
+      flex: 1,
+    },
+    foodName: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#111827',
+      marginBottom: 2,
+      textAlign: getTextAlign(isRTL),
+    },
+    foodDetails: {
+      fontSize: 12,
+      color: '#6B7280',
+      textAlign: getTextAlign(isRTL),
+    },
+    removeFoodButton: {
+      padding: 4,
+      marginLeft: isRTL ? 0 : 8,
+      marginRight: isRTL ? 8 : 0,
+    },
   });
-  
-  // State to prevent flickers
-  const [showContent, setShowContent] = useState(false);
-
-  // Wait for initial data to be ready
-  useEffect(() => {
-    if (isDataReady) {
-      setShowContent(true);
-    }
-  }, [isDataReady]);
-
-  // Navigation functions for date
-  const handlePreviousDay = () => {
-    setCurrentViewDate(prevDate => addDays(prevDate, -1));
-  };
-
-  const handleNextDay = () => {
-    // Only allow navigating up to today
-    if (!isToday(currentViewDate)) {
-      setCurrentViewDate(prevDate => addDays(prevDate, 1));
-    }
-  };
-
-  const handleDateSelect = () => {
-    setDateInput(currentViewDate);
-    setShowDatePicker(true);
-  };
-
-  const handleDateConfirm = () => {
-    try {
-      // Validate date format (YYYY-MM-DD)
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(dateInput)) {
-        Alert.alert('Invalid Format', 'Please use YYYY-MM-DD format');
-        return;
-      }
-
-      // Check if date is valid
-      const date = parseDateString(dateInput);
-      if (isNaN(date.getTime())) {
-        Alert.alert('Invalid Date', 'Please enter a valid date');
-        return;
-      }
-
-      // Check if date is in the future
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (date > today) {
-        Alert.alert('Invalid Date', 'Cannot select future dates');
-        return;
-      }
-
-      // Set the date and close the picker
-      setCurrentViewDate(dateInput);
-      setShowDatePicker(false);
-    } catch (error) {
-      Alert.alert('Error', 'Invalid date format. Please use YYYY-MM-DD');
-    }
-  };
 
   // Show skeleton while loading
   if (!showContent) {
@@ -440,9 +476,8 @@ export default function HomeScreen() {
     );
   }
 
-
   const caloriesConsumed = dailyTotals.calories || 0;
-  const caloriesGoal = user?.profile?.goals.calories || 2000; // <--- MODIFIED LINE
+  const caloriesGoal = user?.profile?.goals.calories || 2000;
 const progressPercentage = (caloriesConsumed / caloriesGoal) * 100;
 
   // Meal configurations
@@ -473,57 +508,6 @@ const progressPercentage = (caloriesConsumed / caloriesGoal) * 100;
     },
   ];
 
-  const toggleMealExpansion = (mealId: string) => {
-    setExpandedMeals(prev => ({
-      ...prev,
-      [mealId]: !prev[mealId]
-    }));
-  };
-
-  const handleRemoveFood = async (mealType: string, foodKey: string) => {
-    try {
-      await removeFoodFromDailyMeal(mealType as 'breakfast' | 'lunch' | 'dinner' | 'snacks', foodKey);
-    } catch (error) {
-      console.error('Error removing food:', error);
-    }
-  };
-
-  const handleUpdateWaterIntake = async (glasses: number) => {
-    try {
-      await updateWaterIntake(glasses);
-    } catch (error) {
-      console.error('Error updating water intake:', error);
-    }
-  };
-
-  // ADD THIS FUNCTION
-  const handleRefreshWaterCard = () => {
-    console.log('Refreshing WaterIntakeCard data...');
-    profileCache.refreshCache(); // Refresh user profile data
-  };
-
-  
-  const renderMealCard = (mealConfig: typeof mealConfigs[0]) => {
-    const mealData = mealTotals[mealConfig.id] || { calories: 0, items: 0 };
-    const foods = getFoodsFromMeal(mealConfig.id);
-
-    return (
-      <MealCardWithSearch
-        key={mealConfig.id}
-        title={mealConfig.title}
-        calories={mealData.calories}
-        items={mealData.items}
-        color={mealConfig.color}
-        icon={mealConfig.icon}
-        mealType={mealConfig.id as 'breakfast' | 'lunch' | 'dinner' | 'snacks'}
-        foods={foods}
-        onRemoveFood={(foodKey) => handleRemoveFood(mealConfig.id, foodKey)}
-        currentViewDate={currentViewDate} // ← Add this line
-
-      />
-    );
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView 
@@ -551,15 +535,11 @@ const progressPercentage = (caloriesConsumed / caloriesGoal) * 100;
 })}
                   </Text>
                 </View>
-               
               </View>
             </View>
           </LinearGradient>
 
           {/* Progress Ring */}
-          {!showContent ? (
-            <ProgressRingSkeleton />
-          ) : (
             <View style={styles.progressSection}>
               <ProgressRing
                 progress={progressPercentage}
@@ -574,23 +554,16 @@ const progressPercentage = (caloriesConsumed / caloriesGoal) * 100;
                 <Text style={styles.caloriesRemaining}>
                   {Math.round(Math.max(0, caloriesGoal - caloriesConsumed))} {t('homeScreen:left')}
                 </Text>
-               
-              </View>
             </View>
-          )}
+          </View>
 
           {/* Quick Stats */}
-          {!showContent ? (
-            <QuickStatsSkeleton />
-          ) : (
             <QuickStats 
               protein={dailyTotals.protein || 0}
               carbs={dailyTotals.carbs || 0}
               fat={dailyTotals.fat || 0}
               water={dailyMeals?.waterIntake || 0}
             />
-          )}
-
 
           {/* Meals Section */}
           <View style={styles.mealsSection}>
@@ -627,12 +600,10 @@ const progressPercentage = (caloriesConsumed / caloriesGoal) * 100;
               </TouchableOpacity>
             </View>
             
-            {!showContent ? (
-              <MealCardSkeleton />
-            ) : (
-              mealConfigs.map(mealConfig => (
+            {mealConfigs.map(mealConfig => (
+              <View key={mealConfig.id}>
+                {/* Meal Card with Search */}
                 <MealCardWithSearch
-                  key={mealConfig.id}
                   title={mealConfig.title}
                   calories={mealTotals[mealConfig.id]?.calories || 0}
                   items={mealTotals[mealConfig.id]?.items || 0}
@@ -643,22 +614,19 @@ const progressPercentage = (caloriesConsumed / caloriesGoal) * 100;
                   onRemoveFood={(foodKey) => handleRemoveFood(mealConfig.id, foodKey)}
                   currentViewDate={currentViewDate}
                 />
-              ))
-            )} 
+                              
+              </View>
+            ))} 
           </View>
 
           {/* Water Intake Card */}
-          {!showContent ? (
-            <WaterIntakeCardSkeleton />
-          ) : (
             <WaterIntakeCard 
               currentWaterIntake={dailyMeals?.waterIntake || 0} 
+  dailyGoal={user?.profile?.goalsWaterUpdate || 8} // This is missing!
               onUpdateWaterIntake={handleUpdateWaterIntake}
-dailyGoal={profileCache.profile?.goalsWaterUpdate || 22} // Force read the newest value
   onUpdateWaterGoal={updateProfile}
               onRefresh={handleRefreshWaterCard}
             />
-          )}
         </View>
       </ScrollView>
 

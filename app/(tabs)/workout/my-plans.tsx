@@ -1,19 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Plus, Calendar, Dumbbell, Trash2, LocationEdit as Edit3 } from 'lucide-react-native';
+import { ArrowLeft, Plus, Calendar, Dumbbell, Trash2, Edit3, Target, Clock } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useAuth } from '@/hooks/useAuth';
-import { FirebaseService } from '@/services/firebaseService';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withTiming,
-  FadeInDown,
-  FadeOutRight
-} from 'react-native-reanimated';
+import { useWorkoutPlansCache } from '@/hooks/useWorkoutPlansCache';
 
 interface WorkoutPlan {
   id: string;
@@ -34,32 +27,11 @@ interface WorkoutPlan {
 export default function MyWorkoutPlansScreen() {
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();
+  const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
   const { user } = useAuth();
   
-  const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (user?.id) {
-      loadWorkoutPlans();
-    }
-  }, [user?.id]);
-
-  const loadWorkoutPlans = async () => {
-    if (!user?.id) return;
-    
-    try {
-      setLoading(true);
-      setError(null);
-      const plans = await FirebaseService.getWorkoutPlans(user.id);
-      setWorkoutPlans(plans);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load workout plans');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use the cached hook instead of direct Firebase calls
+  const { plans, isLoading, error, deletePlan, refreshPlans } = useWorkoutPlansCache(user?.id || '');
 
   const handleDeletePlan = (planId: string, planName: string) => {
     Alert.alert(
@@ -72,8 +44,7 @@ export default function MyWorkoutPlansScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await FirebaseService.deleteWorkoutPlan(user!.id, planId);
-              setWorkoutPlans(prev => prev.filter(plan => plan.id !== planId));
+              await deletePlan(planId);
             } catch (error) {
               Alert.alert('Error', 'Failed to delete workout plan');
             }
@@ -99,31 +70,34 @@ export default function MyWorkoutPlansScreen() {
     });
   };
 
+  const getTotalSets = (plan: WorkoutPlan) => {
+    return plan.exercises.reduce((total, exercise) => total + exercise.sets, 0);
+  };
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#F9FAFB',
+      backgroundColor: '#FAFAFA',
     },
-    scrollView: {
-      flex: 1,
-    },
-    scrollViewContent: {
-      paddingBottom: 90,
-    },
+
+    // Header Styles
     header: {
       backgroundColor: '#FFFFFF',
-      padding: 24,
-      paddingTop: 60,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
       borderBottomWidth: 1,
-      borderBottomColor: '#E5E7EB',
+      borderBottomColor: '#E5E5E5',
+    },
+    headerTop: {
       flexDirection: getFlexDirection(isRTL),
-      alignItems: 'flex-start',
+      alignItems: 'center',
+      marginBottom: 12,
     },
     backButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: '#F3F4F6',
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: '#F5F5F5',
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: isRTL ? 0 : 16,
@@ -133,145 +107,235 @@ export default function MyWorkoutPlansScreen() {
       flex: 1,
     },
     headerTitle: {
-      fontSize: 28,
+      fontSize: 22,
       fontWeight: '700',
-      color: '#111827',
-      marginBottom: 4,
+      color: '#1F2937',
       textAlign: getTextAlign(isRTL),
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+      lineHeight: 28,
     },
-    headerSubtitle: {
+    headerStats: {
+      flexDirection: getFlexDirection(isRTL),
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    planCount: {
+      fontSize: 15,
+      color: '#6B7280',
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    },
+
+    // Content Styles
+    scrollView: {
+      flex: 1,
+    },
+    contentContainer: {
+      paddingBottom: 100,
+    },
+
+    // Loading & Error States
+    centerContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 40,
+      minHeight: 300,
+    },
+    loadingText: {
       fontSize: 16,
       color: '#6B7280',
-      fontWeight: '500',
-      textAlign: getTextAlign(isRTL),
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: 200,
-    },
-    errorContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: 200,
-      padding: 24,
+      marginTop: 16,
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
     },
     errorText: {
       fontSize: 16,
       color: '#EF4444',
       textAlign: 'center',
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+      lineHeight: 24,
     },
+
+    // Empty State
     emptyContainer: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      minHeight: 300,
-      padding: 24,
+      paddingHorizontal: 40,
+      minHeight: 400,
     },
-    emptyIcon: {
-      marginBottom: 16,
+    emptyIconContainer: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: '#F3F4F6',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 24,
     },
     emptyTitle: {
       fontSize: 20,
       fontWeight: '700',
-      color: '#111827',
+      color: '#1F2937',
       marginBottom: 8,
       textAlign: 'center',
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
     },
     emptyText: {
       fontSize: 16,
       color: '#6B7280',
       textAlign: 'center',
-      marginBottom: 24,
+      marginBottom: 32,
+      lineHeight: 24,
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
     },
     createFirstPlanButton: {
       backgroundColor: '#22C55E',
-      paddingVertical: 12,
-      paddingHorizontal: 24,
-      borderRadius: 8,
+      paddingVertical: 16,
+      paddingHorizontal: 32,
+      borderRadius: 12,
+      flexDirection: getFlexDirection(isRTL),
+      alignItems: 'center',
+      gap: 8,
+      shadowColor: '#22C55E',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+      elevation: 4,
     },
     createFirstPlanText: {
       color: '#FFFFFF',
       fontSize: 16,
       fontWeight: '600',
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
     },
+
+    // Plans List
     plansList: {
-      padding: 24,
+      padding: 16,
     },
     planCard: {
       backgroundColor: '#FFFFFF',
       borderRadius: 16,
-      padding: 20,
-      marginBottom: 16,
+      marginBottom: 12,
       borderWidth: 1,
-      borderColor: '#E5E7EB',
+      borderColor: '#F0F0F0',
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
+      shadowOpacity: 0.04,
       shadowRadius: 8,
       elevation: 2,
+      overflow: 'hidden',
+    },
+    planCardContent: {
+      padding: 20,
     },
     planHeader: {
       flexDirection: getFlexDirection(isRTL),
       justifyContent: 'space-between',
       alignItems: 'flex-start',
-      marginBottom: 12,
+      marginBottom: 16,
     },
-    planInfo: {
+    planMainInfo: {
       flex: 1,
+      paddingRight: isRTL ? 0 : 16,
+      paddingLeft: isRTL ? 16 : 0,
     },
     planName: {
       fontSize: 18,
       fontWeight: '700',
-      color: '#111827',
+      color: '#1F2937',
       marginBottom: 8,
       textAlign: getTextAlign(isRTL),
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+      lineHeight: 22,
     },
-    planStats: {
+    planMetaRow: {
       flexDirection: getFlexDirection(isRTL),
       alignItems: 'center',
-      marginBottom: 4,
+      flexWrap: 'wrap',
+      gap: 16,
     },
-    statItem: {
+    metaItem: {
       flexDirection: getFlexDirection(isRTL),
       alignItems: 'center',
-      marginRight: isRTL ? 0 : 16,
-      marginLeft: isRTL ? 16 : 0,
+      gap: 6,
     },
-    statText: {
+    metaText: {
       fontSize: 14,
       color: '#6B7280',
-      marginLeft: isRTL ? 0 : 4,
-      marginRight: isRTL ? 4 : 0,
+      fontWeight: '500',
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
     },
-    lastUsed: {
-      fontSize: 12,
+    lastUsedText: {
+      fontSize: 13,
       color: '#9CA3AF',
+      marginTop: 4,
       textAlign: getTextAlign(isRTL),
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
     },
+
+    // Action Buttons
     planActions: {
       flexDirection: getFlexDirection(isRTL),
       alignItems: 'center',
+      gap: 8,
     },
     actionButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: '#F3F4F6',
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: '#F8FAFC',
       justifyContent: 'center',
       alignItems: 'center',
-      marginLeft: isRTL ? 0 : 8,
-      marginRight: isRTL ? 8 : 0,
+      borderWidth: 1,
+      borderColor: '#E2E8F0',
+    },
+    editButton: {
+      backgroundColor: '#EFF6FF',
+      borderColor: '#DBEAFE',
     },
     deleteButton: {
       backgroundColor: '#FEF2F2',
+      borderColor: '#FECACA',
     },
+
+    // Quick Stats Bar
+    quickStats: {
+      flexDirection: getFlexDirection(isRTL),
+      alignItems: 'center',
+      backgroundColor: '#F8FAFC',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      marginTop: 16,
+      borderRadius: 12,
+      gap: 20,
+    },
+    quickStatItem: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    quickStatValue: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: '#1F2937',
+      marginBottom: 2,
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    },
+    quickStatLabel: {
+      fontSize: 12,
+      color: '#6B7280',
+      fontWeight: '500',
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+
+    // Floating Action Button
     fab: {
       position: 'absolute',
       bottom: 100,
-      right: 24,
+      right: isRTL ? undefined : 20,
+      left: isRTL ? 20 : undefined,
       width: 56,
       height: 56,
       borderRadius: 28,
@@ -281,122 +345,179 @@ export default function MyWorkoutPlansScreen() {
       shadowColor: '#22C55E',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.3,
-      shadowRadius: 8,
+      shadowRadius: 12,
       elevation: 8,
     },
   });
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      {/* Professional Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          {isRTL ? (
-            <ArrowLeft size={24} color="#111827" style={{ transform: [{ rotate: '180deg' }] }} />
-          ) : (
-            <ArrowLeft size={24} color="#111827" />
-          )}
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>{t('workoutScreen:myWorkoutPlans')}</Text>
-          <Text style={styles.headerSubtitle}>{t('workoutScreen:manage')}</Text>
+        <View style={styles.headerTop}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            {isRTL ? (
+              <ArrowLeft size={20} color="#374151" style={{ transform: [{ rotate: '180deg' }] }} />
+            ) : (
+              <ArrowLeft size={20} color="#374151" />
+            )}
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>{t('workoutScreen:myWorkoutPlans')}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.headerStats}>
+          <Text style={styles.planCount}>
+            {plans.length} {plans.length === 1 ? t('common:plan') : t('common:plans')}
+          </Text>
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.scrollViewContent}>
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#22C55E" />
-              <Text style={{ color: '#6B7280', marginTop: 10 }}>{t('common:loading')}</Text>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
+      >
+        {isLoading ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#22C55E" />
+            <Text style={styles.loadingText}>{t('common:loading')}</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.centerContainer}>
+            <Text style={styles.errorText}>
+              {t('common:errorLoadingPlans')}
+            </Text>
+          </View>
+        ) : plans.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconContainer}>
+              <Dumbbell size={32} color="#9CA3AF" />
             </View>
-          ) : error ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{t('common:error')}: {error}</Text>
+            <Text style={styles.emptyTitle}>{t("workoutScreen:noWorkoutPlansYet")}</Text>
+            <Text style={styles.emptyText}>
+              {t("workoutScreen:createYour")}
+            </Text>
+            <TouchableOpacity 
+              style={styles.createFirstPlanButton}
+              onPress={() => router.push('/(tabs)/workout/create-plan-name')}
+              activeOpacity={0.8}
+            >
+              <Plus size={20} color="#FFFFFF" />
+              <Text style={styles.createFirstPlanText}>{t("workoutScreen:createYourFirstPlan")}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.plansList}>
+{plans.map((plan) => {
+  // Add debugging
+  console.log('🔍 Plan:', plan.name, 'Exercises:', plan.exercises);
+  console.log('🔍 Exercises length:', plan.exercises?.length);
+  console.log('�� Exercises array:', JSON.stringify(plan.exercises, null, 2));
+
+  return (
+    <TouchableOpacity
+      key={plan.id}
+      style={styles.planCard}
+      onPress={() => handlePlanPress(plan.id)}
+      activeOpacity={0.8}
+    >
+      <View style={styles.planCardContent}>
+        <View style={styles.planHeader}>
+          <View style={styles.planMainInfo}>
+            <Text style={styles.planName} numberOfLines={2}>
+              {plan.name}
+            </Text>
+            
+            <View style={styles.planMetaRow}>
+              <View style={styles.metaItem}>
+                <Dumbbell size={16} color="#22C55E" />
+                <Text style={styles.metaText}>
+                  {plan.exercises?.length || 0} exercises
+                </Text>
+              </View>
+              
+              <View style={styles.metaItem}>
+                <Target size={16} color="#6B7280" />
+                <Text style={styles.metaText}>
+                  {getTotalSets(plan)} sets
+                </Text>
+              </View>
+              
+              <View style={styles.metaItem}>
+                <Calendar size={16} color="#6B7280" />
+                <Text style={styles.metaText}>
+                  {formatDate(plan.createdAt)}
+                </Text>
+              </View>
             </View>
-          ) : workoutPlans.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Dumbbell size={48} color="#D1D5DB" style={styles.emptyIcon} />
-              <Text style={styles.emptyTitle}>{t("workoutScreen:noWorkoutPlansYet")}</Text>
-              <Text style={styles.emptyText}>
-                {t("workoutScreen:createYour")}
+            
+            {plan.lastUsedAt && (
+              <Text style={styles.lastUsedText}>
+                Last used {formatDate(plan.lastUsedAt)}
               </Text>
-              <TouchableOpacity 
-                style={styles.createFirstPlanButton}
-                onPress={() => router.push('/(tabs)/workout/create-plan-name')}
-              >
-                <Text style={styles.createFirstPlanText}>{t("workoutScreen:createYourFirstPlan")}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.plansList}>
-              {workoutPlans.map((plan, index) => (
-                <Animated.View
-                  key={plan.id}
-                  entering={FadeInDown.delay(index * 100)}
-                  exiting={FadeOutRight}
-                >
-                  <TouchableOpacity 
-                    style={styles.planCard}
-                    onPress={() => handlePlanPress(plan.id)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.planHeader}>
-                      <View style={styles.planInfo}>
-                        <Text style={styles.planName}>{plan.name}</Text>
-                        <View style={styles.planStats}>
-                          <View style={styles.statItem}>
-                            <Dumbbell size={14} color="#6B7280" />
-                            <Text style={styles.statText}>
-                              {plan.exercises.length} {t("workoutScreen:exercises")}
-                            </Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Calendar size={14} color="#6B7280" />
-                            <Text style={styles.statText}>
-                              {t("workoutScreen:created")} {formatDate(plan.createdAt)}
-                            </Text>
-                          </View>
-                        </View>
-                        {plan.lastUsedAt && (
-                          <Text style={styles.lastUsed}>
-                            {t("workoutScreen:lastUsed")} {formatDate(plan.lastUsedAt)}
-                          </Text>
-                        )}
-                      </View>
-                      
-                      <View style={styles.planActions}>
-                        <TouchableOpacity 
-                          style={styles.actionButton}
-                          onPress={() => router.push({
-                            pathname: '/(tabs)/workout/create-plan',
-                            params: { editPlanId: plan.id }
-                          })}
-                        >
-                          <Edit3 size={16} color="#6B7280" />
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity 
-                          style={[styles.actionButton, styles.deleteButton]}
-                          onPress={() => handleDeletePlan(plan.id, plan.name)}
-                        >
-                          <Trash2 size={16} color="#EF4444" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                </Animated.View>
-              ))}
-            </View>
-          )}
+            )}
+          </View>
+          
+          <View style={styles.planActions}>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.editButton]}
+              onPress={() => router.push({
+                pathname: '/(tabs)/workout/create-plan',
+                params: { editPlanId: plan.id }
+              })}
+              activeOpacity={0.7}
+            >
+              <Edit3 size={18} color="#3B82F6" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.deleteButton]}
+              onPress={() => handleDeletePlan(plan.id, plan.name)}
+              activeOpacity={0.7}
+            >
+              <Trash2 size={18} color="#EF4444" />
+            </TouchableOpacity>
+          </View>
         </View>
+        
+        {/* Quick Stats */}
+        <View style={styles.quickStats}>
+          <View style={styles.quickStatItem}>
+            <Text style={styles.quickStatValue}>{plan.exercises?.length || 0}</Text>
+            <Text style={styles.quickStatLabel}>Exercises</Text>
+          </View>
+          <View style={styles.quickStatItem}>
+            <Text style={styles.quickStatValue}>{getTotalSets(plan)}</Text>
+            <Text style={styles.quickStatLabel}>Total Sets</Text>
+          </View>
+          <View style={styles.quickStatItem}>
+            <Text style={styles.quickStatValue}>
+              {Math.round(getTotalSets(plan) * 2.5)}
+            </Text>
+            <Text style={styles.quickStatLabel}>Est. Min</Text>
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+})}
+
+          </View>
+        )}
       </ScrollView>
 
       {/* Floating Action Button */}
-      {workoutPlans.length > 0 && (
+      {plans.length > 0 && (
         <TouchableOpacity 
           style={styles.fab}
           onPress={() => router.push('/(tabs)/workout/create-plan-name')}
+          activeOpacity={0.8}
         >
           <Plus size={24} color="#FFFFFF" />
         </TouchableOpacity>

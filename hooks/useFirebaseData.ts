@@ -1,455 +1,245 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { FirebaseService } from '@/services/firebaseService';
 import { DiaryEntry, Food, UserProfile } from '@/types/api';
 import { useAuth } from './useAuth';
 import { getTodayDateString } from '@/utils/dateUtils';
-import { useFoodCache } from './useFoodCache';
+import { useFoodCacheContext } from '@/contexts/FoodCacheContext';
 import { StreakService } from '@/services/streakService';
 import { useDailyMealsCache } from './useDailyMealsCache';
 import { GeneratedMealPlan } from '@/services/mealPlanningService';
 
 export function useFirebaseData(selectedDate?: string) {
   const { user } = useAuth();
-  const foodCache = useFoodCache();
+  const foodCache = useFoodCacheContext();
   
-  // Use daily meals cache
-  const dailyMealsCache = useDailyMealsCache(selectedDate);
+  // Stable date parameter using useMemo
+  const date = useMemo(() => selectedDate || getTodayDateString(), [selectedDate]);
+  
+  const dailyMealsCache = useDailyMealsCache(date);
   
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Workout categories state
   const [workoutCategories, setWorkoutCategories] = useState<any[]>([]);
   const [workoutCategoriesLoading, setWorkoutCategoriesLoading] = useState(false);
   const [workoutCategoriesError, setWorkoutCategoriesError] = useState<string | null>(null);
 
-  // Get today's date in YYYY-MM-DD format
-  const getTodayDate = () => selectedDate || getTodayDateString();
+  // Load diary entries - using useCallback with user?.id
 
-  // Load diary entries for a specific date
-  const loadDiaryEntries = async (date: string = selectedDate || getTodayDateString()) => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      const entries = await FirebaseService.getDiaryEntries(user.id, date);
-      setEntries(entries);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load entries';
-      setError(errorMessage);
-      console.error('Load diary entries error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Load daily meals for a specific date
-  const loadDailyMeals = async (date: string = selectedDate || getTodayDateString()) => {
-    if (!user) return;
+  // Load daily meals - using useCallback with user?.id
+  const loadDailyMeals = useCallback(async (targetDate: string = date) => {
+    if (!user?.id) return;
     try {
       setError(null);
-      await FirebaseService.getDailyMeals(user.id, date);
+      // useDailyMealsCache handles the loading automatically
+      // No need to call setupListener manually
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load daily meals';
       setError(errorMessage);
-      console.error('Load daily meals error:', err);
     }
-  };
+  }, [user?.id, date]);  // Main useEffect to load data when user or date changes
+  useEffect(() => {
+    if (user?.id) {
+      loadDailyMeals(date);
+    }
+  }, [user?.id, date]);
 
-  // Add food to daily meals
-  const addFoodToDailyMeal = async (
-    meal: 'breakfast' | 'lunch' | 'dinner' | 'snacks',
-    foodData: {
-      foodId: string;
-      foodName: string;
-      calories: number;
-      protein: number;
-      carbs: number;
-      fat: number;
-      quantity: number;
-      unit: string;
-      [key: string]: any;
-    }
+  // Add food to daily meal - using useCallback with user?.id
+  const addFoodToDailyMeal = useCallback(async (
+    mealType: string,
+    food: Food,
+    quantity: number,
+    unit: string,
+    targetDate: string = date
   ) => {
-    if (!user) throw new Error('User not authenticated');
+    if (!user?.id) throw new Error('User not authenticated');
     
     try {
       setError(null);
-      
-      // Ensure kurdishName and arabicName are always strings
-      const processedFoodData = {
-        ...foodData,
-        kurdishName: foodData.kurdishName || '',
-        arabicName: foodData.arabicName || '',
-      };
-      
-      
-      
-      await FirebaseService.addDailyMeal(user.id, selectedDate || getTodayDateString(), meal, processedFoodData);
-      
-      // Only update streak if adding food to today's meals
-      if (!selectedDate || selectedDate === getTodayDateString()) {
-        try {
-          await StreakService.updateStreak(user.id, getTodayDateString());
+      await FirebaseService.addDailyMeal(user.id, targetDate, mealType, {
+        foodId: food.id,
+        foodName: food.name,
+        calories: food.calories || 0,
+        protein: food.protein || 0,
+        carbs: food.carbs || 0,
+        fat: food.fat || 0,
+        quantity: quantity,
+        unit: unit,
+        kurdishName: food.kurdishName,
+        arabicName: food.arabicName
+      });      // Update streak after adding food
+      try {
+        await StreakService.updateStreak(user.id, targetDate);
         } catch (streakError) {
-          console.error('❌ useFirebaseData: Error updating streak:', streakError);
-        }
+        // Don't throw - streak update is not critical
       }
-      
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to add food to meal';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add food';
       setError(errorMessage);
       throw err;
     }
-  };
+  }, [user?.id, date]);
 
-  // Remove food from daily meals
-  const removeFoodFromDailyMeal = async (
-    meal: 'breakfast' | 'lunch' | 'dinner' | 'snacks',
-    foodKey: string
+  // Remove food from daily meal - using useCallback with user?.id
+  const removeFoodFromDailyMeal = useCallback(async (
+    mealType: string,
+    foodKey: string,
+    targetDate: string = date
   ) => {
-    if (!user) throw new Error('User not authenticated');
+    if (!user?.id) throw new Error('User not authenticated');
     
     try {
       setError(null);
-      await FirebaseService.removeFoodFromDailyMeal(user.id, selectedDate || getTodayDateString(), meal, foodKey);
+      await FirebaseService.removeFoodFromDailyMeal(user.id, targetDate, mealType, foodKey);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to remove food from meal';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to remove food';
       setError(errorMessage);
       throw err;
     }
-  };
+  }, [user?.id, date]);
 
-  // Update water intake
-  const updateWaterIntake = async (waterIntake: number) => {
-    if (!user) throw new Error('User not authenticated');
+  // Update water intake - using useCallback with user?.id
+  const updateWaterIntake = useCallback(async (glasses: number, targetDate: string = date) => {
+    if (!user?.id) throw new Error('User not authenticated');
     
     try {
       setError(null);
-      await FirebaseService.updateWaterIntake(user.id, selectedDate || getTodayDateString(), waterIntake);
+      await FirebaseService.updateWaterIntake(user.id, targetDate, glasses);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update water intake';
       setError(errorMessage);
       throw err;
     }
-  };
+  }, [user?.id, date]);
 
-  // Add a new diary entry
-  const addDiaryEntry = async (entry: Omit<DiaryEntry, 'id' | 'createdAt' | 'userId'>) => {
-    if (!user) throw new Error('User not authenticated');
+  // Add diary entry - using useCallback with user?.id
+  // Add diary entry - using useCallback with user?.id
+  const addDiaryEntry = useCallback(async (content: string, mood?: string, targetDate: string = date) => {
+    if (!user?.id) throw new Error('User not authenticated');
 
     try {
       setError(null);
-      const entryWithUser = {
-        ...entry,
+      const entryId = await FirebaseService.addDiaryEntry({
         userId: user.id,
-        date: entry.date || getTodayDate(),
-      };
+        date: targetDate,
+        content: content,
+        mood: mood
+      });
 
-      const entryId = await FirebaseService.addDiaryEntry(entryWithUser);
-      
-      // Add to local state
-      const newEntry: DiaryEntry = {
+      // Create the entry object for state update
+      const entry = {
         id: entryId,
-        ...entryWithUser,
-        createdAt: new Date().toISOString(),
+        userId: user.id,
+        date: targetDate,
+        content: content,
+        mood: mood,
+        createdAt: new Date()
       };
       
-      setEntries(prev => [newEntry, ...prev]);
-      return entryId;
+      setEntries(prev => [entry, ...prev]);
+      return entry;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add entry';
       setError(errorMessage);
       throw err;
     }
-  };
+  }, [user?.id, date]);
 
-  // Update a diary entry
-  const updateDiaryEntry = async (entryId: string, updates: Partial<DiaryEntry>) => {
-    try {
-      setError(null);
-      await FirebaseService.updateDiaryEntry(entryId, updates);
-      
-      // Update local state
-      setEntries(prev => 
-        prev.map(entry => 
-          entry.id === entryId ? { ...entry, ...updates } : entry
-        )
-      );
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update entry';
-      setError(errorMessage);
-      throw err;
-    }
-  };
 
-  // Delete a diary entry
-  const deleteDiaryEntry = async (entryId: string) => {
-    try {
-      setError(null);
-      await FirebaseService.deleteDiaryEntry(entryId);
-      
-      // Remove from local state
-      setEntries(prev => prev.filter(entry => entry.id !== entryId));
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete entry';
-      setError(errorMessage);
-      throw err;
-    }
-  };
 
-  // Search foods
-  const searchFoods = async (query: string, useCache = true, includeSnacks = false): Promise<Food[]> => {
+  // Food search methods - using foodCache for efficient caching
+  const searchFoods = useCallback(async (query: string, useCache = true, includeSnacks = false): Promise<Food[]> => {
     try {
-      setError(null);
-      
-      if (useCache && foodCache.foods.length > 0) {
-        // Use cached search for better performance
+      if (useCache) {
         return foodCache.searchFoodsInCache(query, 20, includeSnacks);
       } else {
-        // Fallback to Firebase search
-        return await FirebaseService.searchFoods(query, 20);
+        return await FirebaseService.searchFoods(query, includeSnacks ? 1 : 0);
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to search foods';
-      setError(errorMessage);
       return [];
     }
-  };
+  }, [foodCache]);
 
-  // Get popular foods
-  const getPopularFoods = async (useCache = true, includeSnacks = false): Promise<Food[]> => {
+  const getPopularFoods = useCallback(async (useCache = true): Promise<Food[]> => {
     try {
-      setError(null);
-      
-      if (useCache && foodCache.foods.length > 0) {
-        // Use cached popular foods
-        return foodCache.getPopularFoodsFromCache(10, includeSnacks);
+      if (useCache) {
+        const result = foodCache.getPopularFoodsFromCache(10);
+        return result;
       } else {
-        // Fallback to Firebase
-        return await FirebaseService.getPopularFoods();
+        const result = await FirebaseService.getPopularFoods();
+        return result;
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get popular foods';
-      setError(errorMessage);
       return [];
     }
-  };
+  }, [foodCache]);
 
-  // Get foods by category
-  const getFoodsByCategory = async (category: string, useCache = true): Promise<Food[]> => {
+  const getFoodsByCategory = useCallback(async (category: string, useCache = true): Promise<Food[]> => {
     try {
-      setError(null);
-      
-      if (useCache && foodCache.foods.length > 0) {
-        // Use cached category foods
-        return foodCache.getFoodsByCategoryFromCache(category);
+      if (useCache) {
+        return foodCache.getFoodsByCategoryFromCache(category, 20);
       } else {
-        // Fallback to Firebase
         return await FirebaseService.getFoodsByCategory(category);
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get foods by category';
-      setError(errorMessage);
       return [];
     }
-  };
+  }, [foodCache]);
 
-  // Get all food categories
-  const getFoodCategories = async (useCache = true): Promise<string[]> => {
+  const getFoodCategories = useCallback(async (useCache = true): Promise<string[]> => {
     try {
-      setError(null);
-      
-      if (useCache && foodCache.categories.length > 0) {
-        // Use cached categories
+      if (useCache) {
         return foodCache.categories;
       } else {
-        // Fallback to Firebase
         return await FirebaseService.getFoodCategories();
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get food categories';
-      setError(errorMessage);
       return [];
     }
-  };
+  }, [foodCache]);
 
- // Get recently logged foods from cache
-  // Get recently logged foods from cache
-  const getRecentlyLoggedFoodsFromCache = async (numberOfDays = 7): Promise<Food[]> => {
+  // Profile methods - using useCallback with user?.id
+  const getUserProfile = useCallback(async (): Promise<UserProfile | null> => {
+    if (!user?.id) return null;
     try {
-      if (!user) {
-        console.log('DEBUG: getRecentlyLoggedFoodsFromCache: User is null, returning empty array.');
-        return [];
-      }
-
-      console.log('DEBUG: getRecentlyLoggedFoodsFromCache: User ID:', user.id);
-      console.log('DEBUG: getRecentlyLoggedFoodsFromCache: foodCache.foods.length:', foodCache.foods.length);
-      // console.log('DEBUG: getRecentlyLoggedFoodsFromCache: foodCache.foods:', foodCache.foods); // Too verbose, only if needed
-
-      // Get the last N days of dates
-      const recentDates: string[] = [];
-      const today = new Date();
-      
-      for (let i = 0; i < numberOfDays; i++) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        recentDates.push(date.toISOString().split('T')[0]);
-      }
-      console.log('DEBUG: getRecentlyLoggedFoodsFromCache: Recent dates to check:', recentDates);
-
-      // Aggregate all individual food entries from recent days
-      const allFoodEntriesFromRecentDays: any[] = [];
-      for (const dateString of recentDates) {
-        console.log('DEBUG: getRecentlyLoggedFoodsFromCache: Fetching daily meals for date:', dateString);
-        const dailyMeals = await FirebaseService.getDailyMeals(user.id, dateString);
-        console.log('DEBUG: getRecentlyLoggedFoodsFromCache: Fetched dailyMeals for', dateString, ':', dailyMeals);
-        if (dailyMeals && dailyMeals.meals) {
-          // Iterate through each meal type (breakfast, lunch, etc.)
-          for (const mealTypeKey in dailyMeals.meals) {
-            const mealData = dailyMeals.meals[mealTypeKey];
-            // Iterate through each food entry within that meal type
-            for (const foodKey in mealData) {
-              const foodEntry = mealData[foodKey]['0']; // Get the actual food nutrition data
-              if (foodEntry) {
-                allFoodEntriesFromRecentDays.push(foodEntry);
-              }
-            }
-          }
-        } else {
-          console.log('DEBUG: getRecentlyLoggedFoodsFromCache: No meals found for', dateString, 'or dailyMeals.meals is null/undefined.');
-        }
-      }
-
-      // Extract unique food IDs and their frequencies from the aggregated list
-      const uniqueFoodIds = new Set<string>();
-      const foodFrequency = new Map<string, number>();
-
-      allFoodEntriesFromRecentDays.forEach((foodEntry: any) => {
-        const foodId = foodEntry.id; // Corrected: Access 'id' property directly
-
-        if (foodId) {
-          uniqueFoodIds.add(foodId);
-          foodFrequency.set(foodId, (foodFrequency.get(foodId) || 0) + 1);
-        }
-      });
-
-      // Get Food objects from cache for these IDs
-      const recentlyLoggedFoods: Food[] = [];
-      
-      uniqueFoodIds.forEach(foodId => {
-        const food = foodCache.foods.find(f => f.id === foodId);
-
-        if (food) {
-          recentlyLoggedFoods.push(food);
-        }
-      });
-
-      // Sort by frequency (most logged first)
-      recentlyLoggedFoods.sort((a, b) => {
-        const freqA = foodFrequency.get(a.id) || 0;
-        const freqB = foodFrequency.get(b.id) || 0;
-        return freqB - freqA;
-      });
-      console.log('DEBUG: getRecentlyLoggedFoodsFromCache: Final recentlyLoggedFoods (before slice):', recentlyLoggedFoods.map(f => f.name));
-
-      return recentlyLoggedFoods.slice(0, 10); // Return top 10 most frequent
-    } catch (err) {
-      console.error('ERROR: getRecentlyLoggedFoodsFromCache:', err);
-      return [];
-    }
-  };
-
-
- // User profile methods
-  const getUserProfile = async (): Promise<UserProfile | null> => {
-    if (!user) return null;
-    
-    try {
-      setError(null);
       return await FirebaseService.getUserProfileDocument(user.id);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get user profile';
-      setError(errorMessage);
       return null;
     }
-  };
-
-  const updateUserProfile = async (updates: Partial<UserProfile>): Promise<void> => {
-    if (!user) throw new Error('User not authenticated');
+  }, [user?.id]);
     
+  const updateUserProfile = useCallback(async (updates: Partial<UserProfile>): Promise<void> => {
+    if (!user?.id) throw new Error('User not authenticated');
     try {
-      setError(null);
       await FirebaseService.updateUserProfileDocument(user.id, updates);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update user profile';
-      setError(errorMessage);
-      throw err;
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update profile';
+      throw new Error(errorMessage);
     }
-  };
+  }, [user?.id]);
 
-  // Meal plan methods
-  const getMealPlanCountForDate = async (date: string): Promise<number> => {
-    if (!user) throw new Error('User not authenticated');
-    
-    // Use a simpler query to avoid index requirements
+  // Meal plan methods - using useCallback with user?.id
+  const getMealPlanCountForDate = useCallback(async (targetDate: string): Promise<number> => {
+    if (!user?.id) return 0;
     try {
-      setError(null);
-      const plans = await FirebaseService.getSavedMealPlans(user.id);
-      // Filter plans by date client-side instead of using a compound query
-      const plansForDate = plans.filter(plan => plan.generatedAt.startsWith(date));
-      return plansForDate.length;
+      return await FirebaseService.getMealPlanCountForDate(user.id, targetDate);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get meal plan count';
-      setError(errorMessage);
-      throw err;
+      return 0;
     }
-  };
+  }, [user?.id]);
 
-  const saveMealPlan = async (mealPlanData: GeneratedMealPlan, name: string): Promise<void> => {
-    if (!user) throw new Error('User not authenticated');
-    
-    // Get today's date in YYYY-MM-DD format
-    const today = getTodayDateString();
-    
-    // Get count of meal plans already saved today
-    let mealNumber = 1;
+  const saveMealPlan = useCallback(async (mealPlanData: GeneratedMealPlan, name: string): Promise<void> => {
+    if (!user?.id) throw new Error('User not authenticated');
     try {
-      setError(null);
-      
-      const mealCount = await FirebaseService.getMealPlanCountForDate(user.id, today);
-      mealNumber = mealCount + 1;
-      
-      
-      // Clean the meal plan data to remove any undefined values
-      const cleanedMealPlanData = JSON.parse(JSON.stringify(mealPlanData, (key, value) => {
-        return value === undefined ? null : value;
-      }));
-      
-      await FirebaseService.saveMealPlan(user.id, cleanedMealPlanData, name, mealNumber);
+      await FirebaseService.saveMealPlan(user.id, mealPlanData, name);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save meal plan';
-      console.error(`[useFirebaseData] Error in saveMealPlan:`, err);
-      setError(errorMessage);
-      throw err;
+      throw new Error(errorMessage);
     }
-  };
+  }, [user?.id]);
 
-  // Load entries when user changes
-  useEffect(() => {
-    if (user) {
-      loadDiaryEntries(selectedDate);
-      // The dailyMealsCache automatically sets up its real-time listener
-    } else {
-      setEntries([]);
-    }
-  }, [user, selectedDate]);
-
-  // Load workout categories on mount
-  useEffect(() => {
-    const loadWorkoutCategories = async () => {
+  // Workout categories - using useCallback for stable reference
+  const loadWorkoutCategories = useCallback(async () => {
       try {
         setWorkoutCategoriesLoading(true);
         setWorkoutCategoriesError(null);
@@ -458,114 +248,100 @@ export function useFirebaseData(selectedDate?: string) {
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load workout categories';
         setWorkoutCategoriesError(errorMessage);
-        console.error('Error loading workout categories:', err);
       } finally {
         setWorkoutCategoriesLoading(false);
       }
-    };
-
-    loadWorkoutCategories();
   }, []);
 
-  // Calculate daily totals
-  const dailyTotals = dailyMealsCache.dailyMeals ? 
-    Object.values(dailyMealsCache.dailyMeals.meals || {}).reduce(
-      (totals: any, mealData: any) => {
-        
-        // Iterate through each food in the meal (food1, food2, etc.)
-        Object.values(mealData || {}).forEach((foodData: any) => {
-          // Each food has a '0' key with the nutrition data
-          const nutrition = foodData['0'] || {};
-          
-          
-          // The nutrition values are already calculated per serving in the database
-          // So we just add them directly without multiplying by quantity again
-          totals.calories += nutrition.calories || 0;
-          totals.protein += nutrition.protein || 0;
-          totals.carbs += nutrition.carbs || 0;
-          totals.fat += nutrition.fat || 0;
-          // Add micronutrients
-          totals.fiber += nutrition.fiber || 0;
-          totals.sugar += nutrition.sugar || 0;
-          totals.sodium += nutrition.sodium || 0;
-          totals.calcium += nutrition.calcium || 0;
-          totals.vitaminD += nutrition.vitaminD || 0;
-          totals.potassium += nutrition.potassium || 0;
-          totals.iron += nutrition.iron || 0;
-          
-        });
-        return totals;
-      },
-      { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0, calcium: 0, vitaminD: 0, potassium: 0, iron: 0 }
-    ) : { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0, calcium: 0, vitaminD: 0, potassium: 0, iron: 0 };
-    
-
-  // Calculate meal totals
-  const mealTotals = dailyMealsCache.dailyMeals ? 
-    Object.entries(dailyMealsCache.dailyMeals.meals || {}).reduce((totals: any, [mealName, mealData]: [string, any]) => {
-      const mealTotal = { calories: 0, protein: 0, carbs: 0, fat: 0, items: 0 };
-      
-      // Iterate through each food in the meal (food1, food2, etc.)
-      Object.values(mealData || {}).forEach((foodData: any) => {
-        // Each food has a '0' key with the nutrition data
-        const nutrition = foodData['0'] || {};
-        
-        // The nutrition values are already calculated per serving in the database
-        // So we just add them directly without multiplying by quantity again
-        mealTotal.calories += nutrition.calories || 0;
-        mealTotal.protein += nutrition.protein || 0;
-        mealTotal.carbs += nutrition.carbs || 0;
-        mealTotal.fat += nutrition.fat || 0;
-        mealTotal.items += 1;
-      });
-      
-      totals[mealName] = mealTotal;
-      return totals;
-    }, {}) : {};
-
-  // Helper function to get foods from a meal in a more usable format
-  const getFoodsFromMeal = (mealName: string) => {
-    if (!dailyMealsCache.dailyMeals?.meals?.[mealName]) return [];
-    
-    const mealData = dailyMealsCache.dailyMeals.meals[mealName];
-    
-    
-    // Log the first food item in this meal to inspect its structure
-    if (Object.keys(mealData).length > 0) {
-      const firstFoodKey = Object.keys(mealData)[0];
-      const firstFood = mealData[firstFoodKey];
+    // Load workout categories when user changes
+    useEffect(() => {
+      if (user?.id) {
+        loadWorkoutCategories();
+      }
+    }, [user?.id, loadWorkoutCategories]);
   
+  // Get foods from meal - convert object to array format
+  const getFoodsFromMeal = useCallback((mealName: string) => {
+    const mealData = dailyMealsCache.dailyMeals?.meals?.[mealName];
+    
+    if (!mealData || typeof mealData !== 'object') {
+      return [];
     }
     
-    return Object.entries(mealData).map(([foodKey, foodData]: [string, any]) => ({
-      foodKey,
-      ...foodData['0'], // Extract the nutrition data from the '0' key
-      name: foodData['0'].name || foodData['0'].foodName, // Ensure name is available
-      kurdishName: foodData['0'].kurdishName, // Ensure kurdishName is extracted
-      arabicName: foodData['0'].arabicName, // Ensure arabicName is extracted
-    }));
-  };
+    // Convert object format to array format - extract food data from nested structure
+    const foodsArray = Object.entries(mealData).map(([key, value]) => {
+      // Extract the actual food data from the "0" key
+      const foodData = value?.["0"] || value;
+      return {
+        ...foodData,
+        foodKey: key, // Add key for removal
+      };
+    });
+    
+    return foodsArray;
+    }, [dailyMealsCache.dailyMeals]);
+
+  // Calculate daily nutrition totals
+  const dailyTotals = useMemo(() => {
+    if (!dailyMealsCache.dailyMeals?.meals) {
+      return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    }
+
+    const meals = dailyMealsCache.dailyMeals.meals;
+    let totalCalories = 0;
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFat = 0;
+
+    Object.values(meals).forEach(meal => {
+      if (meal && typeof meal === 'object') {
+        Object.values(meal).forEach(foodEntry => {
+          // Extract food data from the "0" key (same fix as getFoodsFromMeal)
+          const foodData = foodEntry?.["0"] || foodEntry;
+          if (foodData && typeof foodData === 'object') {
+            totalCalories += foodData.calories || 0;
+            totalProtein += foodData.protein || 0;
+            totalCarbs += foodData.carbs || 0;
+            totalFat += foodData.fat || 0;
+          }
+        });
+      }
+    });
+    return {
+      calories: Math.round(totalCalories),
+      protein: Math.round(totalProtein),
+      carbs: Math.round(totalCarbs),
+      fat: Math.round(totalFat),
+    };
+  }, [dailyMealsCache.dailyMeals]);
 
   return {
-    entries,
-    dailyMeals: dailyMealsCache.dailyMeals,
+    // Data state
     loading,
-    error: error || dailyMealsCache.error,
+    error,
+    dailyMealsCache,
     dailyTotals,
-    mealTotals,
-    getFoodsFromMeal, // New helper function
-    loadDiaryEntries,
-    loadDailyMeals,
-    addDiaryEntry,
+    
+    // Add these missing properties:
+    dailyMeals: dailyMealsCache.dailyMeals,
+    mealTotals: dailyMealsCache.mealTotals || {},
+    
+    // Food cache - expose the global cache
+    foodCache,
+    
+    // Daily meals methods
     addFoodToDailyMeal,
     removeFoodFromDailyMeal,
     updateWaterIntake,
-    updateDiaryEntry,
-    deleteDiaryEntry,
+    getFoodsFromMeal,
+    
+    // Food search methods
     searchFoods,
     getPopularFoods,
     getFoodsByCategory,
     getFoodCategories,
+    
+    // Profile methods
     getUserProfile,
     updateUserProfile,
     
@@ -573,35 +349,10 @@ export function useFirebaseData(selectedDate?: string) {
     getMealPlanCountForDate,
     saveMealPlan,
     
-    // Food cache utilities
-    foodCache: {
-      foods: foodCache.foods,
-      categories: foodCache.categories,
-      lastUpdated: foodCache.lastUpdated,
-      isLoading: foodCache.isLoading,
-      error: foodCache.error,
-      refreshCache: foodCache.refreshCache,
-      isCacheExpired: foodCache.isCacheExpired,
-      getFoodsByBaseName: foodCache.getFoodsByBaseName,
-      getAvailableUnits: foodCache.getAvailableUnits,
-      convertNutrition: foodCache.convertNutrition,
-    },
-    
-    // Daily meals cache utilities
-    dailyMealsCache: {
-      dailyMeals: dailyMealsCache.dailyMeals,
-      isLoading: dailyMealsCache.isLoading,
-      error: dailyMealsCache.error,
-      refreshCache: dailyMealsCache.refreshCache,
-      isCacheExpired: dailyMealsCache.isCacheExpired,
-    },
-    
-    // Workout categories
+    // Workout methods
     workoutCategories,
     workoutCategoriesLoading,
     workoutCategoriesError,
-    
-    // Recently logged foods
-    getRecentlyLoggedFoodsFromCache,
+    loadWorkoutCategories,
   };
 }

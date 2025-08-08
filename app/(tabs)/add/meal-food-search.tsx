@@ -7,7 +7,8 @@ import { FoodItem } from '@/components/FoodItem';
 import { Food } from '@/types/api';
 import { getTodayDateString } from '@/utils/dateUtils';
 import { useFirebaseData } from '@/hooks/useFirebaseData';
-
+import { useRecentlyLoggedFoods } from '@/hooks/useRecentlyLoggedFoods';
+import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
 // Add this utility function if it doesn't exist
 const formatDisplayDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -25,22 +26,29 @@ export default function MealFoodSearchScreen() {
     currentViewDate?: string;
     fromHome?: string;
   }>();
+  const { recentlyLoggedFoods } = useRecentlyLoggedFoods(7);
 
-  const currentViewDate = useLocalSearchParams().currentViewDate || getTodayDateString();
-  const [searchQuery, setSearchQuery] = useState('');
+  const params = useLocalSearchParams();
+  const currentViewDate = (typeof params.currentViewDate === 'string' ? params.currentViewDate : params.currentViewDate?.[0]) || getTodayDateString();
+    const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Food[]>([]);
   const [isSearching, setIsSearching] = useState(false); 
   const [showAdvanced, setShowAdvanced] = useState(false); 
   const [includeSnacks, setIncludeSnacks] = useState(false);
   const [displaySectionTitle, setDisplaySectionTitle] = useState('Loading...');
 
-  const { searchFoods, getPopularFoods, addFoodToDailyMeal, getRecentlyLoggedFoodsFromCache } = useFirebaseData(currentViewDate);
-
+  const { addFoodToDailyMeal } = useDailyMealsContext();
+  const { searchFoods, getPopularFoods } = useFirebaseData(currentViewDate);
   // Initial load when component mounts
   useEffect(() => {
     loadInitialFoods();
   }, []);
-
+  useEffect(() => {
+    if (recentlyLoggedFoods.length > 0) {
+      loadInitialFoods();
+    }
+  }, [recentlyLoggedFoods]);
+  
   // Trigger search or reload initial foods when searchQuery or includeSnacks changes
   useEffect(() => {
     if (searchQuery.trim()) {
@@ -63,15 +71,14 @@ export default function MealFoodSearchScreen() {
       setIsSearching(false);
     }
   };
-
+  
+  
   const loadInitialFoods = async () => {
     try {
       setIsSearching(true);
       setDisplaySectionTitle('Loading...');
       
-      const recentlyLoggedFoods = await getRecentlyLoggedFoodsFromCache(7);
-      
-
+      // Use the hook data instead of calling the function
       if (recentlyLoggedFoods.length > 0) {
         setSearchResults(recentlyLoggedFoods);
         setDisplaySectionTitle(`🕒 Recently Logged Foods${includeSnacks ? ' (including snacks)' : ''}`);
@@ -85,7 +92,6 @@ export default function MealFoodSearchScreen() {
       setIsSearching(false);
     }
   };
-
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       loadInitialFoods();

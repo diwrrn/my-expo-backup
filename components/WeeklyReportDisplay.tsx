@@ -413,6 +413,45 @@ export const WeeklyReportDisplay: React.FC<WeeklyReportDisplayProps> = ({
       textAlign: getTextAlign(isRTL),
       fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
     },
+    insightCard: {
+      backgroundColor: '#F9FAFB',
+      borderRadius: 12,
+      padding: 20,
+      marginHorizontal: 24,
+      borderWidth: 1,
+      borderColor: '#E5E7EB',
+    },
+    insightText: {
+      fontSize: 16,
+      color: '#111827',
+      fontWeight: '500',
+      lineHeight: 22,
+      marginBottom: 16,
+      textAlign: getTextAlign(isRTL),
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    },
+    progressContainer: {
+      alignItems: 'center',
+    },
+    progressBar: {
+      width: '100%',
+      height: 8,
+      backgroundColor: '#E5E7EB',
+      borderRadius: 4,
+      overflow: 'hidden',
+      marginBottom: 8,
+    },
+    progressFill: {
+      height: '100%',
+      borderRadius: 4,
+      transition: 'width 0.3s ease',
+    },
+    progressText: {
+      fontSize: 14,
+      color: '#6B7280',
+      fontWeight: '600',
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    },
     bottomPadding: {
       paddingBottom: 100,
     },
@@ -613,7 +652,36 @@ export const WeeklyReportDisplay: React.FC<WeeklyReportDisplayProps> = ({
             ))}
           </View>
         </View>
-
+{/* Fiber Analysis */}
+{data.fiberAnalysis && (
+  <View style={styles.section}>
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>�� Nutrition Insights</Text>
+    </View>
+    
+    <View style={styles.insightCard}>
+      <Text style={styles.insightText}>
+        {data.fiberAnalysis.message || "No fiber data available for this week"}
+      </Text>
+      
+      <View style={styles.progressContainer}>
+        <View style={styles.progressBar}>
+          <View style={[
+            styles.progressFill, 
+            { 
+              width: `${Math.min(data.fiberAnalysis.percentage || 0, 100)}%`,
+              backgroundColor: (data.fiberAnalysis.percentage || 0) >= 80 ? '#10B981' : 
+                             (data.fiberAnalysis.percentage || 0) >= 60 ? '#F59E0B' : '#EF4444'
+            }
+          ]} />
+        </View>
+        <Text style={styles.progressText}>
+          {data.fiberAnalysis.averageDailyFiber || 0}g / {data.fiberAnalysis.target || 25}g daily
+        </Text>
+      </View>
+    </View>
+  </View>
+)}
         {/* Weekly Summary */}
         <View style={styles.summarySection}>
           <View style={styles.summaryCard}>

@@ -131,7 +131,7 @@ export default function SettingsScreen() {
       icon: <Bell size={20} color="#3B82F6" />,
       title: t('common:notifications'),
       subtitle: t('common:notificationsSubtitle'),
-      onPress: () => console.log('Notifications'),
+      onPress: () => router.push('/settings/notifs'),
     },
     {
       icon: <User size={20} color="#8B5CF6" />,

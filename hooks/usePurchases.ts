@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Purchases, { CustomerInfo, PurchasesOfferings, PurchasesPackage } from 'react-native-purchases';
 import { revenueCatService } from '@/services/revenueCatService';
 import { useAuth } from '@/hooks/useAuth';
-import { FirebaseService } from '@/services/firebaseService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Entitlement identifiers (configure these in RevenueCat dashboard)
 export const ENTITLEMENTS = {
@@ -14,6 +14,14 @@ interface RestoreResult {
   success: boolean;
   customerInfo?: CustomerInfo;
   error?: string;
+}
+
+// Enhanced cache structure
+interface PremiumCache {
+  isPremium: boolean;
+  timestamp: number;
+  expirationDate?: string; // RevenueCat expiration date
+  lastChecked: number;
 }
 
 interface UsePurchasesReturn {
@@ -27,197 +35,269 @@ interface UsePurchasesReturn {
   getAvailablePackages: () => PurchasesPackage[];
 }
 
+// Cache configuration
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const getCacheKey = (userId: string) => `premium_status_${userId}`;
+
+// Helper function to get cached premium status
+const getCachedPremiumStatus = async (userId: string): Promise<boolean | null> => {
+  try {
+    const cached = await AsyncStorage.getItem(getCacheKey(userId));
+    if (cached) {
+      const cacheData: PremiumCache = JSON.parse(cached);
+      
+      // Check if cache is still valid (24 hours)
+      if (Date.now() - cacheData.timestamp < CACHE_DURATION) {
+        
+        // Additional check: If we have expiration date, check if subscription actually expired
+        if (cacheData.expirationDate) {
+          const expirationTime = new Date(cacheData.expirationDate).getTime();
+          const currentTime = Date.now();
+          
+          if (currentTime > expirationTime) {
+            console.log('⚠️ Cached premium expired on:', cacheData.expirationDate);
+            return false; // Subscription expired
+          }
+        }
+        
+        console.log('📱 Using cached premium status for user:', userId, 'Premium:', cacheData.isPremium);
+        return cacheData.isPremium;
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️ Error reading cached premium status:', error);
+  }
+  return null;
+};
+
+// Helper function to save premium status to cache
+const savePremiumStatusToCache = async (userId: string, isPremium: boolean, customerInfo?: CustomerInfo): Promise<void> => {
+  try {
+    // Get expiration date from RevenueCat data
+    const expirationDate = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium]?.expirationDate;
+    
+    const cacheData: PremiumCache = {
+      isPremium,
+      timestamp: Date.now(),
+      expirationDate,
+      lastChecked: Date.now()
+    };
+    
+    await AsyncStorage.setItem(getCacheKey(userId), JSON.stringify(cacheData));
+    console.log('💾 Cached premium status for user:', userId, 'Premium:', isPremium, 'Expires:', expirationDate);
+  } catch (error) {
+    console.warn('⚠️ Error saving premium status to cache:', error);
+  }
+};
+
 export const usePurchases = (): UsePurchasesReturn => {
   const { user } = useAuth();
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [firebasePremium, setFirebasePremium] = useState<boolean>(false);
-  const [firebaseLoading, setFirebaseLoading] = useState<boolean>(true);
+  const [cachedPremium, setCachedPremium] = useState<boolean | null>(null);
 
-  // Check premium status from both sources
-  const revenueCatPremium = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium] != null;
-  const hasPremium = revenueCatPremium || firebasePremium;
+  // Check premium status with cache fallback
+  const hasPremium = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium] != null || cachedPremium || false;
 
-  // Load Firebase premium status
+  // Load cached premium status immediately when user changes
   useEffect(() => {
-    const loadFirebasePremium = async () => {
+    const loadCachedPremium = async () => {
       if (!user?.id) {
-        setFirebasePremium(false);
-        setFirebaseLoading(false);
+        setCachedPremium(null);
         return;
       }
 
-      try {
-        setFirebaseLoading(true);
-        const userProfile = await FirebaseService.getUserProfileDocument(user.id);
-        setFirebasePremium(userProfile?.isPremium || false);
-        console.log('📱 Firebase premium status loaded:', userProfile?.isPremium || false);
-      } catch (error) {
-        console.error('❌ Failed to load Firebase premium status:', error);
-        setFirebasePremium(false);
-      } finally {
-        setFirebaseLoading(false);
+      const cached = await getCachedPremiumStatus(user.id);
+      setCachedPremium(cached);
+      
+      // If we have cached data, we can show it immediately
+      if (cached !== null) {
+        setLoading(false);
       }
     };
 
-    loadFirebasePremium();
+    loadCachedPremium();
+  }, [user?.id]);
+
+  // Clear cached data when user changes
+  useEffect(() => {
+    console.log('🔄 User changed, clearing cached RevenueCat data for user:', user?.id);
+    setCustomerInfo(null);
+    setOfferings(null);
+    setCachedPremium(null);
+    setLoading(true);
   }, [user?.id]);
 
   // Load RevenueCat data
   useEffect(() => {
     const loadRevenueCatData = async () => {
-      try { 
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
         setLoading(true);
+        console.log(' Loading RevenueCat data for user:', user.id);
+        
+        // FIRST: Switch RevenueCat user to match Firebase user
+        console.log('🔄 Switching RevenueCat user to:', user.id);
+        const { customerInfo: currentCustomerInfo } = await Purchases.logIn(user.id);
+        console.log('✅ RevenueCat user switched. Previous user:', currentCustomerInfo.originalAppUserId);
+        
+        // SECOND: Get fresh data for the new user
         const [customerInfo, offerings] = await Promise.all([
           Purchases.getCustomerInfo(),
           Purchases.getOfferings()
         ]);
 
-// ADD DEBUG LOGS RIGHT AFTER:
-console.log('🔍🔍🔍🔍🔍 RevenueCat Hook Debug:');
-console.log('User ID:', user?.id);
-console.log('Customer Info Raw:', JSON.stringify(customerInfo, null, 2));
-console.log('All Entitlements:', customerInfo.entitlements.all);
-console.log('Active Entitlements:', customerInfo.entitlements.active);
-console.log('Verification:', customerInfo.entitlements.verification);
-
+        // Calculate premium status BEFORE setting state
+        const currentHasPremium = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium] != null;
+        
+        // Save to cache with expiration date
+        await savePremiumStatusToCache(user.id, currentHasPremium, customerInfo);
+        
         setCustomerInfo(customerInfo);
         setOfferings(offerings);
+        setCachedPremium(currentHasPremium);
 
-        // Sync to Firebase if RevenueCat has premium status
-        const revenueCatHasPremium = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium] != null;
-        if (user?.id && revenueCatHasPremium !== firebasePremium) {
-          console.log('🔄 Syncing RevenueCat premium status to Firebase:', revenueCatHasPremium);
-          try {
-            await FirebaseService.updateUserPremiumStatus(user.id, revenueCatHasPremium);
-            setFirebasePremium(revenueCatHasPremium);
-          } catch (error) {
-            console.error('❌ Failed to sync premium status to Firebase:', error);
-          }
-        }
+        console.log('✅ RevenueCat data loaded successfully for user:', user.id);
+        console.log(' Premium status for user', user.id + ':', currentHasPremium);
+        console.log('📦 Available offerings for user', user.id + ':', offerings?.current?.availablePackages?.length || 0);
+        
+        // Add detailed premium debugging with user ID
+        console.log('🔍 Premium Debug Details for user', user.id + ':');
+        console.log('  - Active entitlements:', Object.keys(customerInfo?.entitlements?.active || {}));
+        console.log('  - Premium entitlement:', customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium]);
+        console.log('  - All entitlements:', Object.keys(customerInfo?.entitlements?.all || {}));
+        console.log('  - Premium in all:', customerInfo?.entitlements?.all?.[ENTITLEMENTS.premium]);
+        console.log('  - RevenueCat App User ID:', customerInfo?.originalAppUserId);
 
       } catch (error) {
-        console.error('❌ Error loading RevenueCat data:', error);
+        console.error('❌ Error loading RevenueCat data for user', user.id + ':', error);
       } finally {
         setLoading(false);
       }
     };
 
-    // Set up listener for purchase updates
-    const purchaseUpdateListener = (info: CustomerInfo) => {
-      console.log('🔄 Purchase update received:', info);
-      setCustomerInfo(info);
+    loadRevenueCatData();
+  }, [user?.id]);
 
-      // Sync updated premium status to Firebase
-      const updatedPremium = info?.entitlements?.active?.[ENTITLEMENTS.premium] != null;
+  // Listen for purchase updates
+  useEffect(() => {
+    const purchaseUpdateListener = (info: CustomerInfo) => {
+      console.log('🔄 Purchase update received for user', user?.id + ':', info.entitlements.active);
+      
+      // Update cache when purchase status changes
+      const newPremiumStatus = info?.entitlements?.active?.[ENTITLEMENTS.premium] != null;
       if (user?.id) {
-        FirebaseService.updateUserPremiumStatus(user.id, updatedPremium).then(() => {
-          setFirebasePremium(updatedPremium);
-          console.log('✅ Premium status synced to Firebase after purchase update');
-        }).catch(error => {
-          console.error('❌ Failed to sync premium status after purchase update:', error);
-        });
+        savePremiumStatusToCache(user.id, newPremiumStatus, info);
       }
+      
+      setCustomerInfo(info);
+      setCachedPremium(newPremiumStatus);
     };
 
     Purchases.addCustomerInfoUpdateListener(purchaseUpdateListener);
 
-    // Load initial data
-    loadRevenueCatData();
-
     return () => {
       Purchases.removeCustomerInfoUpdateListener(purchaseUpdateListener);
     };
-}, [user?.id]); // Remove firebasePremium from dependencies
+  }, [user?.id]);
+
   const purchasePackage = async (pkg: PurchasesPackage): Promise<{ success: boolean; error?: string }> => {
     try {
+      console.log('🛒 Attempting to purchase package for user', user?.id + ':', pkg.identifier);
       const { customerInfo } = await Purchases.purchasePackage(pkg);
-      setCustomerInfo(customerInfo);   
-
-      // Sync successful purchase to Firebase
+      
+      // Update cache after successful purchase
+      const newPremiumStatus = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium] != null;
       if (user?.id) {
-        const isPremium = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium] != null;
-        await FirebaseService.updateUserPremiumStatus(user.id, isPremium);
-        setFirebasePremium(isPremium);
-        console.log('✅ Purchase synced to Firebase');
+        await savePremiumStatusToCache(user.id, newPremiumStatus, customerInfo);
       }
-
+      
+      setCustomerInfo(customerInfo);
+      setCachedPremium(newPremiumStatus);
+      console.log('✅ Purchase successful for user:', user?.id);
       return { success: true };
     } catch (error: any) {
-      console.error('❌ Purchase error:', error);
-      
-      if (error.code === 'PURCHASE_CANCELLED') {
-        return { success: false, error: 'Purchase was cancelled' };
-      } else if (error.code === 'PRODUCT_ALREADY_PURCHASED') {
-        return { success: false, error: 'Product already purchased' };
-      } else {
-        return { success: false, error: error.message || 'Purchase failed' };
-      }
+      console.error('❌ Purchase failed for user', user?.id + ':', error);
+      return { 
+        success: false, 
+        error: error.message || 'Purchase failed' 
+      };
     }
   };
 
   const restorePurchases = async (): Promise<RestoreResult> => {
     try {
+      console.log('🔄 Restoring purchases for user:', user?.id);
       const customerInfo = await Purchases.restorePurchases();
-      setCustomerInfo(customerInfo);
-
-      // Sync restored purchases to Firebase
+      
+      // Update cache after restore
+      const newPremiumStatus = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium] != null;
       if (user?.id) {
-        const isPremium = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium] != null;
-        await FirebaseService.updateUserPremiumStatus(user.id, isPremium);
-        setFirebasePremium(isPremium);
-        console.log('✅ Restored purchases synced to Firebase');
+        await savePremiumStatusToCache(user.id, newPremiumStatus, customerInfo);
       }
-
+      
+      setCustomerInfo(customerInfo);
+      setCachedPremium(newPremiumStatus);
+      console.log('✅ Purchases restored successfully for user:', user?.id);
       return { success: true, customerInfo };
     } catch (error: any) {
-      console.error('❌ Restore purchases error:', error);
+      console.error('❌ Restore failed for user', user?.id + ':', error);
       return { 
         success: false, 
-        error: error.message || 'Unknown error' 
+        error: error.message || 'Restore failed' 
       };
     }
   };
 
   const refreshCustomerInfo = async (): Promise<void> => {
     try {
-      setLoading(true);
-      const [customerInfo, offerings] = await Promise.all([
-        Purchases.getCustomerInfo(),
-        Purchases.getOfferings()
-      ]);
-      setCustomerInfo(customerInfo);
-      setOfferings(offerings);
-
-      // Sync refreshed data to Firebase
+      console.log('🔄 Refreshing customer info for user:', user?.id);
+      
+      // Switch user first, then get fresh data
+      await Purchases.logIn(user?.id || '');
+      const customerInfo = await Purchases.getCustomerInfo();
+      
+      // Calculate premium status before setting state
+      const currentHasPremium = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium] != null;
+      
+      // Update cache
       if (user?.id) {
-        const isPremium = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium] != null;
-        await FirebaseService.updateUserPremiumStatus(user.id, isPremium);
-        setFirebasePremium(isPremium);
-        console.log('✅ Refreshed data synced to Firebase');
+        await savePremiumStatusToCache(user.id, currentHasPremium, customerInfo);
       }
-
+      
+      setCustomerInfo(customerInfo);
+      setCachedPremium(currentHasPremium);
+      console.log('✅ Customer info refreshed for user:', user?.id);
+      console.log('📱 Updated premium status for user', user?.id + ':', currentHasPremium);
+      
+      // Add detailed debugging for refresh with user ID
+      console.log('🔍 Refresh Debug Details for user', user?.id + ':');
+      console.log('  - Active entitlements:', Object.keys(customerInfo?.entitlements?.active || {}));
+      console.log('  - Premium entitlement:', customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium]);
+      console.log('  - RevenueCat App User ID:', customerInfo?.originalAppUserId);
+      
     } catch (error) {
-      console.error('❌ Error refreshing data:', error);
-    } finally {
-      setLoading(false);
+      console.error('❌ Failed to refresh customer info for user', user?.id + ':', error);
     }
   };
 
   const getAvailablePackages = (): PurchasesPackage[] => {
-    if (!offerings?.current) return [];
-    return offerings.current.availablePackages;
+    return offerings?.current?.availablePackages || [];
   };
 
   return {
     customerInfo,
     offerings,
-    loading: loading || firebaseLoading,
+    loading,
     hasPremium,
     purchasePackage,
     restorePurchases,
     refreshCustomerInfo,
-    getAvailablePackages
+    getAvailablePackages,
   };
 };

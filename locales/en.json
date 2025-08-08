@@ -87,7 +87,11 @@
         "saturday": "Saturday",
         "sunday": "Sunday",
         "unknown": "Unknown"
-      }
+      },
+
+    "proteinSupplement": "Protein Supplement",
+    "exercises": "Exercises",
+    "categories": "Categories"
     
   },
   "subscription": {
@@ -98,12 +102,14 @@
     "premiumDescription": "You have access to all premium features",
     "freeDescription": "Upgrade to unlock premium features",
     "premiumFeatures": "Premium Features",
-    "feature1": "Unlimited meal plans",
-    "feature2": "AI-powered food recommendations",
-    "feature3": "Advanced nutrition tracking",
-    "feature4": "Custom workout plans",
-    "feature5": "Priority support",
-    "feature6": "Ad-free experience",
+    "feature1": "Access to the exclusive database",
+    "feature2": "Access to the meal planner",
+    "feature3": "Choose your workouts and plan them",
+    "feature4": "Access to customized wrokout videos",
+    "feature5": "Track all of your micro and macro nutrients",
+    "feature6": "Get weekly and monthly report of your progress",
+    "feature7": "Get customized notfications, whenever you want!",
+    "feature8": "Ad-free experience",
     "upgradeToPremium": "Upgrade to Premium",
     "restorePurchases": "Restore Purchases",
     "error": "Error",
@@ -181,7 +187,9 @@
     "workout": "Workout",
     "workoutDescription": "Track your fitness journey",
     "requestFood": "Request Food",
-    "requestFoodDescription": "Suggest new food items for the database"
+    "requestFoodDescription": "Suggest new food items for the database",
+    "stats": "Get your weekly/monthly report",
+    "statsTitle": "Stats"
   },
   "homeScreen": {
     "title": "Today's Progress",
@@ -193,7 +201,8 @@
     "addFood": "Add food",
     "items": "items",
     "kcal":"kcal",
-    "editWaterGoal": "Edit water intake goal"
+    "editWaterGoal": "Edit water intake goal",
+    "enterWaterGoal": "Enter daily water goal (Cups)"
   },
   "mealPlanner": {
     "headerTitle": "Meal Planner",
@@ -324,14 +333,15 @@
     "noFoodsFound": "No foods found",
     "noFoodsInCategory": "No foods found in this category",
     "popularFoods": "Popular Foods",
-    "createCustomFood": "Create Custom Food",
+    "createCustomFood": "Can't find your food?",
     "selectMeal": "Select Meal",
     "searchPlaceholder": "Search for foods...",
     "browseByCategory": "Browse by Category",
     "searchResults": "Search Results",
     "noFoodsFound": "No foods found",
     "noFoodsInCategory": "No foods found in this category",
-    "popularFoods": "Popular Foods"
+    "popularFoods": "Popular Foods",
+    "recentlyLoggedFoods": "Recently Logged Foods"
   },
   "mealFoodSearchScreen": {
     "headerTitle": "Add Food to {{mealTitle}}",
@@ -455,12 +465,10 @@
     "carbs": "Carbs",
     "fat": "Fat",
     "tips": "Tips",
-    "tipsList": [
-      "These are estimates. Adjust based on your progress and how you feel",
-      "Track your weight weekly and adjust calories if needed",
-      "Focus on whole foods and adequate protein intake",
-      "Stay hydrated and get adequate sleep for best results"
-    ]
+    "tipsList0":"These are estimates. Adjust based on your progress and how you feel",
+    "tipsList1":"Track your weight weekly and adjust calories if needed",
+    "tipsList2":"Focus on whole foods and adequate protein intake",
+    "tipsList3":"Stay hydrated and get adequate sleep for best results"
   },
   "onboarding": {
     "languageTitle": "Choose Your Language",
@@ -523,13 +531,29 @@
     "createYourFirstPlan":"Create Your First Plan",
     "createYour":"Create your first workout plan to get started with structured training",
     "noWorkoutPlansYet":"No Workout Plans Yet",
-    "manage":"Manage your custom workout routines"
+    "manage":"Manage your custom workout routines",
+    "selectCategory": "Select Category",
+    "chooseYourWorkout": "Choose your Muscle Part"
 
+  },
+  "exerciseDetailScreen": {
+    "exerciseDetails": "Exercise Details",
+    "addToPlan": "Add to Plan",
+    "beginner": "Beginner",
+    "intermediate": "Intermediate",
+    "advanced": "Advanced",
+    "equipment": "Equipment",
+    "description": "Description",
+    "addToWorkoutPlan": "Add to Workout Plan",
+    "addToExistingPlan": "Add to Existing Plan",
+    "loadingVideo": "Loading Video..."
   },
   "workoutSubcategoriesScreen": {
     "headerSubtitle": "Select a subcategory to view exercises",
     "exercisesCount": "exercises",
-    "noSubcategories": "No subcategories found for this workout type"
+    "noSubcategories": "No subcategories found for this workout type",
+    "selectCategory": "Select Sub Category",
+    "chooseYourWorkout": "Choose your Muscle Part"
   },
   "exercisesListScreen": {
     "headerSubtitle": "Exercises for this subcategory",
@@ -545,7 +569,12 @@
     "notes": "Notes",
     "notesPlaceholder": "Add notes about this exercise...",
     "addToExistingPlan": "Add to Existing Plan",
-"createNewPlan": "Create New Plan"
+    "createNewPlan": "Create New Plan",
+    "upgradeToPremium": "Upgrade to Premium",
+    "unlimitedExercises": "Access to 110+ Exercises",
+    "detailedInstructions": "Detailed Instructions",
+    "videoGuides": "HD Custom Videos",
+    "customWorkouts": "Add your favorite exercises and track your progress"
 
   },
   "difficulty": {

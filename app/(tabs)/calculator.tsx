@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
-import { Calculator, Target, Activity, User, Scale, Ruler } from 'lucide-react-native';
+import { Calculator, Target, Activity, User, Scale, Ruler, TrendingUp, Award } from 'lucide-react-native';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
@@ -11,15 +11,15 @@ export default function CalculatorScreen() {
   const { user, updateProfile, loading } = useAuth();
   const { t, i18n } = useTranslation();
   const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
-  const isRTL = useRTL(); // Add this line
+  const isRTL = useRTL();
 
-const [goal, setGoal] = useState<'lose' | 'maintain' | 'gain'>('maintain');
-const [rate, setRate] = useState<'slow' | 'moderate' | 'aggressive'>('moderate');
-const [age, setAge] = useState(user?.profile?.age?.toString() || '');
-const [sex, setSex] = useState<'male' | 'female'>(user?.profile?.gender || 'male'); // Assuming 'gender' exists in profile
-const [height, setHeight] = useState(user?.profile?.height?.toString() || '');
-const [weight, setWeight] = useState(user?.profile?.weight?.toString() || '');
-const [activityLevel, setActivityLevel] = useState<'sedentary' | 'light' | 'moderate' | 'very_active' | 'extra_active'>(user?.profile?.activityLevel || 'moderate');
+  const [goal, setGoal] = useState<'lose' | 'maintain' | 'gain'>('maintain');
+  const [rate, setRate] = useState<'slow' | 'moderate' | 'aggressive'>('moderate');
+  const [age, setAge] = useState(user?.profile?.age?.toString() || '');
+  const [sex, setSex] = useState<'male' | 'female'>(user?.profile?.gender || 'male');
+  const [height, setHeight] = useState(user?.profile?.height?.toString() || '');
+  const [weight, setWeight] = useState(user?.profile?.weight?.toString() || '');
+  const [activityLevel, setActivityLevel] = useState<'sedentary' | 'light' | 'moderate' | 'very_active' | 'extra_active'>(user?.profile?.activityLevel || 'moderate');
   const [results, setResults] = useState<{
     bmr: number;
     tdee: number;
@@ -30,138 +30,192 @@ const [activityLevel, setActivityLevel] = useState<'sedentary' | 'light' | 'mode
       fat: number;
     };
   } | null>(null);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F8FDF9',
   },
   scrollView: {
     flex: 1,
   },
   scrollViewContent: {
-    paddingBottom: 90, // Space for footer navigation
+    paddingBottom: 100,
   },
+  
+  // Header Styles
   header: {
-    padding: 24,
-    paddingBottom: 16,
-    
+    flexDirection: getFlexDirection(isRTL),
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerTop: {
     flexDirection: getFlexDirection(isRTL),
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    flex: 1,
   },
   headerContent: {
-    flex: 1,
     marginLeft: isRTL ? 0 : 16,
     marginRight: isRTL ? 16 : 0,
-
   },
   titleRow: {
     flexDirection: getFlexDirection(isRTL),
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 2,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '500',
-    color: '#111827',
-    marginLeft: isRTL ? 0 : 12,
-    marginRight: isRTL ? 12 : 0,
-          fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginLeft: isRTL ? 0 : 8,
+    marginRight: isRTL ? 8 : 0,
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   headerSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '400',
     textAlign: getTextAlign(isRTL),
-          fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    marginTop: 2,
   },
+
+  // Section Styles
   section: {
-    paddingHorizontal: 24,
-    marginBottom: 32,
+    paddingHorizontal: 20,
+    marginBottom: 28,
+  },
+  firstSection: {
+    paddingHorizontal: 20,
+    marginBottom: 28,
+    marginTop: 24,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: '450',
-    color: '#111827',
+    fontWeight: '600',
+    color: '#1F2937',
     marginBottom: 16,
-        textAlign: getTextAlign(isRTL),
-      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    textAlign: getTextAlign(isRTL),
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    letterSpacing: -0.3,
   },
+
+  // Goal Selection Styles
   goalOptions: {
     gap: 12,
   },
   goalOption: {
     flexDirection: getFlexDirection(isRTL),
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
+    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  goalOptionSelected: {
+    borderColor: '#22C55E',
+    backgroundColor: '#F0FDF4',
+    shadowColor: '#22C55E',
+    shadowOpacity: 0.15,
   },
   goalOptionText: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 17,
+    fontWeight: '600',
     color: '#374151',
-    marginLeft: isRTL ? 0 : 12,
-    marginRight: isRTL ? 12 : 0,
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
-    
+    marginLeft: isRTL ? 0 : 14,
+    marginRight: isRTL ? 14 : 0,
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
+  goalOptionTextSelected: {
+    color: '#16A34A',
+  },
+
+  // Rate Selection Styles
   rateOptions: {
-    gap: 8,
+    flexDirection: getFlexDirection(isRTL),
+    gap: 12,
+    flexWrap: 'wrap',
   },
   rateOption: {
+    flex: 1,
+    minWidth: '30%',
     padding: 16,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   rateOptionSelected: {
-    backgroundColor: '#22C55E',
+    backgroundColor: '#F0FDF4',
     borderColor: '#22C55E',
+    borderWidth: 2,
+    shadowColor: '#22C55E',
+    shadowOpacity: 0.1,
   },
   rateOptionText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
-    color: '#374151',
-        textAlign: getTextAlign(isRTL),
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
-
+    color: '#6B7280',
+    textAlign: 'center',
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   rateOptionTextSelected: {
-    color: '#FFFFFF',
+    color: '#16A34A',
+    fontWeight: '600',
   },
+
+  // Input Styles
   inputGroup: {
     marginBottom: 20,
   },
   inputLabel: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#374151',
-    marginBottom: 8,
-        textAlign: getTextAlign(isRTL),
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
-
+    marginBottom: 10,
+    textAlign: getTextAlign(isRTL),
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   inputContainer: {
     flexDirection: getFlexDirection(isRTL),
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  inputContainerFocused: {
+    borderColor: '#22C55E',
+    shadowColor: '#22C55E',
+    shadowOpacity: 0.1,
   },
   input: {
     flex: 1,
@@ -169,7 +223,10 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginLeft: isRTL ? 0 : 12,
     marginRight: isRTL ? 12 : 0,
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
+
+  // Sex Options Styles
   sexOptions: {
     flexDirection: getFlexDirection(isRTL),
     gap: 12,
@@ -179,219 +236,223 @@ const styles = StyleSheet.create({
     flexDirection: getFlexDirection(isRTL),
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
+    padding: 16,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   sexOptionSelected: {
     backgroundColor: '#22C55E',
     borderColor: '#22C55E',
   },
   sexOptionText: {
-    fontSize: 14,
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontSize: 15,
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
     fontWeight: '500',
     color: '#6B7280',
     marginLeft: isRTL ? 0 : 8,
     marginRight: isRTL ? 8 : 0,
-        textAlign: getTextAlign(isRTL),
-
+    textAlign: getTextAlign(isRTL),
   },
   sexOptionTextSelected: {
     color: '#FFFFFF',
+    fontWeight: '600',
   },
+
+  // Activity Options Styles
   activityOptions: {
-    gap: 8,
+    gap: 10,
   },
   activityOption: {
-    padding: 16,
+    padding: 18,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   activityOptionSelected: {
-    backgroundColor: '#22C55E',
+    backgroundColor: '#F0FDF4',
     borderColor: '#22C55E',
+    borderWidth: 2,
   },
   activityOptionContent: {
-    gap: 4,
+    gap: 6,
   },
   activityOptionLabel: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#374151',
-        textAlign: getTextAlign(isRTL),
-             fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    textAlign: getTextAlign(isRTL),
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   activityOptionLabelSelected: {
-    color: '#FFFFFF',
+    color: '#16A34A',
   },
   activityOptionDescription: {
     fontSize: 14,
     color: '#6B7280',
-        textAlign: getTextAlign(isRTL),
-             fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    textAlign: getTextAlign(isRTL),
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    lineHeight: 20,
   },
   activityOptionDescriptionSelected: {
-    color: '#E5E7EB',
+    color: '#059669',
   },
+
+  // Button Styles
   buttonContainer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     marginBottom: 32,
-    gap: 12,
+    gap: 14,
   },
   calculateButton: {
     flexDirection: getFlexDirection(isRTL),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#22C55E',
-    borderRadius: 12,
-    paddingVertical: 16,
-    gap: 8,
+    borderRadius: 16,
+    paddingVertical: 18,
+    gap: 10,
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   calculateButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontSize: 17,
+    fontWeight: '600',
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    letterSpacing: -0.2,
   },
   setGoalButton: {
     flexDirection: getFlexDirection(isRTL),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F59E0B',
-    borderRadius: 12,
+    borderRadius: 16,
     paddingVertical: 16,
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
   },
   setGoalButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '500',
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontWeight: '600',
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   resetButton: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderRadius: 14,
+    paddingVertical: 14,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   resetButtonText: {
     color: '#6B7280',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
+
+  // Results Styles
   resultsSection: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     marginBottom: 32,
   },
   resultsTitle: {
-    fontSize: 24,
-    fontWeight: '500',
-    color: '#111827',
-    marginBottom: 20,
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 24,
     textAlign: 'center',
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    letterSpacing: -0.5,
   },
   resultCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 20,
+    padding: 24,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#F3F4F6',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
   },
   resultCardTitle: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#111827',
-    marginBottom: 16,
-        textAlign: getTextAlign(isRTL),
-             fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 20,
+    textAlign: getTextAlign(isRTL),
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    letterSpacing: -0.3,
   },
   resultRow: {
     flexDirection: getFlexDirection(isRTL),
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   resultLabel: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#6B7280',
     fontWeight: '500',
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   resultValue: {
-    fontSize: 14,
-    color: '#111827',
-    fontWeight: '500',
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontSize: 15,
+    color: '#1F2937',
+    fontWeight: '600',
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   targetRow: {
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    marginTop: 8,
-    paddingTop: 16,
+    borderTopColor: '#F3F4F6',
+    marginTop: 12,
+    paddingTop: 20,
+    backgroundColor: '#F0FDF4',
+    marginHorizontal: -24,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginBottom: -24,
   },
   targetLabel: {
-    fontSize: 16,
-    color: '#22C55E',
-    fontWeight: '500',
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontSize: 17,
+    color: '#16A34A',
+    fontWeight: '600',
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   targetValue: {
-    fontSize: 18,
-    color: '#22C55E',
-    fontWeight: '500',
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontSize: 20,
+    color: '#16A34A',
+    fontWeight: '700',
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
+
+  // Macro Styles
   macroGrid: {
     flexDirection: getFlexDirection(isRTL),
     justifyContent: 'space-between',
@@ -400,63 +461,132 @@ const styles = StyleSheet.create({
   macroCard: {
     flex: 1,
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
+    padding: 18,
+    backgroundColor: '#F8FDF9',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   macroValue: {
-    fontSize: 20,
-    fontWeight: '500',
-    color: '#111827',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1F2937',
     marginBottom: 4,
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
   macroLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#6B7280',
-    fontWeight: '500',
+    fontWeight: '600',
     marginBottom: 2,
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   macroPercentage: {
-    fontSize: 10,
-    color: '#9CA3AF',
-    fontWeight: '500',
-                 fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    fontSize: 11,
+    color: '#22C55E',
+    fontWeight: '600',
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
   },
+
+  // Tips Styles
   tipsCard: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 18,
+    padding: 22,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: '#FEF3C7',
   },
   tipsTitle: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#92400E',
-    marginBottom: 12,
-        textAlign: getTextAlign(isRTL),
-             fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-
+    marginBottom: 14,
+    textAlign: getTextAlign(isRTL),
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    flexDirection: getFlexDirection(isRTL),
+    alignItems: 'center',
   },
   tipText: {
     fontSize: 14,
     color: '#92400E',
-    lineHeight: 20,
-    marginBottom: 8,
-        textAlign: getTextAlign(isRTL),
-             fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    lineHeight: 22,
+    marginBottom: 10,
+    textAlign: getTextAlign(isRTL),
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+  },
 
+  // Loading Styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FDF9',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
+    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+  },
+
+  // Enhanced Visual Elements
+  goalIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  goalIconSelected: {
+    backgroundColor: '#DCFCE7',
+  },
+  
+  // Floating Action Style
+  floatingCalculate: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    left: 20,
+    backgroundColor: '#22C55E',
+    borderRadius: 16,
+    paddingVertical: 18,
+    flexDirection: getFlexDirection(isRTL),
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 12,
   },
 });
+
   const goalOptions = [
-    { id: 'lose' as const, label: t('calculator:loseWeight'), color: '#EF4444', icon: <Target size={20} color="#EF4444" /> },
-    { id: 'maintain' as const, label: t('calculator:maintainW'), color: '#22C55E', icon: <Scale size={20} color="#22C55E" /> },
-    { id: 'gain' as const, label: t('calculator:gainW'), color: '#3B82F6', icon: <Activity size={20} color="#3B82F6" /> },
+    { 
+      id: 'lose' as const, 
+      label: t('calculator:loseWeight'), 
+      color: '#EF4444', 
+      icon: <Target size={20} color="#EF4444" />,
+      bgColor: '#FEF2F2'
+    },
+    { 
+      id: 'maintain' as const, 
+      label: t('calculator:maintainW'), 
+      color: '#22C55E', 
+      icon: <Scale size={20} color="#22C55E" />,
+      bgColor: '#F0FDF4'
+    },
+    { 
+      id: 'gain' as const, 
+      label: t('calculator:gainW'), 
+      color: '#3B82F6', 
+      icon: <TrendingUp size={20} color="#3B82F6" />,
+      bgColor: '#EFF6FF'
+    },
   ];
 
   const rateOptions = {
@@ -476,11 +606,11 @@ const styles = StyleSheet.create({
   };
 
   const activityOptions = [
-    { id: 'sedentary' as const, label: t('calculator:sedentary'), description: t('calculator:sedLabel'), multiplier: 1.2 },
-    { id: 'light' as const, label: t('calculator:light'), description: t('calculator:lightLabel'), multiplier: 1.375 },
-    { id: 'moderate' as const, label: t('calculator:moderateActivity'), description: t('calculator:modLabel'), multiplier: 1.55 },
-    { id: 'very_active' as const, label: t('calculator:veryActive'), description: t('calculator:veryActiveLabel'), multiplier: 1.725 },
-    { id: 'extra_active' as const, label: t('calculator:extraActive'), description: t('calculator:extraActiveLabel'), multiplier: 1.9 },
+    { id: 'sedentary' as const, label: t('calculator:sedentary'), description: t('calculator:sedLabel'), multiplier: 1.2, icon: '🛋️' },
+    { id: 'light' as const, label: t('calculator:light'), description: t('calculator:lightLabel'), multiplier: 1.375, icon: '🚶' },
+    { id: 'moderate' as const, label: t('calculator:moderateActivity'), description: t('calculator:modLabel'), multiplier: 1.55, icon: '🏃' },
+    { id: 'very_active' as const, label: t('calculator:veryActive'), description: t('calculator:veryActiveLabel'), multiplier: 1.725, icon: '🏋️' },
+    { id: 'extra_active' as const, label: t('calculator:extraActive'), description: t('calculator:extraActiveLabel'), multiplier: 1.9, icon: '⚡' },
   ];
 
   const calculateBMR = (weight: number, height: number, age: number, sex: 'male' | 'female'): number => {
@@ -492,46 +622,37 @@ const styles = StyleSheet.create({
   };
 
   const calculateMacros = (calories: number) => {
-    // Standard macro distribution: 25% protein, 45% carbs, 30% fat
     const proteinCalories = calories * 0.25;
     const carbCalories = calories * 0.45;
     const fatCalories = calories * 0.30;
 
     return {
-      protein: Math.round(proteinCalories / 4), // 4 calories per gram
-      carbs: Math.round(carbCalories / 4), // 4 calories per gram
-      fat: Math.round(fatCalories / 9), // 9 calories per gram
+      protein: Math.round(proteinCalories / 4),
+      carbs: Math.round(carbCalories / 4),
+      fat: Math.round(fatCalories / 9),
     };
   };
 
   const handleCalculate = () => {
-    // Validation
     if (!age || !height || !weight) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
     
-    // Convert string inputs to numbers
     const ageNum = parseInt(age);
     const heightNum = parseInt(height);
     const weightNum = parseInt(weight);
     
-    // Calculate BMR
     const bmr = calculateBMR(weightNum, heightNum, ageNum, sex);
-
-    // Calculate TDEE
     const activityMultiplier = activityOptions.find(opt => opt.id === activityLevel)?.multiplier || 1.55;
     const tdee = bmr * activityMultiplier;
-
-    // Calculate target calories based on goal and rate
     const rateCalories = rateOptions[goal].find(opt => opt.id === rate)?.calories || 0;
     const targetCalories = tdee + rateCalories;
 
-    // Calculate macros
     const macros = {
-      protein: Math.round(targetCalories * 0.25 / 4), // 25% protein (4 calories per gram)
-      carbs: Math.round(targetCalories * 0.45 / 4),   // 45% carbs (4 calories per gram)
-      fat: Math.round(targetCalories * 0.30 / 9)      // 30% fat (9 calories per gram)
+      protein: Math.round(targetCalories * 0.25 / 4),
+      carbs: Math.round(targetCalories * 0.45 / 4),
+      fat: Math.round(targetCalories * 0.30 / 9)
     };
 
     setResults({
@@ -543,7 +664,6 @@ const styles = StyleSheet.create({
   };
 
   const handleSetAsGoal = async () => {
-    // Add immediate feedback to confirm button is working
     console.log('🎯 Set as Goal button pressed!');
     console.log('🎯 Setting goal - User:', user?.id);
     console.log('🎯 Setting goal - Results:', results);
@@ -555,7 +675,6 @@ const styles = StyleSheet.create({
     }
 
     try {
-      // Check if user already has a calorie goal
       const currentGoal = user.profile?.goals?.calories;
       const targetCaloriesNum = Number(results.targetCalories);
       const currentGoalNum = Number(currentGoal);
@@ -565,7 +684,6 @@ const styles = StyleSheet.create({
       console.log('🎯 Current goal (number):', currentGoalNum);
       console.log('🎯 Target calories (number):', targetCaloriesNum);
       
-      // Check if there's an existing goal
       if (currentGoalNum && currentGoalNum > 0) {
         console.log('🎯 User has existing goal, checking if same...');
         
@@ -622,7 +740,6 @@ const styles = StyleSheet.create({
     if (!results || !user) return;
 
     try {
-      // Update the user's goals with calculated values
       const updatedGoals = {
         calories: results.targetCalories,
         protein: results.macros.protein,
@@ -632,7 +749,6 @@ const styles = StyleSheet.create({
 
       console.log('🎯 Calculator: Updating user profile with goals:', updatedGoals);
       
-      // Use the updateProfile method from useAuth which handles profile cache updates and UI synchronization
       await updateProfile({ profile: { goals: updatedGoals } });
 
       console.log('🎯 Calculator: Goal update successful');
@@ -644,7 +760,6 @@ const styles = StyleSheet.create({
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       Alert.alert('Error', `Failed to update goal: ${errorMessage}`);
       
-      // Re-throw the error so the calling function can handle it
       throw error;
     }
   };
@@ -655,16 +770,17 @@ const styles = StyleSheet.create({
     setWeight('');
     setResults(null);
   };
-useEffect(() => {
-  if (user?.profile) {
-    setAge(user.profile.age?.toString() || '');
-    setSex(user.profile.gender || 'male'); // Assuming 'gender' exists in profile
-    setHeight(user.profile.height?.toString() || '');
-    setWeight(user.profile.weight?.toString() || '');
-    setActivityLevel(user.profile.activityLevel || 'moderate');
-  }
-}, [user?.profile]);
-  // Show loading state while user data is being loaded
+
+  useEffect(() => {
+    if (user?.profile) {
+      setAge(user.profile.age?.toString() || '');
+      setSex(user.profile.gender || 'male');
+      setHeight(user.profile.height?.toString() || '');
+      setWeight(user.profile.weight?.toString() || '');
+      setActivityLevel(user.profile.activityLevel || 'moderate');
+    }
+  }, [user?.profile]);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -682,300 +798,297 @@ useEffect(() => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.scrollViewContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <HamburgerMenu currentRoute="/(tabs)/calculator" />
-            <View style={styles.headerContent}>
-              <View style={styles.titleRow}>
-                <Calculator size={28} color="#22C55E" />
-                <Text style={styles.headerTitle}>{t('calculator:title')}</Text>
+          {/* Clean White Header */}
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <HamburgerMenu currentRoute="/(tabs)/calculator" />
+              <View style={styles.headerContent}>
+                <View style={styles.titleRow}>
+                  <Calculator size={20} color="#22C55E" />
+                  <Text style={styles.headerTitle}>{t('calculator:title')}</Text>
+                </View>
+                <Text style={styles.headerSubtitle}>{t('calculator:titleDesc')}</Text>
               </View>
-              <Text style={styles.headerSubtitle}>{t('calculator:titleDesc')}</Text>
             </View>
           </View>
-        </View>
 
-        {/* Goal Selection */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('calculator:yourGoal')}</Text>
-          <View style={styles.goalOptions}>
-            {goalOptions.map((option) => (
-              <TouchableOpacity
-                key={option.id}
-                style={[
-                  styles.goalOption,
-                  goal === option.id && { backgroundColor: option.color, borderColor: option.color },
-                ]}
-                onPress={() => {
-                  setGoal(option.id);
-                  setRate('moderate'); // Reset rate when goal changes
-                }}
-              >
-                {option.icon}
-                <Text
+          {/* Enhanced Goal Selection */}
+          <View style={styles.firstSection}>
+            <Text style={styles.sectionTitle}>{t('calculator:yourGoal')}</Text>
+            <View style={styles.goalOptions}>
+              {goalOptions.map((option) => (
+                <TouchableOpacity
+                  key={option.id}
                   style={[
-                    styles.goalOptionText,
-                    goal === option.id && { color: '#FFFFFF' },
+                    styles.goalOption,
+                    goal === option.id && styles.goalOptionSelected,
                   ]}
+                  onPress={() => {
+                    setGoal(option.id);
+                    setRate('moderate');
+                  }}
+                  activeOpacity={0.7}
                 >
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Rate Selection */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('calculator:rate')}</Text>
-          <View style={styles.rateOptions}>
-            {rateOptions[goal].map((option) => (
-              <TouchableOpacity
-                key={option.id}
-                style={[
-                  styles.rateOption,
-                  rate === option.id && styles.rateOptionSelected,
-                ]}
-                onPress={() => setRate(option.id)}
-              >
-                <Text
-                  style={[
-                    styles.rateOptionText,
-                    rate === option.id && styles.rateOptionTextSelected,
-                  ]}
-                >
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Personal Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('calculator:personalInfo')}</Text>
-          
-          {/* Sex Selection */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>{t('calculator:sex')}</Text>
-            <View style={styles.sexOptions}>
-              <TouchableOpacity
-                style={[
-                  styles.sexOption,
-                  sex === 'male' && styles.sexOptionSelected,
-                ]}
-                onPress={() => setSex('male')}
-              >
-                <User size={16} color={sex === 'male' ? '#FFFFFF' : '#6B7280'} />
-                <Text
-                  style={[
-                    styles.sexOptionText,
-                    sex === 'male' && styles.sexOptionTextSelected,
-                  ]}
-                >
-                  {t('calculator:male')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.sexOption,
-                  sex === 'female' && styles.sexOptionSelected,
-                ]}
-                onPress={() => setSex('female')}
-              >
-                <User size={16} color={sex === 'female' ? '#FFFFFF' : '#6B7280'} />
-                <Text
-                  style={[
-                    styles.sexOptionText,
-                    sex === 'female' && styles.sexOptionTextSelected,
-                  ]}
-                >
-                  {t('calculator:female')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Age Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>{t('calculator:age')}</Text>
-            <View style={styles.inputContainer}>
-              <User size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="25"
-                value={age}
-                onChangeText={setAge}
-                keyboardType="numeric"
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
-          </View>
-
-          {/* Height Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>{t('calculator:height')}</Text>
-            <View style={styles.inputContainer}>
-              <Ruler size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="170"
-                value={height}
-                onChangeText={setHeight}
-                keyboardType="numeric"
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
-          </View>
-
-          {/* Weight Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>{t('calculator:weight')}</Text>
-            <View style={styles.inputContainer}>
-              <Scale size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="70"
-                value={weight}
-                onChangeText={setWeight}
-                keyboardType="numeric"
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Activity Level */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('calculator:activityLevel')}</Text>
-          <View style={styles.activityOptions}>
-            {activityOptions.map((option) => (
-              <TouchableOpacity
-                key={option.id}
-                style={[
-                  styles.activityOption,
-                  activityLevel === option.id && styles.activityOptionSelected,
-                ]}
-                onPress={() => setActivityLevel(option.id)}
-              >
-                <View style={styles.activityOptionContent}>
+                  <View style={[
+                    styles.goalIcon,
+                    goal === option.id && { backgroundColor: option.bgColor }
+                  ]}>
+                    {option.icon}
+                  </View>
                   <Text
                     style={[
-                      styles.activityOptionLabel,
-                      activityLevel === option.id && styles.activityOptionLabelSelected,
+                      styles.goalOptionText,
+                      goal === option.id && styles.goalOptionTextSelected,
                     ]}
                   >
                     {option.label}
                   </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Enhanced Rate Selection */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('calculator:rate')}</Text>
+            <View style={styles.rateOptions}>
+              {rateOptions[goal].map((option) => (
+                <TouchableOpacity
+                  key={option.id}
+                  style={[
+                    styles.rateOption,
+                    rate === option.id && styles.rateOptionSelected,
+                  ]}
+                  onPress={() => setRate(option.id)}
+                  activeOpacity={0.8}
+                >
                   <Text
                     style={[
-                      styles.activityOptionDescription,
-                      activityLevel === option.id && styles.activityOptionDescriptionSelected,
+                      styles.rateOptionText,
+                      rate === option.id && styles.rateOptionTextSelected,
                     ]}
                   >
-                    {option.description}
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Enhanced Personal Information */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('calculator:personalInfo')}</Text>
+            
+            {/* Enhanced Sex Selection */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{t('calculator:sex')}</Text>
+              <View style={styles.sexOptions}>
+                <TouchableOpacity
+                  style={[
+                    styles.sexOption,
+                    sex === 'male' && styles.sexOptionSelected,
+                  ]}
+                  onPress={() => setSex('male')}
+                  activeOpacity={0.8}
+                >
+                  <User size={18} color={sex === 'male' ? '#FFFFFF' : '#6B7280'} />
+                  <Text
+                    style={[
+                      styles.sexOptionText,
+                      sex === 'male' && styles.sexOptionTextSelected,
+                    ]}
+                  >
+                    {t('calculator:male')}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.sexOption,
+                    sex === 'female' && styles.sexOptionSelected,
+                  ]}
+                  onPress={() => setSex('female')}
+                  activeOpacity={0.8}
+                >
+                  <User size={18} color={sex === 'female' ? '#FFFFFF' : '#6B7280'} />
+                  <Text
+                    style={[
+                      styles.sexOptionText,
+                      sex === 'female' && styles.sexOptionTextSelected,
+                    ]}
+                  >
+                    {t('calculator:female')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Enhanced Input Fields */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{t('calculator:age')}</Text>
+              <View style={styles.inputContainer}>
+                <User size={20} color="#22C55E" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="25"
+                  value={age}
+                  onChangeText={setAge}
+                  keyboardType="numeric"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{t('calculator:height')} (cm)</Text>
+              <View style={styles.inputContainer}>
+                <Ruler size={20} color="#22C55E" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="170"
+                  value={height}
+                  onChangeText={setHeight}
+                  keyboardType="numeric"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>{t('calculator:weight')} (kg)</Text>
+              <View style={styles.inputContainer}>
+                <Scale size={20} color="#22C55E" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="70"
+                  value={weight}
+                  onChangeText={setWeight}
+                  keyboardType="numeric"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Enhanced Activity Level */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('calculator:activityLevel')}</Text>
+            <View style={styles.activityOptions}>
+              {activityOptions.map((option) => (
+                <TouchableOpacity
+                  key={option.id}
+                  style={[
+                    styles.activityOption,
+                    activityLevel === option.id && styles.activityOptionSelected,
+                  ]}
+                  onPress={() => setActivityLevel(option.id)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.activityOptionContent}>
+                    <View style={{ flexDirection: getFlexDirection(isRTL), alignItems: 'center', gap: 8 }}>
+                      <Text style={{ fontSize: 20 }}>{option.icon}</Text>
+                      <Text
+                        style={[
+                          styles.activityOptionLabel,
+                          activityLevel === option.id && styles.activityOptionLabelSelected,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </View>
+                    <Text
+                      style={[
+                        styles.activityOptionDescription,
+                        activityLevel === option.id && styles.activityOptionDescriptionSelected,
+                      ]}
+                    >
+                      {option.description}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Enhanced Calculate Button */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              style={styles.calculateButton} 
+              onPress={handleCalculate}
+              activeOpacity={0.8}
+            >
+              <Calculator size={22} color="#FFFFFF" />
+              <Text style={styles.calculateButtonText}>{t('calculator:calculate')}</Text>
+            </TouchableOpacity>
+            
+            {results && (
+              <TouchableOpacity 
+                style={styles.setGoalButton} 
+                onPress={handleSetAsGoal}
+                activeOpacity={0.8}
+              >
+                <Target size={20} color="#FFFFFF" />
+                <Text style={styles.setGoalButtonText}>{t('calculator:setAsYourGoal')}</Text>
+              </TouchableOpacity>
+            )}
+            
+            {results && (
+              <TouchableOpacity 
+                style={styles.resetButton} 
+                onPress={handleReset}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.resetButtonText}>{t('calculator:reset')}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Results Display */}
+          {results && (
+            <View style={styles.resultsSection}>
+              <Text style={styles.resultsTitle}>{t('calculator:yourResults')}</Text>
+              
+              {/* Enhanced Calorie Results Card */}
+              <View style={styles.resultCard}>
+                <Text style={styles.resultCardTitle}>📊 {t('calculator:dailyCalories')}</Text>
+                <View style={styles.resultRow}>
+                  <Text style={styles.resultLabel}>🔥 {t('calculator:bmr')}</Text>
+                  <Text style={styles.resultValue}>{results.bmr} kcal</Text>
+                </View>
+                <View style={styles.resultRow}>
+                  <Text style={styles.resultLabel}>⚡ {t('calculator:tdee')}</Text>
+                  <Text style={styles.resultValue}>{results.tdee} kcal</Text>
+                </View>
+                <View style={[styles.resultRow, styles.targetRow]}>
+                  <Text style={styles.targetLabel}>🎯 {t('calculator:targetCalories')}</Text>
+                  <Text style={styles.targetValue}>{results.targetCalories} kcal</Text>
+                </View>
+              </View>
+
+              {/* Enhanced Tips Card */}
+              <View style={styles.tipsCard}>
+                <View style={{ flexDirection: getFlexDirection(isRTL), alignItems: 'center', marginBottom: 14 }}>
+                  <Award size={18} color="#92400E" />
+                  <Text style={[styles.tipsTitle, { marginLeft: isRTL ? 0 : 8, marginRight: isRTL ? 8 : 0, marginBottom: 0 }]}>
+                    💡 {t('calculator:tips')}
                   </Text>
                 </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Calculate Button */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.calculateButton} onPress={handleCalculate}>
-            <Calculator size={20} color="#FFFFFF" />
-            <Text style={styles.calculateButtonText}>{t('calculator:calculate')}</Text>
-          </TouchableOpacity>
-          
-          {results && (
-            <TouchableOpacity 
-              style={styles.setGoalButton} 
-              onPress={handleSetAsGoal}
-              activeOpacity={0.7}
-            >
-              <Target size={20} color="#FFFFFF" />
-              <Text style={styles.setGoalButtonText}>{t('calculator:setAsYourGoal')}</Text>
-            </TouchableOpacity>
-          )}
-          
-          {results && (
-            <TouchableOpacity 
-              style={styles.resetButton} 
-              onPress={handleReset}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.resetButtonText}>{t('calculator:reset')}</Text>
-            </TouchableOpacity>
+                <Text style={styles.tipText}>
+                  • {t('calculator:tipsList0')}
+                </Text>
+                <Text style={styles.tipText}>
+                  • {t('calculator:tipsList1')}
+                </Text>
+                <Text style={styles.tipText}>
+                  • {t('calculator:tipsList2')}
+                </Text>
+                <Text style={styles.tipText}>
+                  • {t('calculator:tipsList3')}
+                </Text>
+              </View>
+            </View>
           )}
         </View>
-        </View>
-
-        {/* Results */}
-        {results && (
-          <View style={styles.resultsSection}>
-            <Text style={styles.resultsTitle}>{t('calculator:yourResults')}</Text>
-            
-            {/* Calorie Results */}
-            <View style={styles.resultCard}>
-              <Text style={styles.resultCardTitle}>{t('calculator:dailyCalories')}</Text>
-              <View style={styles.resultRow}>
-                <Text style={styles.resultLabel}>{t('calculator:bmr')}</Text>
-                <Text style={styles.resultValue}>{results.bmr} kcal</Text>
-              </View>
-              <View style={styles.resultRow}>
-                <Text style={styles.resultLabel}>{t('calculator:tdee')}</Text>
-                <Text style={styles.resultValue}>{results.tdee} kcal</Text>
-              </View>
-              <View style={[styles.resultRow, styles.targetRow]}>
-                <Text style={styles.targetLabel}>{t('calculator:targetCalories')}</Text>
-                <Text style={styles.targetValue}>{results.targetCalories} kcal</Text>
-              </View>
-            </View>
-
-            {/* Macro Results */}
-            <View style={styles.resultCard}>
-              <Text style={styles.resultCardTitle}>{t('calculator:recommendedMacros')}</Text>
-              <View style={styles.macroGrid}>
-                <View style={styles.macroCard}>
-                  <Text style={styles.macroValue}>{results.macros.protein}g</Text>
-                  <Text style={styles.macroLabel}>{t('calculator:protein')}</Text>
-                  <Text style={styles.macroPercentage}>25%</Text>
-                </View>
-                <View style={styles.macroCard}>
-                  <Text style={styles.macroValue}>{results.macros.carbs}g</Text>
-                  <Text style={styles.macroLabel}>{t('calculator:carbs')}</Text>
-                  <Text style={styles.macroPercentage}>45%</Text>
-                </View>
-                <View style={styles.macroCard}>
-                  <Text style={styles.macroValue}>{results.macros.fat}g</Text>
-                  <Text style={styles.macroLabel}>{t('calculator:fat')}</Text>
-                  <Text style={styles.macroPercentage}>30%</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Tips */}
-            <View style={styles.tipsCard}>
-              <Text style={styles.tipsTitle}>{t('calculator:tips')}</Text>
-              <Text style={styles.tipText}>
-                {t('calculator:tipsList0')}
-              </Text>
-              <Text style={styles.tipText}>
-                 {t('calculator:tipsList1')}
-              </Text>
-              <Text style={styles.tipText}>
-                 {t('calculator:tipsList2')}
-              </Text>
-              <Text style={styles.tipText}>
-                 {t('calculator:tipsList3')}
-              </Text>
-            </View>
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
-

@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
-import { ArrowLeft, LocationEdit as Edit2, Trash2, UtensilsCrossed, Calendar } from 'lucide-react-native';
+import { ArrowLeft, Edit3, Trash2, UtensilsCrossed, Calendar, Clock, TrendingUp } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { FirebaseService } from '@/services/firebaseService';
@@ -135,60 +135,114 @@ export default function SavedMealPlansScreen() {
       pathname: '/(tabs)/meal-plan-details',
       params: {
         planId: plan.id,
-        origin: 'saved-plans' // NEW: Indicate origin
+        origin: 'saved-plans'
       }
     });
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long',
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'long',
+        month: 'long', 
+        day: 'numeric'
+      });
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
     });
   };
 
   const renderDateGroup = (date: string, plans: SavedMealPlan[]) => (
     <View key={date} style={styles.dateGroup}>
       <View style={styles.dateHeader}>
-        <Calendar size={18} color="#6B7280" />
+        <View style={styles.dateIconContainer}>
+          <Calendar size={16} color="#10B981" />
+        </View>
         <Text style={styles.dateText}>{formatDate(date)}</Text>
+        <View style={styles.planCount}>
+          <Text style={styles.planCountText}>{plans.length} plan{plans.length !== 1 ? 's' : ''}</Text>
+        </View>
       </View>
       
-      {plans.map(plan => (
-        <View key={plan.id} style={styles.planCard}>
+      <View style={styles.plansContainer}>
+        {plans.map(plan => (
           <TouchableOpacity 
-            style={styles.planCardContent}
+            key={plan.id}
+            style={styles.planCard}
             onPress={() => handleViewPlan(plan)}
             activeOpacity={0.7}
           >
-            <View style={styles.planInfo}>
-              <Text style={styles.planName}>{plan.name}</Text>
-              <Text style={styles.planStats}>
-                {plan.mealPlanData.totalCalories} kcal • {plan.mealPlanData.totalProtein}g protein
-              </Text>
+            <View style={styles.planCardHeader}>
+              <View style={styles.planInfo}>
+                <Text style={styles.planName}>{plan.name}</Text>
+                <View style={styles.planMeta}>
+                  <Clock size={12} color="#9CA3AF" />
+                  <Text style={styles.planTime}>{formatTime(plan.generatedAt)}</Text>
+                </View>
+              </View>
+              
+              <View style={styles.planActions}>
+                <TouchableOpacity 
+                  style={styles.editButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleEditPlan(plan);
+                  }}
+                >
+                  <Edit3 size={16} color="#64748B" />
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.deleteButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleDeletePlan(plan);
+                  }}
+                >
+                  <Trash2 size={16} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
             </View>
             
-            <View style={styles.planActions}>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => handleEditPlan(plan)}
-              >
-                <Edit2 size={18} color="#3B82F6" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => handleDeletePlan(plan)}
-              >
-                <Trash2 size={18} color="#EF4444" />
-              </TouchableOpacity>
+            <View style={styles.planStats}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{plan.mealPlanData.totalCalories}</Text>
+                <Text style={styles.statLabel}>Calories</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{plan.mealPlanData.totalProtein}g</Text>
+                <Text style={styles.statLabel}>Protein</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{plan.mealPlanData.totalCarbs}g</Text>
+                <Text style={styles.statLabel}>Carbs</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{plan.mealPlanData.totalFat}g</Text>
+                <Text style={styles.statLabel}>Fat</Text>
+              </View>
             </View>
+            
+            
           </TouchableOpacity>
-        </View>
-      ))}
+        ))}
+      </View>
     </View>
   );
 
@@ -197,31 +251,43 @@ export default function SavedMealPlansScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ArrowLeft size={24} color="#111827" />
+          <ArrowLeft size={20} color="#64748B" />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>My Saved Meal Plans</Text>
-          <Text style={styles.headerSubtitle}>View and manage your saved meal plans</Text>
+          <Text style={styles.headerTitle}>Saved Meal Plans</Text>
+          <Text style={styles.headerSubtitle}>Your collection of personalized nutrition plans</Text>
+        </View>
+        <View style={styles.headerIcon}>
+          <UtensilsCrossed size={20} color="#10B981" />
         </View>
       </View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading saved meal plans...</Text>
+          <View style={styles.loadingContent}>
+            <TrendingUp size={48} color="#10B981" />
+            <Text style={styles.loadingText}>Loading your meal plans...</Text>
+            <Text style={styles.loadingSubtext}>Gathering your nutrition history</Text>
+          </View>
         </View>
       ) : Object.keys(groupedPlans).length === 0 ? (
         <View style={styles.emptyContainer}>
-          <UtensilsCrossed size={48} color="#D1D5DB" />
-          <Text style={styles.emptyTitle}>No Saved Meal Plans</Text>
-          <Text style={styles.emptyText}>
-            Generate and save meal plans to see them here
-          </Text>
-          <TouchableOpacity 
-            style={styles.createButton}
-            onPress={() => router.push('/(tabs)/meal-planner')}
-          >
-            <Text style={styles.createButtonText}>Create Meal Plan</Text>
-          </TouchableOpacity>
+          <View style={styles.emptyContent}>
+            <View style={styles.emptyIcon}>
+              <UtensilsCrossed size={64} color="#E5E7EB" />
+            </View>
+            <Text style={styles.emptyTitle}>No Saved Meal Plans</Text>
+            <Text style={styles.emptyText}>
+              Create your first AI-powered meal plan to start building your nutrition library
+            </Text>
+            <TouchableOpacity 
+              style={styles.createButton}
+              onPress={() => router.push('/(tabs)/meal-planner')}
+            >
+              <UtensilsCrossed size={18} color="#FFFFFF" />
+              <Text style={styles.createButtonText}>Create Meal Plan</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       ) : (
         <ScrollView 
@@ -229,6 +295,18 @@ export default function SavedMealPlansScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.scrollViewContent}>
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryHeader}>
+                <Text style={styles.summaryTitle}>Your Collection</Text>
+                <View style={styles.totalBadge}>
+                  <Text style={styles.totalBadgeText}>{savedPlans.length} plans</Text>
+                </View>
+              </View>
+              <Text style={styles.summaryText}>
+                You have saved {savedPlans.length} meal plan{savedPlans.length !== 1 ? 's' : ''} across {Object.keys(groupedPlans).length} day{Object.keys(groupedPlans).length !== 1 ? 's' : ''}
+              </Text>
+            </View>
+
             {/* Render plans grouped by date */}
             {Object.entries(groupedPlans)
               .sort(([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime())
@@ -269,7 +347,7 @@ export default function SavedMealPlansScreen() {
                 style={styles.modalSaveButton}
                 onPress={handleSaveEdit}
               >
-                <Text style={styles.modalSaveText}>Save</Text>
+                <Text style={styles.modalSaveText}>Save Changes</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -282,22 +360,24 @@ export default function SavedMealPlansScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F8FAFC',
   },
+  
+  // Header
   header: {
     backgroundColor: '#FFFFFF',
-    padding: 24,
-    paddingTop: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F3F4F6',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -306,90 +386,194 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
+    color: '#1E293B',
+    marginBottom: 2,
   },
   headerSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
+    fontSize: 14,
+    color: '#64748B',
   },
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  // Loading & Empty States
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingContent: {
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
   loadingText: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+  },
+  emptyContent: {
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyIcon: {
+    marginBottom: 24,
   },
   emptyTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 8,
+    color: '#374151',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   emptyText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#9CA3AF',
     textAlign: 'center',
-    marginBottom: 24,
+    lineHeight: 24,
+    marginBottom: 32,
   },
   createButton: {
-    backgroundColor: '#22C55E',
-    paddingVertical: 12,
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 12,
+    gap: 8,
   },
   createButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
+  
+  // Content
   scrollView: {
     flex: 1,
   },
   scrollViewContent: {
-    padding: 24,
-    paddingBottom: 90, // Space for footer navigation
+    padding: 20,
+    paddingBottom: 100,
   },
-  dateGroup: {
+  summaryCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  summaryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  totalBadge: {
+    backgroundColor: '#F0FDF4',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  totalBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#047857',
+  },
+  summaryText: {
+    fontSize: 14,
+    color: '#64748B',
+    lineHeight: 20,
+  },
+  
+  // Date Groups
+  dateGroup: {
+    marginBottom: 32,
   },
   dateHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  dateIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   dateText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
-    marginLeft: 8,
+    color: '#1E293B',
+    flex: 1,
   },
+  planCount: {
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  planCountText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  plansContainer: {
+    gap: 12,
+  },
+  
+  // Plan Cards
   planCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#F1F5F9',
     overflow: 'hidden',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  planCardContent: {
+  planCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: 16,
+    paddingBottom: 12,
   },
   planInfo: {
     flex: 1,
@@ -397,36 +581,91 @@ const styles = StyleSheet.create({
   planName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: '#1E293B',
     marginBottom: 4,
   },
-  planStats: {
-    fontSize: 14,
-    color: '#6B7280',
+  planMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  planTime: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
   },
   planActions: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 8,
   },
-  actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F3F4F6',
+  editButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
   },
+  deleteButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEF2F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  planStats: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    gap: 16,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#10B981',
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  planFooter: {
+    borderTopWidth: 1,
+    borderTopColor: '#F8FAFC',
+    padding: 16,
+    paddingTop: 12,
+  },
+  mealTypes: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  mealTypeTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  mealTypeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  
+  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: 20,
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 24,
     width: '100%',
     maxWidth: 400,
@@ -434,16 +673,17 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: '#1E293B',
     marginBottom: 16,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    padding: 12,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 16,
     fontSize: 16,
     marginBottom: 24,
+    backgroundColor: '#F8FAFC',
   },
   modalActions: {
     flexDirection: 'row',
@@ -451,22 +691,22 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   modalCancelButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E8F0',
   },
   modalCancelText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#64748B',
   },
   modalSaveButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: '#22C55E',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    backgroundColor: '#10B981',
   },
   modalSaveText: {
     fontSize: 14,

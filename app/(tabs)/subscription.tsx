@@ -1,356 +1,519 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Crown, Check, ArrowLeft, RefreshCw } from 'lucide-react-native';
+// app/(tabs)/subscription.tsx
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Clipboard } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { usePurchases } from '@/hooks/usePurchases';
 import { CustomPaywall } from '@/components/CustomPaywall';
-import { useTranslation } from 'react-i18next';
-import { useRTL, getTextAlign } from '@/hooks/useRTL';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { router } from 'expo-router';
+import { RevenueCatFallback } from '@/components/RevenueCatFallback';
+import { useRTL } from '@/hooks/useRTL';
+import { useAuth } from '@/hooks/useAuth';
+import { usePremiumContext } from '@/contexts/PremiumContext';
+
 
 export default function SubscriptionScreen() {
-  const { hasPremium, loading, restorePurchases } = usePurchases();
   const { t, i18n } = useTranslation();
-  const isRTL = useRTL();
-  const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
-  const [showPaywall, setShowPaywall] = React.useState(false);
+  const { isRTL } = useRTL();
+  const { user } = useAuth();
+  const { customerInfo, offerings, purchasePackage, restorePurchases } = usePurchases();
+  const [showPaywall, setShowPaywall] = useState(false);
+  const { hasPremium, loading } = usePremiumContext();
 
   const handleShowPaywall = () => {
     setShowPaywall(true);
   };
 
   const handleRestorePurchases = async () => {
-    try {
-      const result = await restorePurchases();
-      if (result.success) {
-        Alert.alert(
-          t('subscription:success'),
-          t('subscription:restoreSuccess'),
-          [{ text: t('common:ok'), style: 'default' }]
-        );
-      } else {
-        Alert.alert(
-          t('subscription:error'),
-          result.error || t('subscription:restoreError'),
-          [{ text: t('common:ok'), style: 'default' }]
-        );
-      }
-    } catch (error) {
+    const result = await restorePurchases();
+    if (result.success) {
       Alert.alert(
-        t('subscription:error'),
+        t('subscription:restoreSuccess'),
+        t('subscription:restoreSuccessMessage')
+      );
+    } else {
+      Alert.alert(
         t('subscription:restoreError'),
-        [{ text: t('common:ok'), style: 'default' }]
+        result.error || t('subscription:restoreErrorMessage')
       );
     }
   };
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#F9FAFB',
-    },
-    scrollView: {
-      flex: 1,
-    },
-    header: {
-      padding: 24,
-      paddingBottom: 16,
-    },
-    headerTop: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 16,
-    },
-    backButton: {
-      padding: 8,
-      borderRadius: 8,
-      backgroundColor: '#FFFFFF',
-      marginRight: isRTL ? 0 : 12,
-      marginLeft: isRTL ? 12 : 0,
-    },
-    headerTitle: {
-      fontSize: 28,
-      fontWeight: '700',
-      color: '#111827',
-      flex: 1,
-      textAlign: getTextAlign(isRTL),
-      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-    },
-    content: {
-      padding: 24,
-    },
-    statusCard: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 16,
-      padding: 24,
-      marginBottom: 24,
-      borderWidth: 1,
-      borderColor: '#E5E7EB',
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      elevation: 2,
-    },
-    statusHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 16,
-    },
-    statusIcon: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: isRTL ? 0 : 16,
-      marginLeft: isRTL ? 16 : 0,
-    },
-    statusText: {
-      flex: 1,
-    },
-    statusTitle: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: '#111827',
-      marginBottom: 4,
-      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-    },
-    statusDescription: {
-      fontSize: 16,
-      color: '#6B7280',
-      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-    },
-    featuresCard: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 16,
-      padding: 24,
-      marginBottom: 24,
-      borderWidth: 1,
-      borderColor: '#E5E7EB',
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      elevation: 2,
-    },
-    featuresTitle: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: '#111827',
-      marginBottom: 16,
-      textAlign: getTextAlign(isRTL),
-      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-    },
-    featureItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 12,
-    },
-    featureIcon: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      backgroundColor: '#10B981',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: isRTL ? 0 : 12,
-      marginLeft: isRTL ? 12 : 0,
-    },
-    featureText: {
-      flex: 1,
-      fontSize: 16,
-      color: '#374151',
-      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-    },
-    actionButtons: {
-      gap: 12,
-    },
-    primaryButton: {
-      backgroundColor: '#3B82F6',
-      borderRadius: 12,
-      padding: 16,
-      alignItems: 'center',
-      flexDirection: 'row',
-      justifyContent: 'center',
-    },
-    primaryButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-      fontWeight: '600',
-      marginLeft: 8,
-      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-    },
-    secondaryButton: {
-      backgroundColor: '#F3F4F6',
-      borderRadius: 12,
-      padding: 16,
-      alignItems: 'center',
-      flexDirection: 'row',
-      justifyContent: 'center',
-    },
-    secondaryButtonText: {
-      color: '#374151',
-      fontSize: 16,
-      fontWeight: '600',
-      marginLeft: 8,
-      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-  });
+  const handleRefresh = async () => {
+    await refreshCustomerInfo();
+  };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={styles.statusDescription}>{t('subscription:loading')}</Text>
-        </View>
-      </SafeAreaView>
-    );
+  const copyUserId = () => {
+    if (user?.id) {
+      Clipboard.setString(user.id);
+      Alert.alert('✓ Copied!', 'User ID copied to clipboard');
+    }
+  };
+
+  // Show fallback if RevenueCat is not available
+  if (!customerInfo && !loading) {
+    return <RevenueCatFallback onRetry={handleRefresh} />;
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
+      <ScrollView 
+        style={[styles.scrollView, { direction: isRTL ? 'rtl' : 'ltr' }]}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Header */}
-        <LinearGradient
-          colors={['#F0FDF4', '#F9FAFB']}
-          style={styles.header}
-        >
-          <View style={styles.headerTop}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <ArrowLeft size={20} color="#374151" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>{t('subscription:title')}</Text>
-          </View>
-        </LinearGradient>
-
-        <View style={styles.content}>
-          {/* Status Card */}
-          <View style={styles.statusCard}>
-            <View style={styles.statusHeader}>
-              <View style={[
-                styles.statusIcon,
-                { backgroundColor: hasPremium ? '#10B981' : '#F59E0B' }
-              ]}>
-                <Crown size={24} color="#FFFFFF" />
-              </View>
-              <View style={styles.statusText}>
-                <Text style={styles.statusTitle}>
-                  {hasPremium ? t('subscription:premiumActive') : t('subscription:freePlan')}
-                </Text>
-                <Text style={styles.statusDescription}>
-                  {hasPremium ? t('subscription:premiumDescription') : t('subscription:freeDescription')}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Features Card */}
-          <View style={styles.featuresCard}>
-            <Text style={styles.featuresTitle}>{t('subscription:premiumFeatures')}</Text>
-            
-            <View style={styles.featureItem}>
-              <View style={styles.featureIcon}>
-                <Check size={16} color="#FFFFFF" />
-              </View>
-              <Text style={styles.featureText}>{t('subscription:feature1')}</Text>
-            </View>
-            
-            <View style={styles.featureItem}>
-              <View style={styles.featureIcon}>
-                <Check size={16} color="#FFFFFF" />
-              </View>
-              <Text style={styles.featureText}>{t('subscription:feature2')}</Text>
-            </View>
-            
-            <View style={styles.featureItem}>
-              <View style={styles.featureIcon}>
-                <Check size={16} color="#FFFFFF" />
-              </View>
-              <Text style={styles.featureText}>{t('subscription:feature3')}</Text>
-            </View>
-            
-            <View style={styles.featureItem}>
-              <View style={styles.featureIcon}>
-                <Check size={16} color="#FFFFFF" />
-              </View>
-              <Text style={styles.featureText}>{t('subscription:feature4')}</Text>
-            </View>
-            
-            <View style={styles.featureItem}>
-              <View style={styles.featureIcon}>
-                <Check size={16} color="#FFFFFF" />
-              </View>
-              <Text style={styles.featureText}>{t('subscription:feature5')}</Text>
-            </View>
-            
-            <View style={styles.featureItem}>
-              <View style={styles.featureIcon}>
-                <Check size={16} color="#FFFFFF" />
-              </View>
-              <Text style={styles.featureText}>{t('subscription:feature6')}</Text>
-            </View>
-          </View>
-
-          {/* Action Buttons */}
-          {!hasPremium && (
-            <View style={styles.actionButtons}>
-              <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={handleShowPaywall}
-                disabled={loading}
-              >
-                <Crown size={20} color="#FFFFFF" />
-                <Text style={styles.primaryButtonText}>
-                  {t('subscription:upgradeToPremium')}
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={handleRestorePurchases}
-                disabled={loading}
-              >
-                <RefreshCw size={20} color="#374151" />
-                <Text style={styles.secondaryButtonText}>
-                  {t('subscription:restorePurchases')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+        <View style={styles.header}>
+          <Text style={styles.title}>{t('subscription:title')}</Text>
+          <Text style={styles.subtitle}>Manage your nutrition journey</Text>
         </View>
+        
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loading}>{t('subscription:loading')}</Text>
+          </View>
+        ) : (
+          <>
+            {/* Status Card */}
+            <View style={styles.statusCard}>
+              <View style={styles.statusHeader}>
+                <View>
+                  <Text style={styles.statusTitle}>Current Plan</Text>
+                  <Text style={styles.statusSubtitle}>
+                    {hasPremium ? 'Premium Nutrition Plan' : 'Basic Nutrition Plan'}
+                  </Text>
+                </View>
+                <View style={[styles.statusBadge, hasPremium ? styles.premiumBadge : styles.freeBadge]}>
+                  <Text style={styles.statusBadgeText}>
+                    {hasPremium ? 'PRO' : 'FREE'}
+                  </Text>
+                </View>
+              </View>
+              
+              {/* Premium Expiry */}
+              {hasPremium && customerInfo && (
+                <View style={styles.expirySection}>
+                  <View style={styles.expiryRow}>
+                    <Text style={styles.expiryLabel}>Valid until</Text>
+                    <View style={styles.expiryBadge}>
+                      <Text style={styles.expiryBadgeText}>
+                        {new Date(customerInfo.entitlements.active.premium.expirationDate) > new Date() 
+                          ? 'Active' 
+                          : 'Expired'
+                        }
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.expiryDate}>
+                    {customerInfo.entitlements?.active?.premium?.expirationDate 
+                      ? new Date(customerInfo.entitlements.active.premium.expirationDate).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })
+                      : 'No expiry date available'
+                    }
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* User ID Card */}
+            <View style={styles.userIdCard}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>Account Information</Text>
+              </View>
+              <View style={styles.userIdRow}>
+                <View style={styles.userIdContent}>
+                  <Text style={styles.userIdLabel}>User ID</Text>
+                  <Text style={styles.userIdText} numberOfLines={1} ellipsizeMode="middle">
+                    {user?.id || 'Not available'}
+                  </Text>
+                </View>
+                <TouchableOpacity style={styles.copyButton} onPress={copyUserId}>
+                  <Text style={styles.copyButtonText}>Copy</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Features Section */}
+            {hasPremium ? (
+              <View style={styles.featuresCard}>
+                <Text style={styles.featuresTitle}>🌟 Premium Features Unlocked</Text>
+                <View style={styles.featuresList}>
+                  <FeatureItem text={t('subscription:feature1')} />
+                  <FeatureItem text={t('subscription:feature2')} />
+                  <FeatureItem text={t('subscription:feature3')} />
+                  <FeatureItem text={t('subscription:feature4')} />
+                  <FeatureItem text={t('subscription:feature5')} />
+                  <FeatureItem text={t('subscription:feature6')} />
+                  <FeatureItem text={t('subscription:feature7')} />
+                  <FeatureItem text={t('subscription:feature8')} />
+                </View>
+              </View>
+            ) : (
+              <View style={styles.upgradeCard}>
+                <View style={styles.upgradeHeader}>
+                  <Text style={styles.upgradeEmoji}>🚀</Text>
+                  <Text style={styles.upgradeTitle}>Unlock Premium Nutrition</Text>
+                  <Text style={styles.upgradeDescription}>
+                    Get personalized meal plans, advanced tracking, and expert nutrition insights
+                  </Text>
+                </View>
+                
+                <View style={styles.upgradeFeatures}>
+                  <UpgradeFeature text="Personalized meal plans" />
+                  <UpgradeFeature text="Advanced macro tracking" />
+                  <UpgradeFeature text="Recipe recommendations" />
+                  <UpgradeFeature text="Priority support" />
+                </View>
+
+                <View style={styles.buttonContainer}>
+                  <TouchableOpacity style={styles.upgradeButton} onPress={handleShowPaywall}>
+                    <Text style={styles.upgradeButtonText}>
+                      {t('subscription:upgradeToPremium')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.restoreButton} onPress={handleRestorePurchases}>
+                    <Text style={styles.restoreButtonText}>
+                      {t('subscription:restorePurchases')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </>
+        )}
       </ScrollView>
 
-      {/* Custom Paywall Modal */}
-      <CustomPaywall
-        visible={showPaywall}
-        onClose={() => setShowPaywall(false)}
-      />
-    </SafeAreaView>
+      {showPaywall && (
+        <CustomPaywall
+          offerings={offerings}
+          onPurchase={purchasePackage}
+          onClose={() => setShowPaywall(false)}
+        />
+      )}
+    </View>
   );
 }
+
+// Helper Components
+const FeatureItem = ({ text }: { text: string }) => (
+  <View style={styles.featureItem}>
+    <Text style={styles.featureIcon}>✓</Text>
+    <Text style={styles.featureText}>{text}</Text>
+  </View>
+);
+
+const UpgradeFeature = ({ text }: { text: string }) => (
+  <View style={styles.upgradeFeatureItem}>
+    <Text style={styles.upgradeFeatureIcon}>•</Text>
+    <Text style={styles.upgradeFeatureText}>{text}</Text>
+  </View>
+);
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 32,
+  },
+  header: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 24,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loading: {
+    fontSize: 16,
+    color: '#64748B',
+  },
+  statusCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 24,
+    marginBottom: 20,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  statusTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  statusSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  premiumBadge: {
+    backgroundColor: '#10B981',
+  },
+  freeBadge: {
+    backgroundColor: '#F59E0B',
+  },
+  statusBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  expirySection: {
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 16,
+  },
+  expiryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  expiryLabel: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  expiryBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  expiryBadgeText: {
+    color: '#166534',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  expiryDate: {
+    fontSize: 15,
+    color: '#1E293B',
+    fontWeight: '500',
+  },
+  userIdCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 24,
+    marginBottom: 20,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  cardHeader: {
+    marginBottom: 16,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  userIdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  userIdContent: {
+    flex: 1,
+    marginRight: 12,
+  },
+  userIdLabel: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  userIdText: {
+    fontSize: 13,
+    color: '#1E293B',
+    fontFamily: 'monospace',
+    backgroundColor: '#F8FAFC',
+    padding: 8,
+    borderRadius: 8,
+  },
+  copyButton: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  copyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  featuresCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 24,
+    marginBottom: 20,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  featuresTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#059669',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  featuresList: {
+    gap: 12,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  featureIcon: {
+    fontSize: 16,
+    color: '#10B981',
+    fontWeight: '700',
+    marginRight: 12,
+    width: 20,
+  },
+  featureText: {
+    fontSize: 15,
+    color: '#374151',
+    flex: 1,
+    lineHeight: 20,
+  },
+  upgradeCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 24,
+    marginBottom: 20,
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  upgradeHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  upgradeEmoji: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  upgradeTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  upgradeDescription: {
+    fontSize: 16,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  upgradeFeatures: {
+    marginBottom: 24,
+    gap: 8,
+  },
+  upgradeFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  upgradeFeatureIcon: {
+    fontSize: 18,
+    color: '#3B82F6',
+    fontWeight: '700',
+    marginRight: 12,
+    width: 20,
+  },
+  upgradeFeatureText: {
+    fontSize: 15,
+    color: '#374151',
+    flex: 1,
+  },
+  buttonContainer: {
+    gap: 12,
+  },
+  upgradeButton: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  upgradeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  restoreButton: {
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  restoreButtonText: {
+    color: '#475569',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+});

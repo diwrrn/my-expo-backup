@@ -102,11 +102,11 @@ export class MealPlanningService {
     const targets = {
       breakfast: {
         calories: Math.round(userCalories * 0.25),
-        protein: Math.round(targetProtein * 0.20)
+        protein: Math.round(targetProtein * 0.20) 
       },
       lunch: {
         calories: Math.round(userCalories * 0.40),
-        protein: Math.round(targetProtein * 0.40)
+        protein: Math.round(targetProtein * 0.40) 
       },
       dinner: {
         calories: Math.round(userCalories * 0.35),

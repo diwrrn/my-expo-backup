@@ -1,13 +1,27 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, User, Ruler, Scale, Target, Activity, Save } from 'lucide-react-native';
+import { ArrowLeft, User, Ruler, Scale, Target, Activity, Save, Droplets } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
-import { useProfile } from '@/hooks/useProfile';
+import { useProfileContext } from '@/contexts/ProfileContext';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function PersonalInfoScreen() {
-  const { profile, updateProfile } = useProfile();
-  
+  const { profile: contextProfile, updateProfile } = useProfileContext();
+  const { user } = useAuth();
+
+  // Combine context profile with user data
+  const profile = contextProfile || user?.profile;
+
+  // Add safety check
+  if (!profile) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading profile...</Text>
+      </View>
+    );
+  }
+    
   // Form state
   const [age, setAge] = useState(profile.age?.toString() || '');
   const [height, setHeight] = useState(profile.height?.toString() || '');
@@ -17,7 +31,7 @@ export default function PersonalInfoScreen() {
   const [proteinGoal, setProteinGoal] = useState(profile.goals.protein?.toString() || '');
   const [carbGoal, setCarbGoal] = useState(profile.goals.carbs?.toString() || '');
   const [fatGoal, setFatGoal] = useState(profile.goals.fat?.toString() || '');
-  const [waterGoal, setWaterGoal] = useState(profile.goals.water?.toString() || '');
+  const [waterGoal, setWaterGoal] = useState(profile.goalsWaterUpdate?.toString() || '');
   const [isLoading, setIsLoading] = useState(false);
 
   // Update form when profile changes
@@ -34,11 +48,36 @@ export default function PersonalInfoScreen() {
   }, [profile]);
 
   const activityOptions = [
-    { id: 'sedentary', label: 'Sedentary', description: 'Little to no exercise' },
-    { id: 'light', label: 'Light', description: 'Light exercise 1-3 days/week' },
-    { id: 'moderate', label: 'Moderate', description: 'Moderate exercise 3-5 days/week' },
-    { id: 'active', label: 'Active', description: 'Hard exercise 6-7 days/week' },
-    { id: 'very_active', label: 'Very Active', description: 'Very hard exercise, physical job' },
+    { 
+      id: 'sedentary', 
+      label: 'Sedentary', 
+      description: 'Little to no exercise',
+      emoji: '🛋️'
+    },
+    { 
+      id: 'light', 
+      label: 'Light', 
+      description: 'Light exercise 1-3 days/week',
+      emoji: '🚶'
+    },
+    { 
+      id: 'moderate', 
+      label: 'Moderate', 
+      description: 'Moderate exercise 3-5 days/week',
+      emoji: '🏃'
+    },
+    { 
+      id: 'active', 
+      label: 'Active', 
+      description: 'Hard exercise 6-7 days/week',
+      emoji: '💪'
+    },
+    { 
+      id: 'very_active', 
+      label: 'Very Active', 
+      description: 'Very hard exercise, physical job',
+      emoji: '🏋️'
+    },
   ];
 
   const validateForm = () => {
@@ -104,10 +143,10 @@ export default function PersonalInfoScreen() {
       };
 
       await updateProfile(updates);
-      Alert.alert('Success', 'Personal information updated successfully!');
+      Alert.alert('Success', 'Profile updated successfully!');
+      router.back();
     } catch (error) {
-      console.error('Error updating personal info:', error);
-      Alert.alert('Error', 'Failed to update personal information. Please try again.');
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -119,347 +158,522 @@ export default function PersonalInfoScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+          <ArrowLeft size={24} color="#1E293B" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Personal Information</Text>
+          <Text style={styles.headerSubtitle}>Update your profile details</Text>
+        </View>
+        <TouchableOpacity 
+          onPress={handleUpdate} 
+          style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
+          disabled={isLoading}
+        >
+          <Save size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView 
         style={styles.scrollView} 
+        contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.scrollViewContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-            <ArrowLeft size={24} color="#111827" />
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Personal Info</Text>
-            <Text style={styles.headerSubtitle}>Update your physical stats and goals</Text>
+        {/* Basic Information Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardTitleRow}>
+              <User size={22} color="#10B981" />
+              <Text style={styles.cardTitle}>Basic Information</Text>
+            </View>
+            <Text style={styles.cardSubtitle}>Your physical measurements</Text>
           </View>
-        </View>
-
-        {/* Personal Stats Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Physical Stats</Text>
           
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Age (years)</Text>
-            <View style={styles.inputContainer}>
-              <User size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="25"
+          <View style={styles.inputGrid}>
+            <View style={styles.inputRow}>
+              <InputField
+                icon={<User size={18} color="#64748B" />}
+                placeholder="Age"
                 value={age}
                 onChangeText={setAge}
                 keyboardType="numeric"
-                placeholderTextColor="#9CA3AF"
+                unit="years"
               />
             </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Height (cm)</Text>
-            <View style={styles.inputContainer}>
-              <Ruler size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="170"
+            
+            <View style={styles.inputRow}>
+              <InputField
+                icon={<Ruler size={18} color="#64748B" />}
+                placeholder="Height"
                 value={height}
                 onChangeText={setHeight}
                 keyboardType="numeric"
-                placeholderTextColor="#9CA3AF"
+                unit="cm"
               />
             </View>
-          </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Weight (kg)</Text>
-            <View style={styles.inputContainer}>
-              <Scale size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="70"
+            <View style={styles.inputRow}>
+              <InputField
+                icon={<Scale size={18} color="#64748B" />}
+                placeholder="Weight"
                 value={weight}
                 onChangeText={setWeight}
                 keyboardType="numeric"
-                placeholderTextColor="#9CA3AF"
+                unit="kg"
               />
             </View>
           </View>
         </View>
 
-        {/* Activity Level Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Activity Level</Text>
-          <View style={styles.activityOptions}>
+        {/* Activity Level Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardTitleRow}>
+              <Activity size={22} color="#10B981" />
+              <Text style={styles.cardTitle}>Activity Level</Text>
+            </View>
+            <Text style={styles.cardSubtitle}>How active are you?</Text>
+          </View>
+          
+          <View style={styles.activityGrid}>
             {activityOptions.map((option) => (
               <TouchableOpacity
                 key={option.id}
                 style={[
                   styles.activityOption,
-                  activityLevel === option.id && styles.activityOptionSelected,
+                  activityLevel === option.id && styles.activityOptionSelected
                 ]}
-                onPress={() => setActivityLevel(option.id as any)}
+                onPress={() => setActivityLevel(option.id)}
               >
-                <View style={styles.activityOptionContent}>
-                  <Text
-                    style={[
-                      styles.activityOptionLabel,
-                      activityLevel === option.id && styles.activityOptionLabelSelected,
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.activityOptionDescription,
-                      activityLevel === option.id && styles.activityOptionDescriptionSelected,
-                    ]}
-                  >
-                    {option.description}
-                  </Text>
+                <View style={styles.activityHeader}>
+                  <Text style={styles.activityEmoji}>{option.emoji}</Text>
+                  <View style={styles.activityTextContainer}>
+                    <Text style={[
+                      styles.activityLabel,
+                      activityLevel === option.id && styles.activityLabelSelected
+                    ]}>
+                      {option.label}
+                    </Text>
+                    <Text style={[
+                      styles.activityDescription,
+                      activityLevel === option.id && styles.activityDescriptionSelected
+                    ]}>
+                      {option.description}
+                    </Text>
+                  </View>
                 </View>
+                {activityLevel === option.id && (
+                  <View style={styles.selectedIndicator}>
+                    <View style={styles.selectedDot} />
+                  </View>
+                )}
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* Nutrition Goals Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Nutrition Goals</Text>
+        {/* Nutrition Goals Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardTitleRow}>
+              <Target size={22} color="#10B981" />
+              <Text style={styles.cardTitle}>Nutrition Goals</Text>
+            </View>
+            <Text style={styles.cardSubtitle}>Set your daily targets</Text>
+          </View>
           
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Daily Calories</Text>
-            <View style={styles.inputContainer}>
-              <Target size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="2000"
+          <View style={styles.inputGrid}>
+            <View style={styles.goalSection}>
+              <View style={styles.goalHeader}>
+                <Text style={styles.goalTitle}>Daily Energy</Text>
+              </View>
+              <InputField
+                icon={<Target size={18} color="#F59E0B" />}
+                placeholder="e.g. 2000"
                 value={calorieGoal}
                 onChangeText={setCalorieGoal}
                 keyboardType="numeric"
-                placeholderTextColor="#9CA3AF"
+                unit="cal"
               />
-              <Text style={styles.inputUnit}>kcal</Text>
             </View>
-          </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Protein Goal</Text>
-            <View style={styles.inputContainer}>
-              <Activity size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="150"
-                value={proteinGoal}
-                onChangeText={setProteinGoal}
-                keyboardType="numeric"
-                placeholderTextColor="#9CA3AF"
-              />
-              <Text style={styles.inputUnit}>g</Text>
-            </View>
-          </View>
+            <View style={styles.goalSection}>
+              <View style={styles.goalHeader}>
+                <Text style={styles.goalTitle}>Macronutrients</Text>
+              </View>
+              
+              <View style={styles.macroRow}>
+                <View style={styles.macroInput}>
+                  <View style={styles.macroLabelContainer}>
+                    <Text style={styles.macroLabel}>Protein</Text>
+                  </View>
+                  <InputField
+                    icon={<Target size={18} color="#EF4444" />}
+                    placeholder="e.g. 120"
+                    value={proteinGoal}
+                    onChangeText={setProteinGoal}
+                    keyboardType="numeric"
+                    unit="g"
+                    compact
+                  />
+                </View>
+                <View style={styles.macroInput}>
+                  <View style={styles.macroLabelContainer}>
+                    <Text style={styles.macroLabel}>Carbs</Text>
+                  </View>
+                  <InputField
+                    icon={<Target size={18} color="#3B82F6" />}
+                    placeholder="e.g. 250"
+                    value={carbGoal}
+                    onChangeText={setCarbGoal}
+                    keyboardType="numeric"
+                    unit="g"
+                    compact
+                  />
+                </View>
+              </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Carb Goal</Text>
-            <View style={styles.inputContainer}>
-              <Activity size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="250"
-                value={carbGoal}
-                onChangeText={setCarbGoal}
-                keyboardType="numeric"
-                placeholderTextColor="#9CA3AF"
-              />
-              <Text style={styles.inputUnit}>g</Text>
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Fat Goal</Text>
-            <View style={styles.inputContainer}>
-              <Activity size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="65"
-                value={fatGoal}
-                onChangeText={setFatGoal}
-                keyboardType="numeric"
-                placeholderTextColor="#9CA3AF"
-              />
-              <Text style={styles.inputUnit}>g</Text>
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Water Goal</Text>
-            <View style={styles.inputContainer}>
-              <Activity size={20} color="#6B7280" />
-              <TextInput
-                style={styles.input}
-                placeholder="2.5"
-                value={waterGoal}
-                onChangeText={setWaterGoal}
-                keyboardType="numeric"
-                placeholderTextColor="#9CA3AF"
-              />
-              <Text style={styles.inputUnit}>L</Text>
+              <View style={styles.macroRow}>
+                <View style={styles.macroInput}>
+                  <View style={styles.macroLabelContainer}>
+                    <Text style={styles.macroLabel}>Fat</Text>
+                  </View>
+                  <InputField
+                    icon={<Target size={18} color="#8B5CF6" />}
+                    placeholder="e.g. 70"
+                    value={fatGoal}
+                    onChangeText={setFatGoal}
+                    keyboardType="numeric"
+                    unit="g"
+                    compact
+                  />
+                </View>
+                <View style={styles.macroInput}>
+                  <View style={styles.macroLabelContainer}>
+                    <Text style={styles.macroLabel}>Water</Text>
+                  </View>
+                  <InputField
+                    icon={<Droplets size={18} color="#06B6D4" />}
+                    placeholder="e.g. 2.5"
+                    value={waterGoal}
+                    onChangeText={setWaterGoal}
+                    keyboardType="numeric"
+                    unit="C"
+                    compact
+                  />
+                </View>
+              </View>
             </View>
           </View>
         </View>
-
-        {/* Update Button */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.updateButton, isLoading && styles.updateButtonDisabled]}
-            onPress={handleUpdate}
-            disabled={isLoading}
-          >
-            <Save size={20} color="#FFFFFF" />
-            <Text style={styles.updateButtonText}>
-              {isLoading ? 'Updating...' : 'Update Information'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        </View>
+            
+        {/* Save Button */}
+        <TouchableOpacity 
+          onPress={handleUpdate} 
+          style={[styles.saveButtonLarge, isLoading && styles.saveButtonLargeDisabled]}
+          disabled={isLoading}
+        >
+          <Save size={20} color="#FFFFFF" style={styles.saveButtonIcon} />
+          <Text style={styles.saveButtonText}>
+            {isLoading ? 'Saving...' : 'Save Changes'}
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// Input Field Component
+const InputField = ({ 
+  icon, 
+  placeholder, 
+  value, 
+  onChangeText, 
+  keyboardType, 
+  unit,
+  compact = false 
+}: {
+  icon: React.ReactNode;
+  placeholder: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  keyboardType?: any;
+  unit?: string;
+  compact?: boolean;
+}) => (
+  <View style={[styles.inputContainer, compact && styles.inputContainerCompact]}>
+    <View style={styles.inputIconContainer}>
+      {icon}
+    </View>
+    <TextInput
+      style={styles.input}
+      placeholder={placeholder}
+      value={value}
+      onChangeText={onChangeText}
+      keyboardType={keyboardType}
+      placeholderTextColor="#9CA3AF"
+    />
+    {unit && (
+      <View style={styles.unitContainer}>
+        <Text style={styles.unitText}>{unit}</Text>
+      </View>
+    )}
+  </View>
+);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F8FAFC',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#64748B',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  saveButton: {
+    backgroundColor: '#10B981',
+    padding: 10,
+    borderRadius: 10,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+    shadowOpacity: 0,
   },
   scrollView: {
     flex: 1,
   },
   scrollViewContent: {
-    paddingBottom: 90, // Space for footer navigation
+    padding: 20,
+    paddingBottom: 100,
   },
-  header: {
+  card: {
     backgroundColor: '#FFFFFF',
-    padding: 24,
-    paddingTop: 60,
+    borderRadius: 16,
+    marginBottom: 20,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  cardHeader: {
+    padding: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#F1F5F9',
+  },
+  cardTitleRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
-  },
-  headerContent: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
     marginBottom: 4,
   },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  section: {
-    paddingHorizontal: 24,
-    marginBottom: 32,
-    marginTop: 24,
-  },
-  sectionTitle: {
-    fontSize: 20,
+  cardTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
-    marginBottom: 20,
+    color: '#1E293B',
+    marginLeft: 8,
   },
-  inputGroup: {
-    marginBottom: 20,
+  cardSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 2,
   },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
+  inputGrid: {
+    padding: 20,
+    gap: 16,
+  },
+  inputRow: {
+    width: '100%',
+  },
+  macroRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  macroInput: {
+    flex: 1,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    minHeight: 52,
+  },
+  inputContainerCompact: {
+    paddingVertical: 12,
+    minHeight: 48,
+  },
+  inputIconContainer: {
+    marginRight: 10,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#111827',
-    marginLeft: 12,
+    color: '#1E293B',
   },
-  inputUnit: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
+  unitContainer: {
+    backgroundColor: '#E2E8F0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginLeft: 8,
   },
-  activityOptions: {
-    gap: 8,
+  unitText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  activityGrid: {
+    padding: 20,
+    gap: 12,
   },
   activityOption: {
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 16,
+    position: 'relative',
   },
   activityOptionSelected: {
-    backgroundColor: '#22C55E',
-    borderColor: '#22C55E',
+    backgroundColor: '#DCFCE7',
+    borderColor: '#10B981',
+    borderWidth: 2,
   },
-  activityOptionContent: {
-    gap: 4,
+  activityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  activityOptionLabel: {
+  activityEmoji: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  activityTextContainer: {
+    flex: 1,
+  },
+  activityLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1E293B',
+    marginBottom: 2,
   },
-  activityOptionLabelSelected: {
-    color: '#FFFFFF',
+  activityLabelSelected: {
+    color: '#065F46',
   },
-  activityOptionDescription: {
+  activityDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#64748B',
   },
-  activityOptionDescriptionSelected: {
-    color: '#E5E7EB',
+  activityDescriptionSelected: {
+    color: '#047857',
   },
-  buttonContainer: {
-    paddingHorizontal: 24,
-    marginBottom: 32,
+  selectedIndicator: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  updateButton: {
+  selectedDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+  },
+  saveButtonLarge: {
+    backgroundColor: '#10B981',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#22C55E',
-    borderRadius: 12,
     paddingVertical: 16,
-    gap: 8,
+    borderRadius: 12,
+    marginTop: 8,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  updateButtonDisabled: {
-    opacity: 0.6,
+  saveButtonLargeDisabled: {
+    backgroundColor: '#9CA3AF',
+    shadowOpacity: 0,
   },
-  updateButtonText: {
-    color: '#FFFFFF',
+  saveButtonIcon: {
+    marginRight: 8,
+  },
+  macroLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  goalSection: {
+    marginBottom: 24,
+  },
+  goalHeader: {
+    marginBottom: 12,
+  },
+  goalTitle: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 4,
   },
 });

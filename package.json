@@ -16,6 +16,7 @@
   "dependencies": {
     "@expo/vector-icons": "~14.0.4",
     "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-native-firebase/app": "^23.0.0",
     "@react-navigation/native": "^7.0.14",
     "@react-navigation/stack": "^6.4.1",
     "@shopify/flash-list": "1.7.3",
@@ -33,7 +34,9 @@
     "expo-linear-gradient": "~14.0.2",
     "expo-linking": "~7.0.5",
     "expo-notifications": "~0.29.14",
+    "expo-print": "~14.0.3",
     "expo-router": "~4.0.17",
+    "expo-sharing": "~13.0.1",
     "expo-splash-screen": "~0.29.24",
     "expo-status-bar": "~2.0.1",
     "expo-updates": "~0.27.4",
@@ -55,9 +58,7 @@
     "react-native-svg": "15.8.0",
     "react-native-svg-charts": "^5.4.0",
     "react-native-svg-transformer": "^1.5.1",
-    "react-native-webview": "13.12.5",
-    "expo-print": "~14.0.3",
-    "expo-sharing": "~13.0.1"
+    "react-native-webview": "13.12.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

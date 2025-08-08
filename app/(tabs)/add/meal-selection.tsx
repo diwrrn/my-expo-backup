@@ -9,7 +9,7 @@ import { Food } from '@/types/api';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-
+import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
 // Helper function to get display name based on language
 const getDisplayName = (food: any, language: string) => {
   if (language === 'ku' && food.kurdishName) {
@@ -31,8 +31,8 @@ export default function MealSelectionScreen() {
 
   const currentViewDate = useLocalSearchParams().currentViewDate || getTodayDateString();
   const { user, loading: authLoading } = useAuth();
-  const { addFoodToDailyMeal } = useFirebaseData(currentViewDate);
-  const { t, i18n } = useTranslation();
+  const { addFoodToDailyMeal } = useDailyMealsContext();
+    const { t, i18n } = useTranslation();
   const isRTL = useRTL();
   const [isAdding, setIsAdding] = useState<string | null>(null);
   // Parse the food object from the route parameters

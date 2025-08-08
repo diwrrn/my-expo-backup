@@ -10,7 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { DailyGoalsSkeleton } from '@/components/DailyGoalsSkeleton';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-
+import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
 interface ProgressBarProps {
   label: string;
   current: number;
@@ -98,8 +98,8 @@ export default function DailyGoalsScreen() {
   const { t } = useTranslation();
   const isRTL = useRTL();
   const { user, profileCache } = useAuth();
-  const { getUserProfile, updateUserProfile, dailyTotals, dailyMealsCache } = useFirebaseData();
-  
+  const { dailyTotals, loading: dailyMealsLoading } = useDailyMealsContext();
+  const { getUserProfile, updateUserProfile } = useFirebaseData();  
   const [goals, setGoals] = useState({
     calories: 2000,
     protein: 100,
@@ -271,8 +271,9 @@ export default function DailyGoalsScreen() {
 
   // Show skeleton while profile data is loading
   // Check all loading states to prevent flickering
-  if (profileCache.isLoading || dailyMealsCache.isLoading || !user?.profile) {
-    return (
+
+  if (profileCache.isLoading || dailyMealsLoading || !user?.profile) {
+        return (
       <SafeAreaView style={styles.container}>
         <DailyGoalsSkeleton />
       </SafeAreaView>

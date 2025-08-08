@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useTranslation, TFunction } from 'react-i18next';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
   
  interface MealCardWithSearchProps {
   title: string;
@@ -47,8 +48,8 @@ export function MealCardWithSearch({
   const animatedHeight = useSharedValue(0);
   const animatedOpacity = useSharedValue(0);
   
-  const { searchFoods, addFoodToDailyMeal, getPopularFoods } = useFirebaseData();
-
+  const { addFoodToDailyMeal } = useDailyMealsContext();
+  const { searchFoods, getPopularFoods } = useFirebaseData();
   const styles = StyleSheet.create({
   container: {
     flex: 1,

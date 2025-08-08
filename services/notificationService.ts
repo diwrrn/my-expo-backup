@@ -1,8 +1,12 @@
 /**
- * Notification Service
- * Handles sending push notifications and managing notification templates
+ * Firebase Notification Service for Expo
+ * Handles push notifications using Firebase Cloud Messaging
  */
 
+import { Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { FirebaseService } from './firebaseService';
 
 export interface NotificationPayload {
@@ -13,18 +17,58 @@ export interface NotificationPayload {
   badge?: number;
 }
 
-export interface ScheduledNotification {
-  id: string;
-  userId: string;
-  title: string;
-  body: string;
-  scheduledFor: string; // ISO date string
-  data?: Record<string, any>;
-  sent: boolean;
+export interface PushToken {
+  token: string;
+  platform: 'ios' | 'android';
   createdAt: string;
 }
 
 export class NotificationService {
+  /**
+   * Initialize notifications and get push token
+   */
+  static async initializeNotifications(): Promise<string | null> {
+    try {
+      if (!Device.isDevice) {
+        console.log('📱 Must use physical device for Push Notifications');
+        return null;
+      }
+
+      // Request permissions
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      if (finalStatus !== 'granted') {
+        console.log('📱 Push notifications not granted');
+        return null;
+      }
+
+      // Set up notification channel for Android
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+        });
+      }
+
+      // Get Expo push token
+      const token = (await Notifications.getExpoPushTokenAsync()).data;
+
+      console.log('📱 Push token obtained:', token);
+      return token;
+    } catch (error) {
+      console.error('📱 Error initializing notifications:', error);
+      return null;
+    }
+  }
+
   /**
    * Send a push notification to a specific user
    */
@@ -77,6 +121,73 @@ export class NotificationService {
   }
 
   /**
+   * Send weekly report notification
+   */
+  static async sendWeeklyReportNotification(userId: string): Promise<boolean> {
+    return await this.sendNotificationToUser(userId, {
+      title: '📊 Your Weekly Report is Ready!',
+      body: 'Generate your nutrition summary for the previous week and track your progress.',
+      data: {
+        type: 'weekly_report_ready',
+        action: 'open_stats'
+      },
+      sound: 'default',
+      badge: 1
+    });
+  }
+
+  /**
+   * Send monthly report notification
+   */
+  static async sendMonthlyReportNotification(userId: string): Promise<boolean> {
+    return await this.sendNotificationToUser(userId, {
+      title: '📈 Your Monthly Report is Ready!',
+      body: 'Review your monthly nutrition progress and achievements.',
+      data: {
+        type: 'monthly_report_ready',
+        action: 'open_stats'
+      },
+      sound: 'default',
+      badge: 1
+    });
+  }
+
+  /**
+   * Send goal achievement notification
+   */
+  static async sendGoalAchievement(
+    userId: string, 
+    goalType: 'calories' | 'protein' | 'water' | 'streak',
+    value: number
+  ): Promise<boolean> {
+    const titles = {
+      calories: '🎯 Calorie Goal Achieved!',
+      protein: '💪 Protein Goal Achieved!',
+      water: '💧 Water Goal Achieved!',
+      streak: '🔥 Streak Milestone!',
+    };
+
+    const bodies = {
+      calories: `Great job! You've reached your daily calorie goal of ${value} calories.`,
+      protein: `Excellent! You've hit your protein target of ${value}g today.`,
+      water: `Amazing! You've reached your water goal of ${value}ml today.`,
+      streak: `Incredible! You've maintained a ${value}-day streak!`,
+    };
+
+    return await this.sendNotificationToUser(userId, {
+      title: titles[goalType],
+      body: bodies[goalType],
+      data: {
+        type: 'goal_achievement',
+        goalType,
+        value
+      },
+      sound: 'default',
+      badge: 1
+    });
+  }
+
+  /**
    * Send meal reminder notification
    */
   static async sendMealReminder(
@@ -102,115 +213,26 @@ export class NotificationService {
       body: mealBodies[mealType],
       data: {
         type: 'meal_reminder',
-        mealType,
-        screen: '/(tabs)/',
+        mealType
       },
+      sound: 'default',
+      badge: 1
     });
   }
 
   /**
-   * Send goal achievement notification
+   * Test notification (for development)
    */
-  static async sendGoalAchievement(
-    userId: string, 
-    goalType: 'calories' | 'protein' | 'water' | 'streak',
-    value: number
-  ): Promise<boolean> {
-    const goalTitles = {
-      calories: 'Calorie Goal Achieved! 🎯',
-      protein: 'Protein Goal Reached! 💪',
-      water: 'Hydration Goal Complete! 💧',
-      streak: 'Streak Milestone! 🔥',
-    };
-
-    const goalBodies = {
-      calories: `Congratulations! You've reached your daily calorie goal of ${value} kcal!`,
-      protein: `Amazing! You've hit your protein target of ${value}g today!`,
-      water: `Great job! You've completed your water goal of ${value} glasses!`,
-      streak: `Incredible! You're on a ${value}-day tracking streak!`,
-    };
-
+  static async sendTestNotification(userId: string): Promise<boolean> {
     return await this.sendNotificationToUser(userId, {
-      title: goalTitles[goalType],
-      body: goalBodies[goalType],
+      title: '🧪 Test Notification',
+      body: 'This is a test notification from your meal planning app!',
       data: {
-        type: 'goal_achievement',
-        goalType,
-        value,
-        screen: '/(tabs)/',
+        type: 'test',
+        timestamp: new Date().toISOString()
       },
+      sound: 'default',
+      badge: 1
     });
   }
-
-  /**
-   * Send weekly progress summary
-   */
-  static async sendWeeklyProgress(
-    userId: string,
-    stats: {
-      avgCalories: number;
-      daysTracked: number;
-      goalStreak: number;
-    }
-  ): Promise<boolean> {
-    return await this.sendNotificationToUser(userId, {
-      title: 'Weekly Progress Summary 📊',
-      body: `This week: ${stats.avgCalories} avg calories, ${stats.daysTracked} days tracked, ${stats.goalStreak} day streak!`,
-      data: {
-        type: 'weekly_progress',
-        stats,
-        screen: '/(tabs)/stats',
-      },
-    });
-  }
-
-  /**
-   * Send meal plan suggestion
-   */
-  static async sendMealPlanSuggestion(userId: string): Promise<boolean> {
-    return await this.sendNotificationToUser(userId, {
-      title: 'New Meal Plan Available! 🍽️',
-      body: 'We\'ve created a personalized meal plan based on your goals. Check it out!',
-      data: {
-        type: 'meal_plan_suggestion',
-        screen: '/(tabs)/meal-planner',
-      },
-    });
-  }
-
-  /**
-   * Schedule a notification for later
-   */
-  static async scheduleNotification(
-    userId: string,
-    notification: NotificationPayload,
-    scheduledFor: Date
-  ): Promise<string | null> {
-    try {
-      // For now, we'll just log the scheduled notification
-      // In a production app, you'd want to store this in Firebase
-      // and have a server-side job that sends notifications at the scheduled time
-      
-      const scheduledNotification: ScheduledNotification = {
-        id: Date.now().toString(),
-        userId,
-        title: notification.title,
-        body: notification.body,
-        scheduledFor: scheduledFor.toISOString(),
-        data: notification.data,
-        sent: false,
-        createdAt: new Date().toISOString(),
-      };
-
-      console.log('📱 Notification scheduled:', scheduledNotification);
-      
-      // TODO: Save to Firebase collection for server-side processing
-      // await FirebaseService.saveScheduledNotification(scheduledNotification);
-      
-      return scheduledNotification.id;
-    } catch (error) {
-      console.error('📱 Error scheduling notification:', error);
-      return null;
-    }
-  }
-}
+} 

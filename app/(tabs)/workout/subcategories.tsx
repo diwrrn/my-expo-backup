@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, Grid, Search } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { FirebaseService } from '@/services/firebaseService';
+import { useSubcategoriesCache } from '@/hooks/useSubcategoriesCache';
 import { WorkoutSubcategoryCard } from '@/components/WorkoutSubcategoryCard';
 
 const { width } = Dimensions.get('window');
-const CARD_MARGIN = 12; // Margin between cards
-const NUM_COLUMNS = 2;
 
 export default function WorkoutSubcategoriesScreen() {
   const { categoryId, categoryName, targetPlanId } = useLocalSearchParams<{ 
@@ -20,72 +18,57 @@ export default function WorkoutSubcategoriesScreen() {
   }>();
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();
+  const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
  
-  const [subcategories, setSubcategories] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use the cached hook instead of direct Firebase calls
+  const { subcategories, isLoading, error, refreshSubcategories } = useSubcategoriesCache(categoryId || '');
 
-  const cardWidth = (width - (24 * 2) - (CARD_MARGIN * (NUM_COLUMNS - 1))) / NUM_COLUMNS;
-
-  useEffect(() => {
-    if (categoryId) {
-      const fetchSubcategories = async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          const fetchedSubcategories = await FirebaseService.getSubcategories(categoryId);
-          setSubcategories(fetchedSubcategories);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : 'Failed to load subcategories');
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchSubcategories();
-    }
-  }, [categoryId]);
+  // Calculate responsive card dimensions
+  const padding = 16;
+  const cardGap = 12;
+  const numColumns = 2;
+  const cardWidth = (width - (padding * 2) - (cardGap * (numColumns - 1))) / numColumns;
 
   const handleSubcategoryPress = (subcategoryId: string) => {
     // Get the localized subcategory name
     const subcategory = subcategories.find(sub => sub.id === subcategoryId);
     const subcategoryName = subcategory ? (
-      i18n.language === 'ku' && subcategory.nameKurdish ? subcategory.nameKurdish :
-      i18n.language === 'ar' && subcategory.nameArabic ? subcategory.nameArabic :
+      i18n.language === 'ku' && subcategory.kurdishName ? subcategory.kurdishName :
+      i18n.language === 'ar' && subcategory.arabicName ? subcategory.arabicName :
       subcategory.name
     ) : 'Subcategory';
     
     // Navigate to exercises list screen
     router.push({
       pathname: '/(tabs)/workout/exercises-list',
-     params: { categoryId, subcategoryId, subcategoryName, targetPlanId },
+      params: { categoryId, subcategoryId, subcategoryName, targetPlanId },
     });
   };
 
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#F9FAFB',
+      backgroundColor: '#FAFAFA',
     },
-    scrollView: {
-      flex: 1,
-    },
-    scrollViewContent: {
-      paddingBottom: 90, // Space for footer navigation
-    },
+
+    // Header Styles
     header: {
       backgroundColor: '#FFFFFF',
-      padding: 24,
-      paddingTop: 60,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
       borderBottomWidth: 1,
-      borderBottomColor: '#E5E7EB',
+      borderBottomColor: '#E5E5E5',
+    },
+    headerTop: {
       flexDirection: getFlexDirection(isRTL),
-      alignItems: 'flex-start',
+      alignItems: 'center',
+      marginBottom: 12,
     },
     backButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: '#F3F4F6',
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: '#F5F5F5',
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: isRTL ? 0 : 16,
@@ -95,93 +78,197 @@ export default function WorkoutSubcategoriesScreen() {
       flex: 1,
     },
     headerTitle: {
-      fontSize: 28,
+      fontSize: 22,
       fontWeight: '700',
-      color: '#111827',
-      marginBottom: 4,
+      color: '#1F2937',
       textAlign: getTextAlign(isRTL),
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+      lineHeight: 28,
     },
-    headerSubtitle: {
+    headerStats: {
+      flexDirection: getFlexDirection(isRTL),
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    categoryCount: {
+      fontSize: 15,
+      color: '#6B7280',
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    },
+
+    // Content Styles
+    scrollView: {
+      flex: 1,
+    },
+    contentContainer: {
+      padding: padding,
+      paddingBottom: 100,
+    },
+
+    // Grid Layout
+    subcategoriesGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      gap: cardGap,
+    },
+
+    // Loading & Error States
+    centerContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 40,
+      minHeight: 300,
+    },
+    loadingText: {
       fontSize: 16,
       color: '#6B7280',
-      fontWeight: '500',
-      textAlign: getTextAlign(isRTL),
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: 200,
-    },
-    errorContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: 200,
-      padding: 24,
+      marginTop: 16,
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
     },
     errorText: {
       fontSize: 16,
       color: '#EF4444',
       textAlign: 'center',
-    },
-    subcategoriesGrid: {
-      flexDirection: getFlexDirection(isRTL),
-      flexWrap: 'wrap',
-      justifyContent: 'space-between',
-      paddingHorizontal: 24,
-      marginBottom: 24,
-      marginHorizontal: -CARD_MARGIN / 2, // Negative margin to offset card's internal margin
-    },
-    emptyContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: 200,
-      padding: 24,
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+      lineHeight: 24,
     },
     emptyText: {
-      fontSize: 16,
-      color: '#6B7280',
+      fontSize: 18,
+      color: '#9CA3AF',
       textAlign: 'center',
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+      lineHeight: 26,
+    },
+    emptySubtext: {
+      fontSize: 15,
+      color: '#D1D5DB',
+      textAlign: 'center',
+      marginTop: 8,
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    },
+
+    // Section Header
+    sectionHeader: {
+      flexDirection: getFlexDirection(isRTL),
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 20,
+    },
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: '#1F2937',
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    },
+    sectionSubtitle: {
+      fontSize: 14,
+      color: '#6B7280',
+      fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
+    },
+
+    // Enhanced card hover effect
+    cardPressed: {
+      opacity: 0.95,
+      transform: [{ scale: 0.98 }],
+    },
+
+    // Different category color themes
+    cardIconBlue: {
+      backgroundColor: '#EFF6FF',
+      borderColor: '#DBEAFE',
+    },
+    cardIconGreen: {
+      backgroundColor: '#F0FDF4',
+      borderColor: '#D1FAE5',
+    },
+    cardIconYellow: {
+      backgroundColor: '#FFFBEB',
+      borderColor: '#FEF3C7',
+    },
+    cardIconPurple: {
+      backgroundColor: '#FAF5FF',
+      borderColor: '#E9D5FF',
     },
   });
 
+  // Color variations for different categories
+  const getCardIconStyle = (index: number) => {
+    const colors = [
+      styles.cardIconGreen,
+      styles.cardIconBlue, 
+      styles.cardIconYellow,
+      styles.cardIconPurple,
+    ];
+    return colors[index % colors.length];
+  };
+
   return (
     <SafeAreaView style={styles.container}>
+      {/* Professional Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          {isRTL ? (
-            <ArrowLeft size={24} color="#111827" style={{ transform: [{ rotate: '180deg' }] }} />
-          ) : (
-            <ArrowLeft size={24} color="#111827" />
-          )}
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>{categoryName}</Text>
-          <Text style={styles.headerSubtitle}>{t('workoutSubcategoriesScreen:headerSubtitle')}</Text>
+        <View style={styles.headerTop}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            {isRTL ? (
+              <ArrowLeft size={20} color="#374151" style={{ transform: [{ rotate: '180deg' }] }} />
+            ) : (
+              <ArrowLeft size={20} color="#374151" />
+            )}
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>{categoryName}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.headerStats}>
+          <Text style={styles.categoryCount}>
+            {subcategories.length} {subcategories.length === 1 ? t('common:category') : t('common:categories')}
+          </Text>
         </View>
       </View>
 
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
       >
-        <View style={styles.scrollViewContent}>
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#22C55E" />
-              <Text style={{ color: '#6B7280', marginTop: 10 }}>{t('common:loading')}</Text>
+        {isLoading ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#22C55E" />
+            <Text style={styles.loadingText}>{t('common:loading')}</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.centerContainer}>
+            <Text style={styles.errorText}>
+              {t('common:errorLoadingCategories')}
+            </Text>
+          </View>
+        ) : subcategories.length === 0 ? (
+          <View style={styles.centerContainer}>
+            <Text style={styles.emptyText}>{t('workoutSubcategoriesScreen:noSubcategories')}</Text>
+            <Text style={styles.emptySubtext}>{t('workoutSubcategoriesScreen:tryRefreshing')}</Text>
+          </View>
+        ) : (
+          <>
+            {/* Section Header */}
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>
+                  {t('workoutSubcategoriesScreen:selectCategory')}
+                </Text>
+                <Text style={styles.sectionSubtitle}>
+                  {t('workoutSubcategoriesScreen:chooseYourWorkout')}
+                </Text>
+              </View>
+              <Grid size={24} color="#22C55E" />
             </View>
-          ) : error ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{t('common:error')}: {error}</Text>
-            </View>
-          ) : subcategories.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>{t('workoutSubcategoriesScreen:noSubcategories')}</Text>
-            </View>
-          ) : (
+
+            {/* Subcategories Grid */}
             <View style={styles.subcategoriesGrid}>
               {subcategories.map((subcategory, index) => (
                 <WorkoutSubcategoryCard
@@ -189,12 +276,12 @@ export default function WorkoutSubcategoriesScreen() {
                   subcategory={subcategory}
                   onPress={handleSubcategoryPress}
                   cardWidth={cardWidth}
-                  style={{ marginHorizontal: CARD_MARGIN / 2 }}
+                  style={{ marginBottom: cardGap }}
                 />
               ))}
             </View>
-          )}
-        </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

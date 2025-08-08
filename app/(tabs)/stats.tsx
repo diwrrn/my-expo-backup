@@ -1,28 +1,24 @@
-import { View, Text, StyleSheet, ScrollView, Button, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Calendar, TrendingUp, Award, Target } from 'lucide-react-native';
+import { FileText, TrendingUp, Calendar } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 
-import { WeeklyChart } from '@/components/WeeklyChart';
-import { StatsCard } from '@/components/StatsCard';
-import { AchievementCard } from '@/components/AchievementCard';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
-import { useStatsData } from '@/hooks/useStatsData';
 import { useWeeklyStats } from '@/hooks/useWeeklyStats';
 import { useAuth } from '@/hooks/useAuth';
 import { FirebaseService } from '@/services/firebaseService';
 import { PDFService } from '@/services/pdfService';
 import { WeeklyReportDisplay } from '@/components/WeeklyReportDisplay';
-import { useProfile } from '@/hooks/useProfile';
+import { useProfileContext } from '@/contexts/ProfileContext';
 
 export default function StatsScreen() {
-  const { weeklyData, monthlyStats, achievements } = useStatsData();
   const { user } = useAuth();
   const [showReport, setShowReport] = useState(false);
   const [reportData, setReportData] = useState<any>(null);
-  const { profile } = useProfile(); // Add this line
-
-  // Add this hook - get current week dates
+  const [isGenerating, setIsGenerating] = useState(false);
+  const { profile } = useProfileContext();
+  
+  // Get current week dates
   const today = new Date();
   const endOfWeek = new Date(today);
   endOfWeek.setDate(today.getDate() - 1); // Yesterday
@@ -35,15 +31,20 @@ export default function StatsScreen() {
   const { weeklyStats, loading, error } = useWeeklyStats(startDate, endDate);
 
   const generatePDFReport = async () => {
-    if (!weeklyStats || !user) return;
+    if (!weeklyStats || !user) {
+      Alert.alert('No Data', 'No weekly data available to generate report');
+      return;
+    }
 
     try {
+      setIsGenerating(true);
       console.log('📄 Generating PDF report...');
       const filteredReportData = FirebaseService.filterWeeklyStatsForReport(weeklyStats);
 
       // Set the report data for display
       setReportData(filteredReportData);
       setShowReport(true);
+      
       // Get the daily calorie goal from user profile
       const dailyCalorieGoal = profile?.goals?.calories || null;
 
@@ -56,38 +57,18 @@ export default function StatsScreen() {
     } catch (error) {
       console.error('❌ PDF generation error:', error);
       Alert.alert('Error', 'Failed to generate PDF report');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
-  // Add this to see the data in console
-  useEffect(() => {
-    if (weeklyStats) {
-      console.log('📊 Stats Screen - Weekly Stats:', weeklyStats);
-    }
-  }, [weeklyStats]);
-
-  // Add this after your weeklyStats is loaded
-  useEffect(() => {
-    if (weeklyStats) {
-      const reportData = FirebaseService.filterWeeklyStatsForReport(weeklyStats);
-      console.log('📊📊📊����📊📊📊📊📊 Filtered Report Data:', reportData);
-
-      // This will show exactly what you want:
-      console.log('🥗 Food Counts:', reportData.foodCountsPerCategory);
-      console.log('📈 Daily Calories:', reportData.dailyCalories);
-      console.log('📊 Avg Calories/Day:', reportData.overallAverageCaloriesPerDay);
-      console.log('🥗 Avg Calories/Category:', reportData.averageCaloriesPerCategory);
-    }
-  }, [weeklyStats]);
-
-  // Add this to your JSX
+  // Show report display if report is generated
   if (showReport && reportData) {
     return (
       <WeeklyReportDisplay 
         reportData={reportData} 
         userName={user?.name || 'User'} 
-        dailyCalorieGoal={profile?.goals?.calories} // Add this prop
-
+        dailyCalorieGoal={profile?.goals?.calories}
       />
     );
   }
@@ -100,93 +81,79 @@ export default function StatsScreen() {
           <View style={styles.headerTop}>
             <HamburgerMenu currentRoute="/(tabs)/stats" />
             <View style={styles.headerContent}>
-              <Text style={styles.headerTitle}>Your Progress</Text>
+              <Text style={styles.headerTitle}>Statistics</Text>
               <Text style={styles.headerSubtitle}>Track your nutrition journey</Text>
             </View>
           </View>
         </View>
 
-        {/* Weekly Chart */}
-        <View style={styles.chartSection}>
-          <Text style={styles.sectionTitle}>Weekly Overview</Text>
-          <WeeklyChart data={weeklyData} />
-        </View>
-
-        {/* Monthly Stats */}
-        <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>This Month</Text>
-          <View style={styles.statsGrid}>
-            <StatsCard
-              title="Avg Calories"
-              value={monthlyStats.avgCalories}
-              unit="kcal"
-              icon={<Target size={24} color="#22C55E" />}
-              color="#22C55E"
-            />
-
-            <StatsCard
-              title="Days Tracked"
-              value={monthlyStats.daysTracked}
-              unit="days"
-              icon={<Calendar size={24} color="#3B82F6" />}
-              color="#3B82F6"
-            />
-            <StatsCard
-              title="Goal Streak"
-              value={monthlyStats.goalStreak}
-              unit="days"
-              icon={<TrendingUp size={24} color="#F59E0B" />}
-              color="#F59E0B"
-            />
-            <StatsCard
-              title="Protein Avg"
-              value={monthlyStats.avgProtein}
-              unit="g"
-              icon={<Award size={24} color="#8B5CF6" />}
-              color="#8B5CF6"
-            />
+        {/* Welcome Section */}
+        <View style={styles.welcomeSection}>
+          <View style={styles.welcomeIconContainer}>
+            <TrendingUp size={48} color="#22C55E" />
           </View>
+          <Text style={styles.welcomeTitle}>Get Your Weekly & Monthly Statistics Here!</Text>
+          <Text style={styles.welcomeText}>
+            Generate comprehensive reports to track your nutrition progress, 
+            analyze your eating patterns, and stay motivated on your health journey.
+          </Text>
         </View>
 
-        {/* Achievements */}
-        <View style={styles.achievementsSection}>
-          <Text style={styles.sectionTitle}>Recent Achievements</Text>
-          {achievements.map((achievement, index) => (
-            <AchievementCard
-              key={index}
-              title={achievement.title}
-              description={achievement.description}
-              icon={achievement.icon}
-              color={achievement.color}
-              unlocked={achievement.unlocked}
-              date={achievement.date}
-            />
-          ))}
-        </View>
-        {/* Weekly Report Button */}
+        {/* Weekly Report Section */}
         <View style={styles.reportSection}>
-          <Button 
-            title="Generate Weekly Report" 
+          <View style={styles.reportHeader}>
+            <Calendar size={24} color="#22C55E" />
+            <Text style={styles.reportTitle}>Weekly Report</Text>
+          </View>
+          <Text style={styles.reportDescription}>
+            Generate a detailed PDF report of your nutrition data for the past week, 
+            including calorie intake, macronutrients, and eating patterns.
+          </Text>
+          
+          <TouchableOpacity 
+            style={[styles.generateButton, isGenerating && styles.generateButtonDisabled]}
             onPress={generatePDFReport}
-            style={{ marginTop: 20 }}
-          />
+            disabled={isGenerating || loading}
+            activeOpacity={0.8}
+          >
+            {isGenerating ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <FileText size={20} color="#FFFFFF" />
+            )}
+            <Text style={styles.generateButtonText}>
+              {isGenerating ? 'Generating...' : 'Generate Weekly Report'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Nutrition Breakdown */}
-        <View style={styles.nutritionSection}>
-          <Text style={styles.sectionTitle}>Nutrition Breakdown</Text>
-          <View style={styles.nutritionChart}>
-            <View style={styles.nutritionItem}>
-              <View style={[styles.nutritionBar, { backgroundColor: '#22C55E', width: '65%' }]} />
-              <Text style={styles.nutritionLabel}>Protein: 65%</Text>
+        {/* Info Section */}
+        <View style={styles.infoSection}>
+          <Text style={styles.infoTitle}>What's Included in Your Report?</Text>
+          <View style={styles.infoItems}>
+            <View style={styles.infoItem}>
+              <View style={styles.infoIcon}>
+                <TrendingUp size={16} color="#22C55E" />
+              </View>
+              <Text style={styles.infoText}>Daily calorie intake trends</Text>
             </View>
-            <View style={styles.nutritionItem}>
-              <View style={[styles.nutritionBar, { backgroundColor: '#3B82F6', width: '80%' }]} />
-              <Text style={styles.nutritionLabel}>Carbs: 80%</Text>
+            <View style={styles.infoItem}>
+              <View style={styles.infoIcon}>
+                <TrendingUp size={16} color="#22C55E" />
+              </View>
+              <Text style={styles.infoText}>Macronutrient breakdown</Text>
             </View>
-            <View style={styles.nutritionItem}>
-              <View style={[styles.nutritionBar, { backgroundColor: '#F59E0B', width: '45%' }]} />
-              <Text style={styles.nutritionLabel}>Fat: 45%</Text>
+            <View style={styles.infoItem}>
+              <View style={styles.infoIcon}>
+                <TrendingUp size={16} color="#22C55E" />
+              </View>
+              <Text style={styles.infoText}>Food category analysis</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <View style={styles.infoIcon}>
+                <TrendingUp size={16} color="#22C55E" />
+              </View>
+              <Text style={styles.infoText}>Weekly averages and insights</Text>
             </View>
           </View>
         </View>
@@ -229,11 +196,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
   },
-  chartSection: {
+  welcomeSection: {
     backgroundColor: '#FFFFFF',
     margin: 16,
-    padding: 20,
-    borderRadius: 12,
+    padding: 24,
+    borderRadius: 16,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -243,88 +211,35 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  sectionTitle: {
-    fontSize: 18,
+  welcomeIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  welcomeTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#111827',
-    marginBottom: 16,
-  },
-  statsSection: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 20,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  achievementsSection: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 20,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  nutritionSection: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 20,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  nutritionChart: {
-    marginTop: 16,
-  },
-  nutritionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    textAlign: 'center',
     marginBottom: 12,
+    lineHeight: 28,
   },
-  nutritionBar: {
-    height: 8,
-    borderRadius: 4,
-    marginRight: 12,
-    flex: 1,
-  },
-  nutritionLabel: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
-    minWidth: 80,
+  welcomeText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 24,
   },
   reportSection: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     marginBottom: 16,
-    padding: 20,
-    borderRadius: 12,
+    padding: 24,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -333,5 +248,87 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  reportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  reportTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginLeft: 8,
+  },
+  reportDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  generateButton: {
+    backgroundColor: '#22C55E',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  generateButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
+  generateButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  infoSection: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 24,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  infoTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  infoItems: {
+    gap: 12,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#374151',
+    flex: 1,
   },
 });

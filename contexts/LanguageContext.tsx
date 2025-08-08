@@ -22,12 +22,18 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setCurrentLanguage(lng);
       setIsRTL(['ar', 'ku'].includes(lng));
     };
-    i18n.on('languageChanged', onLanguageChanged);
-    return () => {
-      i18n.off('languageChanged', onLanguageChanged);
-    };
-  }, [i18n]);
 
+    // Safety check: only add listener if i18n is fully initialized
+    if (i18n && typeof i18n.on === 'function') {
+      i18n.on('languageChanged', onLanguageChanged);
+      
+      return () => {
+        if (i18n && typeof i18n.off === 'function') {
+          i18n.off('languageChanged', onLanguageChanged);
+        }
+      };
+    }
+  }, [i18n]);
   const changeLanguage = useCallback(async (lng: string) => {
     if (i18n.language === lng) return;
 

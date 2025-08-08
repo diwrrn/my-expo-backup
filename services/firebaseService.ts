@@ -1023,22 +1023,6 @@ export class FirebaseService {
     ];
   }
 
-  // Diary Entries
-  static async addDiaryEntry(entry: Omit<DiaryEntry, 'id' | 'createdAt'>): Promise<string> {
-    try {
-      const entryWithTimestamp = {
-        ...entry,
-        createdAt: Timestamp.now(),
-      };
-      
-      const docRef = await addDoc(collection(db, 'diary_entries'), entryWithTimestamp);
-      return docRef.id;
-    } catch (error) {
-      console.error('Add diary entry error:', error);
-      throw error;
-    }
-  }
-
   static async getDiaryEntries(userId: string, date: string): Promise<DiaryEntry[]> {
     try {
       const entriesRef = collection(db, 'diary_entries');
@@ -1396,29 +1380,90 @@ Object.keys(weeklyStats.dailyData).forEach(date => {
     averageCaloriesPerCategory[category] = filteredWeeklyAverages[category].avgCalories;
   });
   
+// Add fiber analysis
+const fiberAnalysis = this.calculateFiberAnalysis(weeklyStats);
+
+return {
+  weekStart: weeklyStats.weekStart,
+  weekEnd: weeklyStats.weekEnd,
+  daysWithData,
+  totalDays,
+  
+  // Filtered data
+  dailyData: filteredDailyData,
+  weeklyTotals: filteredWeeklyTotals,
+  weeklyAverages: filteredWeeklyAverages,
+  
+  // Chart data
+  dailyCalories,
+  
+  // Summary data
+  overallAverageCaloriesPerDay: Math.round(overallAverageCaloriesPerDay),
+  averageCaloriesPerCategory,
+  
+  // Food counts
+  foodCountsPerCategory: Object.keys(filteredWeeklyTotals).reduce((acc: any, category: string) => {
+    acc[category] = filteredWeeklyTotals[category].totalCount;
+    return acc;
+  }, {}),
+  
+  // Add this line:
+  fiberAnalysis
+};
+}
+
+static calculateFiberAnalysis(weeklyStats: any) {
+  // Calculate total weekly fiber
+  let totalWeeklyFiber = 0;
+  let daysWithFiberData = 0;
+  
+  Object.values(weeklyStats.dailyData).forEach((dayData: any) => {
+    let dayFiber = 0;
+    Object.values(dayData).forEach((category: any) => {
+      dayFiber += category.fiber || 0;
+    });
+    
+    if (dayFiber > 0) {
+      totalWeeklyFiber += dayFiber;
+      daysWithFiberData++;
+    }
+  });
+  
+  const averageDailyFiber = daysWithFiberData > 0 ? totalWeeklyFiber / daysWithFiberData : 0;
+  
+  // Categorize fiber intake
+  const getFiberCategory = (fiber: number) => {
+    if (fiber >= 25) return "optimal";
+    if (fiber >= 20) return "good";
+    if (fiber >= 15) return "moderate";
+    if (fiber >= 10) return "low";
+    return "veryLow";
+  };
+  
+  const getFiberMessage = (fiber: number) => {
+    const category = getFiberCategory(fiber);
+    
+    switch (category) {
+      case "optimal":
+        return `🎉 Your fiber intake is OPTIMAL! (${fiber.toFixed(1)}g/day) - You're in the top 10% of healthy eaters!`;
+      case "good":
+        return `👍 Your fiber intake is GOOD (${fiber.toFixed(1)}g/day) - Almost at the recommended 25g!`;
+      case "moderate":
+        return `⚠️ Your fiber intake is MODERATE (${fiber.toFixed(1)}g/day) - Try adding more vegetables and whole grains`;
+      case "low":
+        return `😟 Your fiber intake is LOW (${fiber.toFixed(1)}g/day) - Consider more fruits, vegetables, and legumes`;
+      case "veryLow":
+        return `🚨 Your fiber intake is VERY LOW (${fiber.toFixed(1)}g/day) - This could affect your digestive health`;
+    }
+  };
+  
   return {
-    weekStart: weeklyStats.weekStart,
-    weekEnd: weeklyStats.weekEnd,
-    daysWithData,
-    totalDays,
-    
-    // Filtered data
-    dailyData: filteredDailyData,
-    weeklyTotals: filteredWeeklyTotals,
-    weeklyAverages: filteredWeeklyAverages,
-    
-    // Chart data - Now includes ALL calories
-    dailyCalories,
-    
-    // Summary data
-    overallAverageCaloriesPerDay: Math.round(overallAverageCaloriesPerDay),
-    averageCaloriesPerCategory,
-    
-    // Food counts
-    foodCountsPerCategory: Object.keys(filteredWeeklyTotals).reduce((acc: any, category: string) => {
-      acc[category] = filteredWeeklyTotals[category].totalCount;
-      return acc;
-    }, {})
+    averageDailyFiber: Math.round(averageDailyFiber * 10) / 10,
+    category: getFiberCategory(averageDailyFiber),
+    message: getFiberMessage(averageDailyFiber),
+    target: 25,
+    percentage: Math.round((averageDailyFiber / 25) * 100),
+    totalWeeklyFiber: Math.round(totalWeeklyFiber)
   };
 }
   // Daily Meals Management
@@ -2153,8 +2198,8 @@ static calculateMealCategoryTotals(allMealsData: any): any {
     exerciseId: string;
     exerciseName: string;
     sets: number;
-    reps: number[];  // Changed from number to number[]
-    notes: string;
+    reps: Array<{ reps: number; weight?: number }>;  // Changed this line
+    notes?: string;  // Make it optional with ?
     order: number;
   }): Promise<void> {
     try {
@@ -2527,14 +2572,15 @@ static calculateMealCategoryTotals(allMealsData: any): any {
       const userDocRef = doc(db, 'users', userId);
       const weightLogsCollectionRef = collection(userDocRef, 'weightLogs');
       
-      const q = query(weightLogsCollectionRef, orderBy('date', 'asc'));
+      // CHANGE THIS: Order by createdAt instead of date for proper timestamp ordering
+      const q = query(weightLogsCollectionRef, orderBy('createdAt', 'desc'));
       const querySnapshot = await getDocs(q);
       
       const weightLogs: Array<{ date: string; weight: number }> = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         weightLogs.push({
-          date: data.date,
+          date: data.date, // This should now be the timestamp
           weight: data.weight,
         });
       });
@@ -2545,7 +2591,6 @@ static calculateMealCategoryTotals(allMealsData: any): any {
       throw error;
     }
   }
-
   /**
    * Get workout categories from Firebase
    */
@@ -2636,6 +2681,39 @@ static calculateMealCategoryTotals(allMealsData: any): any {
       console.log(`📱 FirebaseService: Push token saved successfully for user ${userId}`);
     } catch (error) {
       console.error('📱 FirebaseService: Error saving push token:', error);
+      throw error;
+    }
+  }
+
+  static async saveUserTimezone(userId: string, timezone: string): Promise<void> {
+    try {
+      const userDocRef = doc(db, 'users', userId);
+      
+      await setDoc(userDocRef, {
+        timezone,
+        timezoneUpdatedAt: new Date().toISOString(),
+      }, { merge: true });
+      
+      console.log(`📱 FirebaseService: Timezone saved successfully for user ${userId}: ${timezone}`);
+    } catch (error) {
+      console.error('📱 FirebaseService: Error saving timezone:', error);
+      throw error;
+    }
+  }
+  
+  static async getUserTimezone(userId: string): Promise<string | null> {
+    try {
+      const userRef = doc(db, 'users', userId);
+      const userDoc = await getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        return userData.timezone || null;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('📱 FirebaseService: Error getting timezone:', error);
       throw error;
     }
   }
@@ -2757,17 +2835,5 @@ static async getDailyMealDatesForMonth(userId: string, year: number, month: numb
     }
   }
 
-  // Add this method to FirebaseService
-  static async updateUserPremiumStatus(userId: string, isPremium: boolean): Promise<void> {
-    try {
-      await updateDoc(doc(db, 'userProfiles', userId), {
-        isPremium,
-        premiumUpdatedAt: new Date().toISOString(),
-      });
-      console.log('✅ Premium status updated for user:', userId, isPremium);
-    } catch (error) {
-      console.error('❌ Failed to update premium status:', error);
-      throw error;
-    }
-  }
+
 }

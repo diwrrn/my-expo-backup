@@ -6,10 +6,12 @@ import { FoodItem } from '@/components/FoodItem';
 import { AddFoodSkeleton } from '@/components/AddFoodSkeleton';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { useFirebaseData } from '@/hooks/useFirebaseData';
+import { useRecentlyLoggedFoods } from '@/hooks/useRecentlyLoggedFoods'; // Add this import
 import { Food } from '@/types/api';
 import { router } from 'expo-router';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { useTranslation } from 'react-i18next'; // Import useTranslation
+import { useTranslation } from 'react-i18next';
+import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
 
 export default function AddFoodScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -26,13 +28,26 @@ export default function AddFoodScreen() {
   const isRTL = useRTL();
 
   const { 
+    addFoodToDailyMeal
+  } = useDailyMealsContext();
+  
+  const { 
     searchFoods, 
     getPopularFoods, 
     getFoodsByCategory, 
     getFoodCategories, 
-    addFoodToDailyMeal,
     foodCache
   } = useFirebaseData();
+
+  // Add the recently logged foods hook
+  const { 
+    recentlyLoggedFoods, 
+    isLoading: recentlyLoggedFoodsLoading, 
+    error: recentlyLoggedFoodsError, 
+    refresh: refreshRecentlyLoggedFoods 
+  } = useRecentlyLoggedFoods(7);
+
+  
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -207,20 +222,13 @@ const styles = StyleSheet.create({
     { id: 'snacks', label: t('mealSelectionScreen:snacks'), color: '#8B5CF6' },
   ];
 
-  // Load popular foods on mount
-  useEffect(() => {
-    // Only load data once cache is ready
-    if (foodCache.foods && foodCache.foods.length > 0) {
-      loadPopularFoods();
-      loadCategories();
-    }
-  }, [foodCache.foods]);
 
-  // Initial load when component mounts
-  useEffect(() => {
-    loadPopularFoods();
-    loadCategories();
-  }, []);
+
+// Initial load when component mounts
+useEffect(() => {
+  loadPopularFoods();
+  loadCategories();
+}, []);
 
   // Search foods when query changes
   useEffect(() => {
@@ -241,13 +249,19 @@ const styles = StyleSheet.create({
       setCategoryFoods([]);
     }
   }, [selectedCategory]);
-
+  // Re-load popular foods when food cache updates
+  useEffect(() => {
+    if (foodCache.foods.length > 0 && popularFoods.length === 0) {
+      loadPopularFoods();
+    }
+  }, [foodCache.foods.length]);
   const loadPopularFoods = async () => {
     try {
       const foods = await getPopularFoods();
+      if (foods && foods.length > 0) {
+      }
       setPopularFoods(foods);
     } catch (error) {
-      console.error('Error loading popular foods:', error);
     }
   };
 
@@ -294,6 +308,32 @@ const styles = StyleSheet.create({
   const handleAddFood = (food: Food) => {
     handleShowFoodDetails(food);
   };
+
+  // Determine which foods to show (recently logged or popular)
+  const getFoodsToShow = () => {
+    // If user has recently logged foods, show those
+    if (recentlyLoggedFoods && recentlyLoggedFoods.length > 0) {
+      return {
+        foods: recentlyLoggedFoods,
+        title: t('addFoodScreen:recentlyLoggedFoods'),
+        icon: <Clock size={20} color="#6B7280" />,
+        isLoading: recentlyLoggedFoodsLoading,
+        isRecentlyLogged: true
+      };
+    }
+      
+   // Otherwise, show popular foods
+   return {
+    foods: popularFoods,
+    title: t('addFoodScreen:popularFoods'),
+    icon: <Star size={20} color="#6B7280" />,
+    isLoading: popularFoods.length === 0 && foodCache.foods.length < 168,
+    isRecentlyLogged: false
+  };
+  };  
+
+  const foodsToShow = getFoodsToShow();
+  
  
   // Shared nutrition calculation function
   const calculateNutritionForFood = (food: Food, quantity: number, unit: string) => {
@@ -355,6 +395,10 @@ const styles = StyleSheet.create({
     }
   };
 
+  const handleFoodRequest = () => {
+    router.push('/(tabs)/food-request');
+  };
+  
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView 
@@ -373,8 +417,6 @@ const styles = StyleSheet.create({
           </View>
         </View>
 
-        
-
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <View style={styles.searchBar}>
@@ -388,9 +430,8 @@ const styles = StyleSheet.create({
             />
           </View>
         </View>
-
-        {/* Categories */}
-        {!searchQuery && categories.length > 0 && (
+{/* Categories */}
+{!searchQuery && categories.length > 0 && (
           <View style={styles.categoriesContainer}>
             <Text style={styles.sectionTitle}>{t('addFoodScreen:browseByCategory')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
@@ -479,17 +520,25 @@ const styles = StyleSheet.create({
           </View>
         )}
 
-        {/* Popular Foods */}
-        {!searchQuery && !selectedCategory && (
+{/* Recently Logged Foods or Popular Foods */}
+{!searchQuery && !selectedCategory && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Star size={20} color="#6B7280" />
-              <Text style={styles.sectionTitle}>{t('addFoodScreen:popularFoods')}</Text>
+              {foodsToShow.icon}
+              <Text style={styles.sectionTitle}>{foodsToShow.title}</Text>
+              {foodsToShow.isRecentlyLogged && (
+                <TouchableOpacity 
+                  onPress={refreshRecentlyLoggedFoods}
+                  style={{ marginLeft: 'auto' }}
+                >
+                  <RefreshCw size={16} color="#6B7280" />
+                </TouchableOpacity>
+              )}
             </View>
-            {foodCache.isLoading ? (
+            {foodsToShow.isLoading || foodCache.isLoading ? (
               <AddFoodSkeleton />
-            ) : (
-              popularFoods.map((food) => (
+            ) : foodsToShow.foods.length > 0 ? (
+              foodsToShow.foods.map((food) => (
                 <FoodItem
                   key={food.id}
                   name={food.name}
@@ -507,20 +556,34 @@ const styles = StyleSheet.create({
                   onShowDetails={() => handleShowFoodDetails(food)}
                 />
               ))
+            ) : (
+              <Text style={styles.noResults}>
+                {foodsToShow.isRecentlyLogged 
+                  ? t('addFoodScreen:noRecentlyLoggedFoods') 
+                  : t('addFoodScreen:noPopularFoods')
+                }
+              </Text>
             )}
           </View>
         )}
 
         {/* Custom Food Entry */}
-        <TouchableOpacity style={styles.customEntryButton}>
+        <TouchableOpacity 
+            style={styles.customEntryButton}
+            onPress={handleFoodRequest}
+          >         
           <Plus size={24} color="#22C55E" />
           <Text style={styles.customEntryText}>{t('addFoodScreen:createCustomFood')}</Text>
         </TouchableOpacity>
         </View>
-      </ScrollView>
-
-      {/* Food Details Modal */}
+      </ScrollView>  
     </SafeAreaView>
   );
 }
+
+
+
+
+
+
 

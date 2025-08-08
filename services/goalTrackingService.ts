@@ -3,9 +3,10 @@
  * Monitors user progress and triggers notifications for achievements
  */
 
-import { NotificationService } from './notificationService';
 import { FirebaseService } from './firebaseService';
 import { UserProfile } from '@/types/api';
+import { db } from '@/config/firebase';
+import { doc, collection, getDoc, setDoc } from 'firebase/firestore';
 
 export class GoalTrackingService {
   /**
@@ -27,7 +28,7 @@ export class GoalTrackingService {
         const lastNotificationDate = await this.getLastNotificationDate(userId, 'calorie_goal');
         
         if (lastNotificationDate !== today) {
-          await NotificationService.sendGoalAchievement(userId, 'calories', calorieGoal);
+          console.log('🎯 Calorie goal achieved:', calorieGoal);
           await this.setLastNotificationDate(userId, 'calorie_goal', today);
         }
       }
@@ -50,7 +51,7 @@ export class GoalTrackingService {
         const lastNotificationDate = await this.getLastNotificationDate(userId, 'protein_goal');
         
         if (lastNotificationDate !== today) {
-          await NotificationService.sendGoalAchievement(userId, 'protein', proteinGoal);
+          console.log('🎯 Protein goal achieved:', proteinGoal);
           await this.setLastNotificationDate(userId, 'protein_goal', today);
         }
       }
@@ -73,7 +74,7 @@ export class GoalTrackingService {
         const lastNotificationDate = await this.getLastNotificationDate(userId, 'water_goal');
         
         if (lastNotificationDate !== today) {
-          await NotificationService.sendGoalAchievement(userId, 'water', Math.round(waterGoal));
+          console.log('🎯 Water goal achieved:', waterGoal);
           await this.setLastNotificationDate(userId, 'water_goal', today);
         }
       }
@@ -94,7 +95,7 @@ export class GoalTrackingService {
         const lastStreakNotification = await this.getLastNotificationValue(userId, 'streak_milestone');
         
         if (lastStreakNotification !== currentStreak) {
-          await NotificationService.sendGoalAchievement(userId, 'streak', currentStreak);
+          console.log('🎯 Streak milestone achieved:', currentStreak);
           await this.setLastNotificationValue(userId, 'streak_milestone', currentStreak);
         }
       }
@@ -111,11 +112,17 @@ export class GoalTrackingService {
     goalType: string
   ): Promise<string | null> {
     try {
-      // This would typically be stored in a Firebase subcollection
-      // For now, we'll use a simple approach with user document
-      const userProfile = await FirebaseService.getUserProfileDocument(userId);
-      const notificationData = userProfile?.notificationHistory || {};
-      return notificationData[goalType] || null;
+      const userRef = doc(db, 'users', userId);
+      const notificationsRef = collection(userRef, 'notifications');
+      const notificationDocRef = doc(notificationsRef, goalType);
+      const notificationDoc = await getDoc(notificationDocRef);
+      
+      if (notificationDoc.exists()) {
+        const data = notificationDoc.data();
+        return data?.lastNotificationDate || null;
+      }
+      
+      return null;
     } catch (error) {
       console.error('Error getting last notification date:', error);
       return null;
@@ -131,11 +138,14 @@ export class GoalTrackingService {
     date: string
   ): Promise<void> {
     try {
-      await FirebaseService.updateUserProfileDocument(userId, {
-        notificationHistory: {
-          [goalType]: date
-        }
-      });
+      const userRef = doc(db, 'users', userId);
+      const notificationsRef = collection(userRef, 'notifications');
+      const notificationDocRef = doc(notificationsRef, goalType);
+      
+      await setDoc(notificationDocRef, {
+        lastNotificationDate: date,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
     } catch (error) {
       console.error('Error setting last notification date:', error);
     }
@@ -149,9 +159,17 @@ export class GoalTrackingService {
     goalType: string
   ): Promise<number | null> {
     try {
-      const userProfile = await FirebaseService.getUserProfileDocument(userId);
-      const notificationData = userProfile?.notificationValues || {};
-      return notificationData[goalType] || null;
+      const userRef = doc(db, 'users', userId);
+      const notificationsRef = collection(userRef, 'notifications');
+      const notificationDocRef = doc(notificationsRef, goalType);
+      const notificationDoc = await getDoc(notificationDocRef);
+      
+      if (notificationDoc.exists()) {
+        const data = notificationDoc.data();
+        return data?.lastNotificationValue || null;
+      }
+      
+      return null;
     } catch (error) {
       console.error('Error getting last notification value:', error);
       return null;
@@ -167,11 +185,14 @@ export class GoalTrackingService {
     value: number
   ): Promise<void> {
     try {
-      await FirebaseService.updateUserProfileDocument(userId, {
-        notificationValues: {
-          [goalType]: value
-        }
-      });
+      const userRef = doc(db, 'users', userId);
+      const notificationsRef = collection(userRef, 'notifications');
+      const notificationDocRef = doc(notificationsRef, goalType);
+      
+      await setDoc(notificationDocRef, {
+        lastNotificationValue: value,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
     } catch (error) {
       console.error('Error setting last notification value:', error);
     }

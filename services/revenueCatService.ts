@@ -63,13 +63,15 @@ export class RevenueCatService {
       await Purchases.configure({
         apiKey: Platform.OS === 'ios' ? REVENUECAT_API_KEYS.ios : REVENUECAT_API_KEYS.android,
         appUserID: userId,
+        verboseLogLevel: false,
+
       });
 
       // Enable debug logs in development
       if (__DEV__) {
         try {
-          Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
-        } catch (logError) {
+          Purchases.setLogLevel(Purchases.LOG_LEVEL.ERROR);
+                } catch (logError) {
           console.warn('⚠️ Could not set log level:', logError);
         }
       }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Food } from '@/types/api';
 import { FirebaseService } from '@/services/firebaseService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface FoodCache {
   foods: Food[];
@@ -11,7 +12,7 @@ interface FoodCache {
 }
 
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
-
+const FOOD_CACHE_KEY = 'food_cache_v1';
 export function useFoodCache() {
   const [cache, setCache] = useState<FoodCache>({
     foods: [],
@@ -25,11 +26,52 @@ export function useFoodCache() {
   const isCacheExpired = () => {
     return Date.now() - cache.lastUpdated > CACHE_DURATION;
   };
+// Load foods automatically when hook initializes
+useEffect(() => {
+  console.log('🔥 FOOD_CACHE: Hook initialized, loading foods...');
+  loadFoodsToCache(false);
+}, []);
+  // Load foods from AsyncStorage cache
+  const loadFoodsFromAsyncStorage = async () => {
+    try {
+      const cached = await AsyncStorage.getItem(FOOD_CACHE_KEY);
+      if (cached) {
+        const cacheData: FoodCache = JSON.parse(cached);
+        
+        // Check if cache is still valid
+        if (!isCacheExpired()) {
+          console.log('🔍 FOOD CACHE: Using AsyncStorage cache');
+          setCache(cacheData);
+          return true;
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Error reading food cache from AsyncStorage:', error);
+    }
+    return false;
+  };
+
+  // Save foods to AsyncStorage cache
+  const saveFoodsToAsyncStorage = async (cacheData: FoodCache) => {
+    try {
+      await AsyncStorage.setItem(FOOD_CACHE_KEY, JSON.stringify(cacheData));
+      console.log('💾 Food cache saved to AsyncStorage');
+    } catch (error) {
+      console.warn('⚠️ Error saving food cache to AsyncStorage:', error);
+    }
+  };
 
   // Load foods from Firebase and cache them
   const loadFoodsToCache = async (forceRefresh = false) => {
+    // Try AsyncStorage first if not forcing refresh
+    if (!forceRefresh) {
+      const hasCache = await loadFoodsFromAsyncStorage();
+      if (hasCache) return;
+    }
+
+    // Cache expired or force refresh - load from Firebase
     if (!forceRefresh && cache.foods.length > 0 && !isCacheExpired()) {
-      return; // Use existing cache
+      return; // Use existing memory cache
     }
 
     try {
@@ -37,8 +79,6 @@ export function useFoodCache() {
 
       // Load all foods from Firebase
       let foods = await FirebaseService.getAllFoods();
-      
-     
       
       // If no foods in database, initialize with sample data
       if (foods.length === 0) {
@@ -50,18 +90,20 @@ export function useFoodCache() {
       // Extract unique categories
       const categories = Array.from(new Set(foods.map(food => food.category))).sort();
 
-      console.log(`🔍 FOOD CACHE: Loaded ${foods.length} foods and ${categories.length} categories.`);
-      // ADDED LOG: Inspect the first few loaded food items
-
+      console.log(`🔍 FOOD CACHE: Loaded ${foods.length} foods and ${categories.length} categories from Firebase.`);
       
-      
-      setCache({
+      const newCache = {
         foods,
         categories,
         lastUpdated: Date.now(),
         isLoading: false,
         error: null,
-      });
+      };
+
+      setCache(newCache);
+      
+      // Save to AsyncStorage
+      await saveFoodsToAsyncStorage(newCache);
 
     } catch (error) {
       console.error('Error loading foods to cache:', error);
@@ -72,7 +114,6 @@ export function useFoodCache() {
       }));
     }
   };
-
   // Search foods in cache
   const searchFoodsInCache = (query: string, limit = 20, includeSnacks = false): Food[] => {
     if (!query.trim()) return [];
@@ -113,9 +154,19 @@ export function useFoodCache() {
       .slice(0, limit);
   };
 
-  // Get popular foods from cache
-  const getPopularFoodsFromCache = (limit = 10, includeSnacks = false): Food[] => {
-    let results = cache.foods
+  const getPopularFoodsFromCache = (limit = 10): Food[] => {
+    console.log('🔥 FOOD_CACHE: getPopularFoodsFromCache called with limit:', limit);
+    console.log('🔥 FOOD_CACHE: Total foods in cache:', cache.foods.length);
+    console.log('🔥 FOOD_CACHE: Cache loading status:', cache.isLoading);
+    
+    // If cache is still loading or empty, try to load it
+    if (cache.foods.length === 0 && !cache.isLoading) {
+      console.log('🔥 FOOD_CACHE: Cache empty and not loading, triggering load...');
+      loadFoodsToCache(false);
+      return []; // Return empty for now, will get data on next call
+    }
+    
+    const results = cache.foods
       .sort((a, b) => {
         if (a.popularity && b.popularity) {
           return b.popularity - a.popularity;
@@ -123,16 +174,16 @@ export function useFoodCache() {
         return a.name.localeCompare(b.name);
       });
     
-    // Filter out snacks unless explicitly requested
-    if (!includeSnacks) {
-      results = results.filter(food => 
-        !food.mealTiming || !food.mealTiming.includes('snack')
-      );
+    console.log('🔥 FOOD_CACHE: After sorting, foods count:', results.length);
+    
+    const finalResults = results.slice(0, limit);
+    console.log('🔥 FOOD_CACHE: Final popular foods returned:', finalResults.length, 'items');
+    if (finalResults.length > 0) {
+      console.log('🔥 FOOD_CACHE: First few popular foods:', finalResults.slice(0, 3).map(f => ({ id: f.id, name: f.name, popularity: f.popularity })));
     }
     
-    return results.slice(0, limit);
+    return finalResults;
   };
-
   // Get foods by base name (for preventing duplicates)
   const getFoodsByBaseName = (baseName: string): Food[] => {
     return cache.foods.filter(food => food.baseName === baseName);
@@ -175,6 +226,15 @@ export function useFoodCache() {
     loadFoodsToCache();
   }, []);
 
+    // Clear AsyncStorage cache
+    const clearAsyncStorageCache = async () => {
+      try {
+        await AsyncStorage.removeItem(FOOD_CACHE_KEY);
+        console.log('🗑️ Food cache cleared from AsyncStorage');
+      } catch (error) {
+        console.warn('⚠️ Error clearing food cache from AsyncStorage:', error);
+      }
+    };
   return {
     // Cache state
     foods: cache.foods,
@@ -183,7 +243,7 @@ export function useFoodCache() {
     isLoading: cache.isLoading,
     error: cache.error,
     isCacheExpired: isCacheExpired(),
-    
+    clearAsyncStorageCache,
     // Cache operations
     refreshCache,
     loadFoodsToCache,

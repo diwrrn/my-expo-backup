@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { X, Crown, Check, Heart, Target, TrendingUp, Users, Zap, Apple, Award } from 'lucide-react-native';
 import { usePurchases } from '@/hooks/usePurchases';
+import { usePremiumContext } from '@/contexts/PremiumContext';
+
 import { useTranslation } from 'react-i18next';
 import { PurchasesPackage } from 'react-native-purchases';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -35,13 +37,13 @@ interface CustomPaywallProps {
 }
 
 export function CustomPaywall({ visible, onClose }: CustomPaywallProps) {
-  const { getAvailablePackages, purchasePackage, loading } = usePurchases();
+  const { getAvailablePackages, purchasePackage } = usePurchases();
   const { t } = useTranslation();
   const [purchasing, setPurchasing] = React.useState(false);
+  const { loading } = usePremiumContext();
 
-  // Gentle organic animations
+  // Simplified animations that won't interfere with scrolling
   const breathingScale = useSharedValue(1);
-  const scrollY = useSharedValue(0);
   const calorieCounter = useSharedValue(0);
   const proteinProgress = useSharedValue(0);
   const carbsProgress = useSharedValue(0);
@@ -50,9 +52,9 @@ export function CustomPaywall({ visible, onClose }: CustomPaywallProps) {
 
   React.useEffect(() => {
     if (visible) {
-      // Gentle breathing animation for crown
+      // Gentle breathing animation for crown (simplified)
       breathingScale.value = withRepeat(
-        withTiming(1.08, { duration: 3500, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.05, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
         -1,
         true
       );
@@ -61,36 +63,25 @@ export function CustomPaywall({ visible, onClose }: CustomPaywallProps) {
       setTimeout(() => {
         calorieCounter.value = withSpring(2847, { damping: 15, stiffness: 50 });
         userCounter.value = withSpring(47532, { damping: 12, stiffness: 40 });
-      }, 500);
+      }, 300);
 
       setTimeout(() => {
         proteinProgress.value = withSpring(0.85, { damping: 15, stiffness: 60 });
-      }, 800);
+      }, 500);
 
       setTimeout(() => {
         carbsProgress.value = withSpring(0.72, { damping: 15, stiffness: 60 });
-      }, 1000);
+      }, 700);
 
       setTimeout(() => {
         fatProgress.value = withSpring(0.68, { damping: 15, stiffness: 60 });
-      }, 1200);
+      }, 900);
     }
   }, [visible]);
 
-  // Scroll handler for parallax effects
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
-
-  // Animated styles
+  // Simplified animated styles
   const breathingStyle = useAnimatedStyle(() => ({
     transform: [{ scale: breathingScale.value }],
-  }));
-
-  const parallaxStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: scrollY.value * 0.3 }],
   }));
 
   const calorieStyle = useAnimatedStyle(() => ({
@@ -123,7 +114,7 @@ export function CustomPaywall({ visible, onClose }: CustomPaywallProps) {
       
       if (result.success) {
         Alert.alert(
-          '🎉 Welcome to Premium!',
+          '�� Welcome to Premium!',
           'Your nutrition journey just got supercharged!',
           [
             {
@@ -179,12 +170,12 @@ export function CustomPaywall({ visible, onClose }: CustomPaywallProps) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={styles.container}>
-        {/* Organic background elements */}
-        <Animated.View style={[styles.backgroundPattern, parallaxStyle]} pointerEvents="none">
+        {/* Simplified static background */}
+        <View style={styles.backgroundPattern} pointerEvents="none">
           <View style={[styles.organicShape, styles.shape1]} />
           <View style={[styles.organicShape, styles.shape2]} />
           <View style={[styles.organicShape, styles.shape3]} />
-        </Animated.View>
+        </View>
 
         {/* Header */}
         <View style={styles.header}>
@@ -200,12 +191,14 @@ export function CustomPaywall({ visible, onClose }: CustomPaywallProps) {
           <View style={styles.placeholder} />
         </View>
 
-        <Animated.ScrollView 
+        {/* Use regular ScrollView instead of Animated.ScrollView for better performance */}
+        <ScrollView 
           style={styles.scrollView} 
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-          onScroll={scrollHandler}
           scrollEventThrottle={16}
+          bounces={true}
+          alwaysBounceVertical={false}
         >
           {/* Hero Section */}
           <View style={styles.heroSection}>
@@ -219,7 +212,7 @@ export function CustomPaywall({ visible, onClose }: CustomPaywallProps) {
             </Animated.View>
             
             <Text style={styles.heroTitle}>
-              Transform Your Health Journey 🌱
+              Transform Your Health Journey ��
             </Text>
             <Text style={styles.heroSubtitle}>
               Join thousands who've reached their nutrition goals with personalized meal plans and smart tracking
@@ -426,7 +419,7 @@ export function CustomPaywall({ visible, onClose }: CustomPaywallProps) {
               Subscription auto-renews. Cancel anytime in your account settings. By subscribing, you agree to our Terms of Service.
             </Text>
           </View>
-        </Animated.ScrollView>
+        </ScrollView>
 
         {/* Natural Loading */}
         {purchasing && (
@@ -464,6 +457,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     overflow: 'hidden',
+    pointerEvents: 'none', // Ensure background doesn't interfere with touches
   },
   organicShape: {
     position: 'absolute',
@@ -504,6 +498,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
+    zIndex: 10, // Ensure header is above background
   },
   closeButton: {
     padding: 8,
@@ -525,9 +520,11 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    backgroundColor: 'transparent', // Ensure scroll view is transparent
   },
   scrollContent: {
     flexGrow: 1,
+    paddingBottom: 40, // Add bottom padding for better scrolling
   },
   heroSection: {
     alignItems: 'center',

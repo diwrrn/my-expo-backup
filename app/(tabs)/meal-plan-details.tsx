@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
-import { ArrowLeft, UtensilsCrossed, Check } from 'lucide-react-native';
+import { ArrowLeft, UtensilsCrossed, Check, CalendarDays, TrendingUp } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { FirebaseService } from '@/services/firebaseService';
@@ -9,7 +9,8 @@ import { SavedMealPlan, ProcessedFood } from '@/types/api';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { getTodayDateString } from '@/utils/dateUtils';
-import { useFirebaseData } from '@/hooks/useFirebaseData'; // To add food to daily meal
+import { useFirebaseData } from '@/hooks/useFirebaseData';
+import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
 
 // Helper function to get display name based on language
 const getDisplayName = (food: any, i18n: any) => {
@@ -23,52 +24,46 @@ const getDisplayName = (food: any, i18n: any) => {
 };
 
 export default function MealPlanDetailsScreen() {
-  const { planId, origin } = useLocalSearchParams<{ planId: string; origin?: string }>(); // NEW: Get origin param
+
+  const { planId, origin } = useLocalSearchParams<{ planId: string; origin?: string }>();
+  console.log('�� Origin received:', origin);
 
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();
-  const { addFoodToDailyMeal } = useFirebaseData();
-
+  const { addFoodToDailyMeal } = useDailyMealsContext();
   const [savedMealPlan, setSavedMealPlan] = useState<SavedMealPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingAllMeals, setLoggingAllMeals] = useState(false);
-  const [isLoggingFood, setIsLoggingFood] = useState<string | null>(null); // NEW: State to track individual food logging
-    console.log('DEBUG: Plan ID received in details screen:', planId); // <--- ADD THIS LINE
+  const [isLoggingFood, setIsLoggingFood] = useState<string | null>(null);
+  
 
   useEffect(() => {
-    console.log('MealPlanDetailsScreen: useEffect triggered.');
-    console.log('MealPlanDetailsScreen: Received planId from params:', planId); // ADD THIS LOG
     if (planId && user?.id) {
       loadMealPlanDetails();
     } else {
-      setLoading(false); // If no planId or user, stop loading and show not found
+      setLoading(false);
     }
   }, [planId, user?.id]);
 
   const loadMealPlanDetails = async () => {
     if (!user?.id || !planId) {
-      console.log('MealPlanDetailsScreen: Cannot load details, missing userId or planId.');
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      console.log(`MealPlanDetailsScreen: Attempting to fetch plan with ID: ${planId} for user: ${user.id}`); // ADD THIS LOG
       const plan = await FirebaseService.getSavedMealPlanById(user.id, planId);
       
       if (plan) {
-        console.log('MealPlanDetailsScreen: Successfully fetched plan:', plan.name); // ADD THIS LOG
         setSavedMealPlan(plan);
       } else {
-        console.log('MealPlanDetailsScreen: FirebaseService returned null for plan.'); // ADD THIS LOG
-        setSavedMealPlan(null); // Explicitly set to null if not found
+        setSavedMealPlan(null);
       }
     } catch (error) {
-      console.error('MealPlanDetailsScreen: Error loading meal plan details:', error);
       Alert.alert('Error', 'Failed to load meal plan details.');
-      setSavedMealPlan(null); // Ensure state is null on error
+      setSavedMealPlan(null);
     } finally {
       setLoading(false);
     }
@@ -104,9 +99,9 @@ export default function MealPlanDetailsScreen() {
                       protein: food.protein,
                       carbs: food.carbs,
                       fat: food.fat,
-                      quantity: food.grams, // Use grams as quantity for logging
-                      unit: 'g', // Indicate it's in grams
-                      category: food.originalFood?.category || 'Unknown', // Assuming originalFood is available
+                      quantity: food.grams,
+                      unit: 'g',
+                      category: food.originalFood?.category || 'Unknown',
                     });
                     loggedCount++;
                   }
@@ -114,7 +109,6 @@ export default function MealPlanDetailsScreen() {
               }
               Alert.alert(t('common:success'), `${loggedCount} items logged for today!`);
             } catch (error) {
-              console.error('Error logging all meals:', error);
               Alert.alert(t('common:error'), 'Failed to log all meals.');
             } finally {
               setLoggingAllMeals(false);
@@ -125,13 +119,12 @@ export default function MealPlanDetailsScreen() {
     );
   };
 
-  // NEW: Function to handle logging a single food item
   const handleLogFoodItem = async (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snacks', food: ProcessedFood) => {
     if (!user) {
       Alert.alert(t('common:error'), 'User not authenticated.');
       return;
     }
-    setIsLoggingFood(food.id); // Set logging state for this specific food
+    setIsLoggingFood(food.id);
     try {
       await addFoodToDailyMeal(mealType, {
         foodId: food.id,
@@ -141,17 +134,16 @@ export default function MealPlanDetailsScreen() {
         calories: food.calories,
         protein: food.protein,
         carbs: food.carbs,
-        fat: food.fat,
-        quantity: food.grams, // Use grams from ProcessedFood
-        unit: 'g', // Unit is always 'g' for ProcessedFood grams
-        category: food.originalFood?.category || 'Unknown', // Assuming originalFood is available
+        fat: food.fat, 
+        quantity: food.grams,
+        unit: 'g',
+        category: food.originalFood?.category || 'Unknown',
       });
       Alert.alert(t('common:success'), `${getDisplayName(food, i18n)} logged to ${mealType}!`);
     } catch (error) {
-      console.error('Error logging food item:', error);
       Alert.alert(t('common:error'), `Failed to log ${getDisplayName(food, i18n)}.`);
     } finally {
-      setIsLoggingFood(null); // Reset logging state
+      setIsLoggingFood(null);
     }
   };
 
@@ -160,61 +152,73 @@ export default function MealPlanDetailsScreen() {
       <View style={styles.mealHeader}>
         <View style={[styles.mealIndicator, { backgroundColor: color }]} />
         <Text style={styles.mealTitle}>{t(`mealPlanner:${mealType}`)}</Text>
-        <Text style={styles.mealCalories}>
-          {meals.reduce((sum, meal) => sum + meal.calories, 0)} kcal
-        </Text>
+        <View style={styles.mealCaloriesBadge}>
+          <Text style={styles.mealCalories}>
+            {meals.reduce((sum, meal) => sum + meal.calories, 0)} kcal
+          </Text>
+        </View>
       </View>
 
-      {meals.map((meal) => (
-        <TouchableOpacity
-          key={meal.id}
-          style={styles.mealItem}
-          onPress={() => {
-            // Navigate to the meal planner food details screen
-            router.navigate({
-              pathname: '/(tabs)/meal-planner-food-details',
-              params: {
-                foodId: meal.id,
-                quantity: meal.grams.toString(),
-                unit: 'g',
-                fromMealPlan: 'true', // Pass this param to indicate origin
-                origin: origin || 'saved-plans' // NEW: Pass origin to food details
-              }
-            });
-          }}
-          activeOpacity={0.7}
-        >
-          <Image source={{ uri: meal.image }} style={styles.mealImage} />
-          <View style={styles.mealInfo}>
-            <Text style={styles.mealItemName}>{getDisplayName(meal, i18n)}</Text>
-            <Text style={styles.mealPortion}>{meal.displayPortion}</Text>
-            <View style={styles.mealNutrition}>
-              <Text style={styles.nutritionText}>P: {Math.round(meal.protein)}g</Text>
-              <Text style={styles.nutritionText}>C: {Math.round(meal.carbs)}g</Text>
-              <Text style={styles.nutritionText}>F: {Math.round(meal.fat)}g</Text>
-            </View>
-          </View>
-          <View style={styles.mealCaloriesContainer}>
-            <Text style={styles.mealItemCalories}>{Math.round(meal.calories)}</Text>
-            <Text style={styles.caloriesLabel}>kcal</Text>
-          </View>
-          {/* NEW: Log Food Button */}
+      <View style={styles.mealItemsContainer}>
+        {meals.map((meal) => (
           <TouchableOpacity
-            style={[
-              styles.logFoodButton,
-              isLoggingFood === meal.id && styles.logFoodButtonDisabled
-            ]}
-            onPress={() => handleLogFoodItem(mealType as 'breakfast' | 'lunch' | 'dinner' | 'snacks', meal)}
-            disabled={isLoggingFood === meal.id}
+            key={meal.id}
+            style={styles.mealItem}
+            onPress={() => {
+              router.navigate({
+                pathname: '/(tabs)/meal-planner-food-details',
+                params: {
+                  foodId: meal.id,
+                  quantity: meal.grams.toString(),
+                  unit: 'g',
+                  fromMealPlan: 'true',
+                  origin: origin || 'saved-plans'
+                }
+              });
+            }}
+            activeOpacity={0.7}
           >
-            {isLoggingFood === meal.id ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Check size={20} color="#FFFFFF" />
-            )}
+            <View style={styles.mealInfo}>
+              <Text style={styles.mealItemName}>{getDisplayName(meal, i18n)}</Text>
+              <Text style={styles.mealPortion}>{meal.displayPortion}</Text>
+              <View style={styles.mealNutrition}>
+                <View style={styles.nutritionItem}>
+                  <Text style={styles.nutritionLabel}>P</Text>
+                  <Text style={styles.nutritionValue}>{Math.round(meal.protein)}g</Text>
+                </View>
+                <View style={styles.nutritionItem}>
+                  <Text style={styles.nutritionLabel}>C</Text>
+                  <Text style={styles.nutritionValue}>{Math.round(meal.carbs)}g</Text>
+                </View>
+                <View style={styles.nutritionItem}>
+                  <Text style={styles.nutritionLabel}>F</Text>
+                  <Text style={styles.nutritionValue}>{Math.round(meal.fat)}g</Text>
+                </View>
+              </View>
+            </View>
+            <View style={styles.rightSection}>
+              <View style={styles.mealCaloriesContainer}>
+                <Text style={styles.mealItemCalories}>{Math.round(meal.calories)}</Text>
+                <Text style={styles.caloriesLabel}>kcal</Text>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.logFoodButton,
+                  isLoggingFood === meal.id && styles.logFoodButtonDisabled
+                ]}
+                onPress={() => handleLogFoodItem(mealType as 'breakfast' | 'lunch' | 'dinner' | 'snacks', meal)}
+                disabled={isLoggingFood === meal.id}
+              >
+                {isLoggingFood === meal.id ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Check size={16} color="#FFFFFF" />
+                )}
+              </TouchableOpacity>
+            </View>
           </TouchableOpacity>
-        </TouchableOpacity>
-      ))}
+        ))}
+      </View>
     </View>
   );
 
@@ -222,8 +226,11 @@ export default function MealPlanDetailsScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#22C55E" />
-          <Text style={{ color: '#6B7280', marginTop: 10 }}>{t('mealPlanDetailsScreen:loadingPlan')}</Text>
+          <View style={styles.loadingSpinner}>
+            <ActivityIndicator size="large" color="#10B981" />
+          </View>
+          <Text style={styles.loadingText}>Loading meal plan...</Text>
+          <Text style={styles.loadingSubtext}>Preparing your nutrition details</Text>
         </View>
       </SafeAreaView>
     );
@@ -233,16 +240,27 @@ export default function MealPlanDetailsScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.emptyContainer}>
-          <UtensilsCrossed size={48} color="#D1D5DB" />
-          <Text style={styles.emptyTitle}>{t('mealPlanDetailsScreen:planNotFound')}</Text>
-          <TouchableOpacity style={styles.createButton} onPress={() => router.back()}>
-            <Text style={styles.createButtonText}>{t('common:back')}</Text>
+          <View style={styles.emptyIcon}>
+            <UtensilsCrossed size={48} color="#D1D5DB" />
+          </View>
+          <Text style={styles.emptyTitle}>Meal Plan Not Found</Text>
+          <Text style={styles.emptySubtext}>This meal plan may have been deleted or doesn't exist</Text>
+          <TouchableOpacity 
+            style={styles.backButtonEmpty} 
+            onPress={() => {
+              if (origin === 'saved-plans') {
+                router.push('/(tabs)/saved-meal-plans');
+              } else {
+                router.back();
+              }
+            }}
+          >
+            <Text style={styles.backButtonEmptyText}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
-
   const generatedPlan = savedMealPlan.mealPlanData;
 
   return (
@@ -250,39 +268,60 @@ export default function MealPlanDetailsScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.scrollViewContent}>
           {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-              {isRTL ? (
-                <ArrowLeft size={24} color="#111827" style={{ transform: [{ rotate: '180deg' }] }} />
-              ) : (
-                <ArrowLeft size={24} color="#111827" />
-              )}
-            </TouchableOpacity>
-            <View style={styles.headerContent}>
-              <Text style={styles.headerTitle}>{savedMealPlan.name}</Text>
-              <Text style={styles.headerSubtitle}>
-                {t('mealPlanner:generatedAt')} {new Date(savedMealPlan.generatedAt).toLocaleDateString()}
-              </Text>
+            <View style={styles.header}>
+              <TouchableOpacity 
+                style={styles.backButton} 
+                onPress={() => {
+                  // Check if we came from saved plans, if so go back to saved plans
+                  if (origin === 'saved-plans') {
+                    router.push('/(tabs)/saved-meal-plans');
+                  } else {
+                    router.back();
+                  }
+                }}
+              >
+                <ArrowLeft size={20} color="#64748B" />
+              </TouchableOpacity>
+              <View style={styles.headerContent}>
+                <Text style={styles.headerTitle}>{savedMealPlan.name}</Text>
+                <View style={styles.headerMeta}>
+                  <CalendarDays size={14} color="#64748B" />
+                  <Text style={styles.headerSubtitle}>
+                    {new Date(savedMealPlan.generatedAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </Text>
+                </View>
+              </View>
             </View>
-          </View>
 
           {/* Plan Stats */}
           <View style={styles.planStatsContainer}>
-            <View style={styles.planStat}>
-              <Text style={styles.planStatValue}>{generatedPlan.totalCalories}</Text>
-              <Text style={styles.planStatLabel}>{t('mealPlanner:caloriesTotal')}</Text>
+            <View style={styles.statsHeader}>
+              <View style={styles.statsHeaderIcon}>
+                <TrendingUp size={18} color="#10B981" />
+              </View>
+              <Text style={styles.statsHeaderText}>Nutrition Overview</Text>
             </View>
-            <View style={styles.planStat}>
-              <Text style={styles.planStatValue}>{generatedPlan.totalProtein}g</Text>
-              <Text style={styles.planStatLabel}>{t('mealPlanner:proteinTotal')}</Text>
-            </View>
-            <View style={styles.planStat}>
-              <Text style={styles.planStatValue}>{generatedPlan.totalCarbs}g</Text>
-              <Text style={styles.planStatLabel}>{t('mealPlanner:carbsTotal')}</Text>
-            </View>
-            <View style={styles.planStat}>
-              <Text style={styles.planStatValue}>{generatedPlan.totalFat}g</Text>
-              <Text style={styles.planStatLabel}>{t('mealPlanner:fatTotal')}</Text>
+            <View style={styles.planStatsGrid}>
+              <View style={styles.planStat}>
+                <Text style={styles.planStatValue}>{generatedPlan.totalCalories}</Text>
+                <Text style={styles.planStatLabel}>Calories</Text>
+              </View>
+              <View style={styles.planStat}>
+                <Text style={styles.planStatValue}>{generatedPlan.totalProtein}g</Text>
+                <Text style={styles.planStatLabel}>Protein</Text>
+              </View>
+              <View style={styles.planStat}>
+                <Text style={styles.planStatValue}>{generatedPlan.totalCarbs}g</Text>
+                <Text style={styles.planStatLabel}>Carbs</Text>
+              </View>
+              <View style={styles.planStat}>
+                <Text style={styles.planStatValue}>{generatedPlan.totalFat}g</Text>
+                <Text style={styles.planStatLabel}>Fat</Text>
+              </View>
             </View>
           </View>
 
@@ -294,16 +333,25 @@ export default function MealPlanDetailsScreen() {
             renderMealSection('snacks', generatedPlan.meals.snacks, '#06B6D4')}
 
           {/* Log All Meals Button */}
-          <TouchableOpacity
-            style={[styles.logAllMealsButton, loggingAllMeals && styles.logAllMealsButtonDisabled]}
-            onPress={handleLogAllMeals}
-            disabled={loggingAllMeals}
-          >
-            <Check size={20} color="#FFFFFF" />
-            <Text style={styles.logAllMealsButtonText}>
-              {loggingAllMeals ? t('mealPlanDetailsScreen:addingAllMeals') : t('mealPlanDetailsScreen:logAllMeals')}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.actionSection}>
+            <TouchableOpacity
+              style={[styles.logAllMealsButton, loggingAllMeals && styles.logAllMealsButtonDisabled]}
+              onPress={handleLogAllMeals}
+              disabled={loggingAllMeals}
+            >
+              {loggingAllMeals ? (
+                <>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.logAllMealsButtonText}>Adding to diary...</Text>
+                </>
+              ) : (
+                <>
+                  <Check size={20} color="#FFFFFF" />
+                  <Text style={styles.logAllMealsButtonText}>Add All to Today's Diary</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -313,51 +361,88 @@ export default function MealPlanDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F8FAFC',
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollViewContent: {
+    paddingBottom: 100,
+  },
+  
+  // Loading States
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 40,
   },
+  loadingSpinner: {
+    marginBottom: 20,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+  },
+  
+  // Empty States
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    paddingHorizontal: 40,
+  },
+  emptyIcon: {
+    marginBottom: 20,
   },
   emptyTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
+    color: '#374151',
     marginBottom: 8,
+    textAlign: 'center',
   },
-  createButton: {
-    backgroundColor: '#22C55E',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+  emptySubtext: {
+    fontSize: 16,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
   },
-  createButtonText: {
+  backButtonEmpty: {
+    backgroundColor: '#10B981',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+  },
+  backButtonEmptyText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
+  
+  // Header
   header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 24,
-    paddingTop: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F3F4F6',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -366,102 +451,144 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#111827',
+    color: '#1E293B',
     marginBottom: 4,
   },
+  headerMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   headerSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
+    fontSize: 14,
+    color: '#64748B',
     fontWeight: '500',
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollViewContent: {
-    paddingBottom: 90,
-  },
+  
+  // Plan Stats
   planStatsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginHorizontal: 24,
-    marginTop: 24,
-    marginBottom: 24,
+    borderRadius: 20,
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
+    borderColor: '#F1F5F9',
+    shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+  },
+  statsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
+  },
+  statsHeaderIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  statsHeaderText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  planStatsGrid: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
   planStat: {
     alignItems: 'center',
     flex: 1,
   },
   planStatValue: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#22C55E',
+    color: '#10B981',
     marginBottom: 4,
   },
   planStatLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#64748B',
+    fontWeight: '500',
     textAlign: 'center',
   },
+  
+  // Meal Section
   mealSection: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginHorizontal: 24,
+    borderRadius: 20,
+    marginHorizontal: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
+    borderColor: '#F1F5F9',
+    shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+    overflow: 'hidden',
   },
   mealHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    padding: 20,
+    backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
   mealIndicator: {
     width: 4,
-    height: 20,
+    height: 24,
     borderRadius: 2,
     marginRight: 12,
   },
   mealTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '700',
+    color: '#1E293B',
     flex: 1,
+  },
+  mealCaloriesBadge: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   mealCalories: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#64748B',
+  },
+  mealItemsContainer: {
+    padding: 20,
   },
   mealItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#F8FAFC',
   },
   mealImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginRight: 12,
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+    marginRight: 16,
+    backgroundColor: '#F8FAFC',
   },
   mealInfo: {
     flex: 1,
@@ -469,75 +596,95 @@ const styles = StyleSheet.create({
   mealItemName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: '#1E293B',
     marginBottom: 4,
   },
   mealPortion: {
     fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 4,
+    color: '#64748B',
+    marginBottom: 8,
   },
   mealNutrition: {
     flexDirection: 'row',
     gap: 12,
   },
-  nutritionText: {
+  nutritionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  nutritionLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  nutritionValue: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#64748B',
     fontWeight: '500',
+  },
+  rightSection: {
+    alignItems: 'center',
+    gap: 8,
   },
   mealCaloriesContainer: {
     alignItems: 'center',
   },
   mealItemCalories: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#22C55E',
+    fontWeight: '700',
+    color: '#10B981',
   },
   caloriesLabel: {
     fontSize: 10,
-    color: '#6B7280',
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  logFoodButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  logFoodButtonDisabled: {
+    opacity: 0.6,
+    shadowOpacity: 0,
+  },
+  
+  // Action Section
+  actionSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   logAllMealsButton: {
-    backgroundColor: '#22C55E',
-    borderRadius: 12,
-    paddingVertical: 16,
-    marginHorizontal: 24,
-    marginBottom: 24,
+    backgroundColor: '#10B981',
+    borderRadius: 16,
+    paddingVertical: 18,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
-    shadowColor: '#22C55E',
+    gap: 8,
+    shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 4,
   },
   logAllMealsButtonDisabled: {
     opacity: 0.6,
+    shadowOpacity: 0,
   },
   logAllMealsButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  // NEW: Styles for individual log food button
-  logFoodButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#10B981', // A nice green for logging
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 12, // Space from calories
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  logFoodButtonDisabled: {
-    opacity: 0.6,
+    fontWeight: '700',
   },
 });

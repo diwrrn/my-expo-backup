@@ -12,6 +12,7 @@ import { getTodayDateString } from '@/utils/dateUtils';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useTranslation, TFunction } from 'react-i18next';
 import { usePurchases } from '@/hooks/usePurchases';
+import { usePremiumContext } from '@/contexts/PremiumContext';
 import { CustomPaywall } from '@/components/CustomPaywall';
 
 // Helper function to get display name based on language
@@ -28,8 +29,9 @@ const getDisplayName = (food: any, i18n: any) => {
 export default function MealPlannerScreen() {
   const { user } = useAuth();
   const { foodCache, getMealPlanCountForDate, saveMealPlan } = useFirebaseData();
-  const { hasPremium, customerInfo } = usePurchases();
-  
+  const { customerInfo, refreshCustomerInfo } = usePurchases();  
+  const { hasPremium } = usePremiumContext();
+
   const [calorieTarget, setCalorieTarget] = useState('');
   const [proteinTarget, setProteinTarget] = useState('');
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
@@ -48,31 +50,11 @@ export default function MealPlannerScreen() {
   const { t, i18n } = useTranslation();
   const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
   const currentPathname = usePathname();
+  
   const checkPurchaseStatus = async () => {
-    console.log('🔍 BEFORE REFRESH:');
-    console.log('hasPremium:', hasPremium);
-    
     await refreshCustomerInfo();
-    
-    console.log('🔍 AFTER REFRESH:');
-    console.log('hasPremium:', hasPremium);
-    console.log('Customer Info:', JSON.stringify(customerInfo, null, 2));
-    console.log('Active Entitlements:', customerInfo?.entitlements?.active);
   };
   
-  // --- ADDED LOGGING ---
-  useEffect(() => {
-    console.log('MealPlannerScreen: Mounted');
-    return () => {
-      console.log('MealPlannerScreen: Unmounted');
-    };
-  }, []);
-
-  useEffect(() => {
-    console.log('MealPlannerScreen: generatedPlan state changed:', generatedPlan ? 'Plan exists' : 'Plan is null');
-  }, [generatedPlan]);
-  // --- END ADDED LOGGING ---
-
   const toggleExcludedFood = (baseName: string) => { 
     setExcludedFoodBaseNames(prev => 
       prev.includes(baseName) 
@@ -80,600 +62,6 @@ export default function MealPlannerScreen() {
         : [...prev, baseName]
     );
   };
-  useEffect(() => {
-    console.log('🔍 DEBUG - Premium Status:');
-    console.log('hasPremium:', hasPremium);
-    console.log('customerInfo exists:', !!customerInfo);
-    console.log('entitlements:', customerInfo?.entitlements);
-    console.log('active entitlements:', customerInfo?.entitlements?.active);
-    console.log('premium entitlement:', customerInfo?.entitlements?.active?.premium);
-  }, [hasPremium, customerInfo]);
-  
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollViewContent: {
-    paddingBottom: 90, // Space for footer navigation
-  },
-  headerGradient: {
-    paddingBottom: 20,
-  },
-  header: {
-    padding: 24,
-    paddingBottom: 0,
-  },
-  headerTop: {
-    flexDirection: getFlexDirection(isRTL),
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerContent: {
-    flex: 1,
-    marginLeft: 16,
-    marginRight: 16,
-  },
-  titleRow: {
-    flexDirection: getFlexDirection(isRTL),
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#111827',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-    marginLeft: isRTL ? 0 : 12,
-    marginRight: isRTL ? 12 : 0,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  headerIcon: {
-    padding: 8,
-    backgroundColor: '#F0FDF4',
-    borderRadius: 12,
-  },
-  premiumBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFD700',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  premiumBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#333',
-    marginLeft: 4,
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  
-  // Input Section
-  inputSection: {
-    padding: 24,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: '#111827',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  sectionHeader: {
-    flexDirection: getFlexDirection(isRTL),
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-    textAlign: getTextAlign(isRTL),
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  required: {
-    color: '#EF4444',
-  },
-  inputContainer: {
-    flexDirection: getFlexDirection(isRTL),
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#111827',
-    marginLeft: isRTL ? 0 : 12,
-    marginRight: isRTL ? 12 : 0,
-    textAlign: isRTL ? 'right' : 'left',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  inputUnit: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500'
-  },
-  
-  // Advanced Options Toggle
-  advancedToggle: {
-    flexDirection: getFlexDirection(isRTL),
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F0FDF4',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: '#DCFCE7',
-  },
-  advancedToggleContent: {
-    flexDirection: getFlexDirection(isRTL),
-    alignItems: 'center',
-  },
-  advancedToggleText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#22C55E',
-    marginLeft: isRTL ? 0 : 12,
-    marginRight: isRTL ? 12 : 0,
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  
-  // Advanced Section
-  advancedSection: {
-    marginTop: 16,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  
-  // Dietary Preferences
-  dietarySection: {
-    marginTop: 20,
-  },
-  dietarySectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-    textAlign: getTextAlign(isRTL),
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  dietaryDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 16,
-    textAlign: getTextAlign(isRTL),
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  dietaryGrid: {
-    flexDirection: getFlexDirection(isRTL),
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  dietaryOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    minWidth: '45%',
-  },
-  dietaryOptionSelected: {
-    backgroundColor: '#22C55E',
-    borderColor: '#22C55E',
-  },
-  dietaryOptionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    textAlign: 'center',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  dietaryOptionTextSelected: {
-    color: '#FFFFFF',
-  },
-  
-  // Food Exclusions
-  exclusionSection: {
-    marginTop: 24,
-  },
-  exclusionSectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 8,
-    textAlign: getTextAlign(isRTL),
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  exclusionDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 16,
-    textAlign: getTextAlign(isRTL),
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  exclusionOptions: {
-    flexDirection: getFlexDirection(isRTL),
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  exclusionOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    minWidth: '45%',
-  },
-  exclusionOptionSelected: {
-    backgroundColor: '#EF4444',
-    borderColor: '#EF4444',
-  },
-  exclusionOptionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    textAlign: 'center',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  exclusionOptionTextSelected: {
-    color: '#FFFFFF',
-  },
-  
-  // Generate Section
-  generateSection: {
-    paddingHorizontal: 24,
-    marginBottom: 32,
-  },
-  generateButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  generateButtonDisabled: {
-    opacity: 0.6,
-  },
-  generateButtonGradient: {
-    flexDirection: getFlexDirection(isRTL),
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
-  },
-  generateButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  generateHint: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 20,
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  savedPlansButton: {
-    flexDirection: getFlexDirection(isRTL),
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 16,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    gap: 8,
-  },
-  savedPlansButtonText: {
-    color: '#374151',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  
-  // Premium Feature Gate
-  premiumGate: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    marginHorizontal: 24,
-    marginBottom: 24,
-    borderWidth: 2,
-    borderColor: '#3B82F6',
-    alignItems: 'center',
-  },
-  premiumGateIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#3B82F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  premiumGateTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 8,
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  premiumGateDescription: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 20,
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  premiumGateButton: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 12,
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  premiumGateButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  
-  // Info Section
-  infoSection: {
-    backgroundColor: '#EEF2FF',
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 24,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4338CA',
-    marginBottom: 8,
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#4338CA',
-    lineHeight: 20,
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  
-  cacheStatus: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#C7D2FE',
-  },
-  cacheStatusText: {
-    fontSize: 12,
-    color: '#4338CA',
-    fontWeight: '600',
-  },
-  cacheWarning: {
-    fontSize: 12,
-    color: '#F59E0B',
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  
-  // Plan Section
-  planSection: {
-    padding: 24,
-  },
-  planHeader: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  planTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  planTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  regenerateButton: {
-    padding: 8,
-    backgroundColor: '#F0FDF4',
-    borderRadius: 8,
-  },
-  planStats: {
-    flexDirection: getFlexDirection(isRTL),
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  planStat: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  planStatValue: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#22C55E',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  planStatLabel: {
-    fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '500',
-    marginTop: 4,
-    textAlign: 'center',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  
-  // Meal Section
-  mealSection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  mealHeader: {
-    flexDirection: getFlexDirection(isRTL),
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  mealIndicator: {
-    width: 4,
-    height: 20,
-    borderRadius: 2,
-    marginRight: isRTL ? 0 : 12,
-    marginLeft: isRTL ? 12 : 0,
-  },
-  mealTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    flex: 1,
-    textAlign: getTextAlign(isRTL),
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  mealCalories: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  mealItem: {
-    flexDirection: getFlexDirection(isRTL),
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  mealImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginRight: isRTL ? 0 : 12,
-    marginLeft: isRTL ? 12 : 0,
-  },
-  mealInfo: {
-    flex: 1,
-  },
-  mealItemName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-    textAlign: getTextAlign(isRTL),
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  mealPortion: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 4,
-    textAlign: getTextAlign(isRTL),
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  mealNutrition: {
-    flexDirection: getFlexDirection(isRTL),
-    gap: 12,
-  },
-  nutritionText: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  mealCaloriesContainer: {
-    alignItems: 'center',
-  },
-  mealItemCalories: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#22C55E',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  caloriesLabel: {
-    fontSize: 10,
-    color: '#6B7280',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  
-  // Action Buttons
-  actionButtons: {
-    flexDirection: getFlexDirection(isRTL),
-    gap: 12,
-    marginTop: 24,
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: '#22C55E',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-  newPlanButton: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  newPlanButtonText: {
-    color: '#374151',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: useKurdishFont ? 'rudawregular2' : undefined,
-  },
-});
 
   const handleGeneratePlan = async () => {
     // Check if user has premium access
@@ -797,7 +185,6 @@ const styles = StyleSheet.create({
           }}
           activeOpacity={0.7}
         >
-          <Image source={{ uri: meal.image }} style={styles.mealImage} />
           <View style={styles.mealInfo}>
             <Text style={styles.mealItemName}>{getDisplayName(meal, i18n)}</Text>
             <Text style={styles.mealPortion}>{meal.displayPortion}</Text>
@@ -824,109 +211,111 @@ const styles = StyleSheet.create({
       >
         <View style={styles.scrollViewContent}>
           {/* Header */}
-          <LinearGradient
-            colors={['#F0FDF4', '#F9FAFB']}
-            style={styles.headerGradient}
-          >
-            <View style={styles.header}>
-              <View style={styles.headerTop}>
-                <HamburgerMenu currentRoute="/(tabs)/meal-planner" />
-                <View style={styles.headerContent}>
-                  <View style={styles.titleRow}>
-                    <UtensilsCrossed size={28} color="#22C55E" />
-                    <Text style={styles.headerTitle}>{t('mealPlanner:headerTitle')}</Text>
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <HamburgerMenu currentRoute="/(tabs)/meal-planner" />
+              <View style={styles.headerContent}>
+                <View style={styles.titleRow}>
+                  <View style={styles.iconContainer}>
+                    <UtensilsCrossed size={24} color="#10B981" />
                   </View>
+                  <Text style={styles.headerTitle}>{t('mealPlanner:headerTitle')}</Text>
                 </View>
-                {hasPremium && (
-                  <View style={styles.premiumBadge}>
-                    <Crown size={16} color="#333" />
-                    <Text style={styles.premiumBadgeText}>Premium</Text>
-                  </View>
-                )}
+                <Text style={styles.headerSubtitle}>Create personalized meal plans</Text>
               </View>
+              {hasPremium && (
+                <View style={styles.premiumBadge}>
+                  <Crown size={14} color="#FFFFFF" />
+                  <Text style={styles.premiumBadgeText}>PRO</Text>
+                </View>
+              )}
             </View>
-          </LinearGradient>
+          </View>
 
           {!generatedPlan ? (
             <>
               {/* Premium Feature Gate for Non-Premium Users */}
               {!hasPremium && (
                 <View style={styles.premiumGate}>
-                  <View style={styles.premiumGateIcon}>
-                    <Crown size={40} color="#FFFFFF" />
+                  <View style={styles.premiumGateHeader}>
+                    <View style={styles.premiumGateIcon}>
+                      <Crown size={32} color="#FFFFFF" />
+                    </View>
+                    <Text style={styles.premiumGateTitle}>Premium Feature</Text>
+                    <Text style={styles.premiumGateDescription}>
+                      Unlock AI-powered meal planning with personalized nutrition targets
+                    </Text>
                   </View>
-                  <Text style={styles.premiumGateTitle}>
-                    {t('mealPlanner:premiumRequired')}
-                  </Text>
-                  <Text style={styles.premiumGateDescription}>
-                    {t('mealPlanner:premiumDescription')}
-                  </Text>
                   <TouchableOpacity
                     style={styles.premiumGateButton}
                     onPress={() => setShowPaywall(true)}
                   >
-                    <Crown size={20} color="#FFFFFF" />
-                    <Text style={styles.premiumGateButtonText}>
-                      {t('mealPlanner:upgradeToPremium')}
-                    </Text>
+                    <Crown size={18} color="#FFFFFF" />
+                    <Text style={styles.premiumGateButtonText}>Upgrade to Premium</Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* Input Section - Always show but disabled for non-premium */}
+              {/* Input Section */}
               <View style={styles.inputSection}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>{t('mealPlanner:targetsTitle')}</Text>
+                  <Text style={styles.sectionTitle}>Nutrition Targets</Text>
                 </View>
                 
-                {/* Calorie Target */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>
-                    {t('mealPlanner:dailyCalories')} <Text style={styles.required}>*</Text>
-                  </Text>
-                  <View style={[styles.inputContainer, !hasPremium && { opacity: 0.5 }]}>
-                    <Target size={20} color="#22C55E" />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="2000"
-                      value={calorieTarget}
-                      onChangeText={setCalorieTarget}
-                      keyboardType="numeric"
-                      placeholderTextColor="#9CA3AF"
-                      editable={hasPremium}
-                    />
-                    <Text style={styles.inputUnit}>kcal</Text>
+                {/* Main Targets Card */}
+                <View style={[styles.targetsCard, !hasPremium && styles.disabledCard]}>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>
+                      Daily Calories <Text style={styles.required}>*</Text>
+                    </Text>
+                    <View style={styles.inputContainer}>
+                      <View style={styles.inputIcon}>
+                        <Target size={18} color="#10B981" />
+                      </View>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="e.g. 2000"
+                        value={calorieTarget}
+                        onChangeText={setCalorieTarget}
+                        keyboardType="numeric"
+                        placeholderTextColor="#9CA3AF"
+                        editable={hasPremium}
+                      />
+                      <Text style={styles.inputUnit}>kcal</Text>
+                    </View>
                   </View>
+                  
+                  {/* Advanced Options Toggle */}
+                  <TouchableOpacity 
+                    style={styles.advancedToggle}
+                    onPress={() => hasPremium && setShowAdvancedOptions(!showAdvancedOptions)}
+                    disabled={!hasPremium}
+                  >
+                    <View style={styles.advancedToggleContent}>
+                      <Filter size={16} color="#64748B" />
+                      <Text style={styles.advancedToggleText}>Advanced Options</Text>
+                    </View>
+                    {showAdvancedOptions ? (
+                      <ChevronUp size={18} color="#64748B" />
+                    ) : (
+                      <ChevronDown size={18} color="#64748B" />
+                    )}
+                  </TouchableOpacity>
                 </View>
-                
-                {/* Advanced Options Toggle */}
-                <TouchableOpacity 
-                  style={[styles.advancedToggle, !hasPremium && { opacity: 0.5 }]}
-                  onPress={() => hasPremium && setShowAdvancedOptions(!showAdvancedOptions)}
-                  disabled={!hasPremium}
-                >
-                  <View style={styles.advancedToggleContent}>
-                    <Filter size={18} color="#22C55E" />
-                    <Text style={styles.advancedToggleText}>{t('mealPlanner:advancedOptions')}</Text>
-                  </View>
-                  {showAdvancedOptions ? (
-                    <ChevronUp size={20} color="#6B7280" />
-                  ) : (
-                    <ChevronDown size={20} color="#6B7280" />
-                  )}
-                </TouchableOpacity>
                 
                 {/* Advanced Options Section */}
                 {showAdvancedOptions && hasPremium && (
                   <View style={styles.advancedSection}>
                     {/* Protein Target */}
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>{t('mealPlanner:proteinTarget')}</Text>
+                    <View style={styles.advancedCard}>
+                      <Text style={styles.cardTitle}>Protein Target</Text>
                       <View style={styles.inputContainer}>
-                        <Zap size={20} color="#3B82F6" />
+                        <View style={styles.inputIcon}>
+                          <Zap size={18} color="#EF4444" />
+                        </View>
                         <TextInput
                           style={styles.input}
-                          placeholder="150"
+                          placeholder="e.g. 150"
                           value={proteinTarget}
                           onChangeText={setProteinTarget}
                           keyboardType="numeric"
@@ -937,207 +326,185 @@ const styles = StyleSheet.create({
                     </View>
                     
                     {/* Dietary Preferences */}
-                    <View style={styles.dietarySection}>
-                      <Text style={styles.dietarySectionTitle}>{t('mealPlanner:dietaryPreferences')}</Text>
-                      <Text style={styles.dietaryDescription}>
-                        {t('mealPlanner:dietaryDescription')}
-                      </Text>
-                      
-                      <View style={styles.dietaryGrid}>
+                    <View style={styles.advancedCard}>
+                      <Text style={styles.cardTitle}>Dietary Preferences</Text>
+                      <View style={styles.optionsGrid}>
                         <TouchableOpacity 
                           style={[
-                            styles.dietaryOption,
-                            isGlutenFree && styles.dietaryOptionSelected
+                            styles.optionChip,
+                            isGlutenFree && styles.optionChipSelected
                           ]}
                           onPress={() => setIsGlutenFree(!isGlutenFree)}
                         >
                           <Text 
                             style={[
-                              styles.dietaryOptionText,
-                              isGlutenFree && styles.dietaryOptionTextSelected
+                              styles.optionChipText,
+                              isGlutenFree && styles.optionChipTextSelected
                             ]}
                           >
-                            {t('mealPlanner:glutenFree')}
+                            Gluten Free
                           </Text>
                         </TouchableOpacity>
                         
                         <TouchableOpacity 
                           style={[
-                            styles.dietaryOption,
-                            isDairyFree && styles.dietaryOptionSelected
+                            styles.optionChip,
+                            isDairyFree && styles.optionChipSelected
                           ]}
                           onPress={() => setIsDairyFree(!isDairyFree)}
                         >
                           <Text 
                             style={[
-                              styles.dietaryOptionText,
-                              isDairyFree && styles.dietaryOptionTextSelected
+                              styles.optionChipText,
+                              isDairyFree && styles.optionChipTextSelected
                             ]}
                           >
-                           {t('mealPlanner:dairyFree')}
+                            Dairy Free
                           </Text>
                         </TouchableOpacity>
                         
                         <TouchableOpacity 
                           style={[
-                            styles.dietaryOption,
-                            isKeto && styles.dietaryOptionSelected
+                            styles.optionChip,
+                            isKeto && styles.optionChipSelected
                           ]}
                           onPress={() => setIsKeto(!isKeto)}
                         >
                           <Text 
                             style={[
-                              styles.dietaryOptionText,
-                              isKeto && styles.dietaryOptionTextSelected
+                              styles.optionChipText,
+                              isKeto && styles.optionChipTextSelected
                             ]}
                           >
-                            {t('mealPlanner:ketoDiet')}
+                            Keto
                           </Text>
                         </TouchableOpacity>
                         
                         <TouchableOpacity 
                           style={[
-                            styles.dietaryOption,
-                            isVegan && styles.dietaryOptionSelected
+                            styles.optionChip,
+                            isVegan && styles.optionChipSelected
                           ]}
                           onPress={() => setIsVegan(!isVegan)}
                         >
                           <Text 
                             style={[
-                              styles.dietaryOptionText,
-                              isVegan && styles.dietaryOptionTextSelected
+                              styles.optionChipText,
+                              isVegan && styles.optionChipTextSelected
                             ]}
                           >
-                            {t('mealPlanner:veganDiet')}
+                            Vegan
                           </Text>
                         </TouchableOpacity>
                       </View>
                     </View>
                     
                     {/* Food Exclusions */}
-                    <View style={styles.exclusionSection}>
-                      <Text style={styles.exclusionSectionTitle}>{t('mealPlanner:excludeFoods')}</Text>
-                      <Text style={styles.exclusionDescription}>
-                        {t('mealPlanner:exclusionDescription')}
-                      </Text>
-                      
-                      <View style={styles.exclusionOptions}>
+                    <View style={styles.advancedCard}>
+                      <Text style={styles.cardTitle}>Exclude Foods</Text>
+                      <View style={styles.optionsGrid}>
                         <TouchableOpacity 
                           style={[
-                            styles.exclusionOption,
-                            excludedFoodBaseNames.includes('chicken') && styles.exclusionOptionSelected
+                            styles.exclusionChip,
+                            excludedFoodBaseNames.includes('chicken') && styles.exclusionChipSelected
                           ]}
                           onPress={() => toggleExcludedFood('chicken')}
                         >
                           <Text 
                             style={[
-                              styles.exclusionOptionText,
-                              excludedFoodBaseNames.includes('chicken') && styles.exclusionOptionTextSelected
+                              styles.exclusionChipText,
+                              excludedFoodBaseNames.includes('chicken') && styles.exclusionChipTextSelected
                             ]}
                           >
-                            {t('mealPlanner:chicken')}
+                            Chicken
                           </Text>
                         </TouchableOpacity>
                         
                         <TouchableOpacity 
                           style={[
-                            styles.exclusionOption,
-                            excludedFoodBaseNames.includes('beef') && styles.exclusionOptionSelected
+                            styles.exclusionChip,
+                            excludedFoodBaseNames.includes('beef') && styles.exclusionChipSelected
                           ]}
                           onPress={() => toggleExcludedFood('beef')}
                         >
                           <Text 
                             style={[
-                              styles.exclusionOptionText,
-                              excludedFoodBaseNames.includes('beef') && styles.exclusionOptionTextSelected
+                              styles.exclusionChipText,
+                              excludedFoodBaseNames.includes('beef') && styles.exclusionChipTextSelected
                             ]}
                           >
-                            {t('mealPlanner:beef')}
+                            Beef
                           </Text>
                         </TouchableOpacity>
+                        
                         <TouchableOpacity 
                           style={[
-                            styles.exclusionOption,
-                            excludedFoodBaseNames.includes('samun') && styles.exclusionOptionSelected
+                            styles.exclusionChip,
+                            excludedFoodBaseNames.includes('samun') && styles.exclusionChipSelected
                           ]}
                           onPress={() => toggleExcludedFood('samun')}
                         >
                           <Text 
                             style={[
-                              styles.exclusionOptionText,
-                              excludedFoodBaseNames.includes('samun') && styles.exclusionOptionTextSelected
+                              styles.exclusionChipText,
+                              excludedFoodBaseNames.includes('samun') && styles.exclusionChipTextSelected
                             ]}
                           >
-                            {t('mealPlanner:samun')}
+                            Samun
                           </Text>
                         </TouchableOpacity>
+                        
                         <TouchableOpacity 
                           style={[
-                            styles.exclusionOption,
-                            excludedFoodBaseNames.includes('rice') && styles.exclusionOptionSelected
+                            styles.exclusionChip,
+                            excludedFoodBaseNames.includes('rice') && styles.exclusionChipSelected
                           ]}
                           onPress={() => toggleExcludedFood('rice')}
                         >
                           <Text 
                             style={[
-                              styles.exclusionOptionText,
-                              excludedFoodBaseNames.includes('rice') && styles.exclusionOptionTextSelected
+                              styles.exclusionChipText,
+                              excludedFoodBaseNames.includes('rice') && styles.exclusionChipTextSelected
                             ]}
                           >
-                            {t('mealPlanner:rice')}
+                            Rice
                           </Text>
                         </TouchableOpacity>
                       </View>
                     </View>
                   </View>
                 )}
-              </View>
 
-              {/* Generate Button */}
-              <View style={styles.generateSection}>
-                <TouchableOpacity
-                  style={[styles.generateButton, (isGenerating || !hasPremium) && styles.generateButtonDisabled]}
-                  onPress={handleGeneratePlan}
-                  disabled={isGenerating || !hasPremium}
-                >
-                  <LinearGradient
-                    colors={hasPremium ? ['#22C55E', '#16A34A'] : ['#9CA3AF', '#6B7280']}
-                    style={styles.generateButtonGradient}
+                {/* Action Buttons */}
+                <View style={styles.actionSection}>
+                  <TouchableOpacity
+                    style={[styles.generateButton, (!hasPremium || isGenerating) && styles.generateButtonDisabled]}
+                    onPress={handleGeneratePlan}
+                    disabled={isGenerating || !hasPremium}
                   >
                     {isGenerating ? (
                       <>
                         <RefreshCw size={20} color="#FFFFFF" />
-                        <Text style={styles.generateButtonText}>{t('mealPlanner:calculating')}</Text>
+                        <Text style={styles.generateButtonText}>Generating...</Text>
                       </>
                     ) : (
                       <>
-                        {hasPremium ? (
-                          <ChefHat size={20} color="#FFFFFF" />
-                        ) : (
-                          <Crown size={20} color="#FFFFFF" />
-                        )}
+                        <ChefHat size={20} color="#FFFFFF" />
                         <Text style={styles.generateButtonText}>
-                          {hasPremium ? t('mealPlanner:generatePlan') : t('mealPlanner:premiumRequired')}
+                          {hasPremium ? 'Generate Meal Plan' : 'Premium Required'}
                         </Text>
                       </>
                     )}
-                  </LinearGradient>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={styles.savedPlansButton}
-                  onPress={navigateToSavedPlans}
-                >
-                  <UtensilsCrossed size={20} color="#374151" />
-                  <Text style={styles.savedPlansButtonText}>{t('mealPlanner:mySavedPlans')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-  style={{ backgroundColor: 'red', padding: 20, margin: 20 }}
-  onPress={checkPurchaseStatus}
->
-  <Text style={{ color: 'white' }}>DEBUG: Check Purchase Status</Text>
-</TouchableOpacity>
-
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.savedPlansButton}
+                    onPress={navigateToSavedPlans}
+                  >
+                    <UtensilsCrossed size={18} color="#64748B" />
+                    <Text style={styles.savedPlansButtonText}>My Saved Plans</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </>
           ) : (
@@ -1151,44 +518,44 @@ const styles = StyleSheet.create({
                     style={styles.regenerateButton}
                     onPress={handleRegeneratePlan}
                   >
-                    <RefreshCw size={16} color="#22C55E" />
+                    <RefreshCw size={16} color="#10B981" />
                   </TouchableOpacity>
                 </View>
                 
                 <View style={styles.planStats}>
                   <View style={styles.planStat}>
                     <Text style={styles.planStatValue}>{generatedPlan.totalCalories}</Text>
-                    <Text style={styles.planStatLabel}>{t('mealPlanner:caloriesTotal')}</Text>
+                    <Text style={styles.planStatLabel}>Calories</Text>
                   </View>
                   <View style={styles.planStat}>
                     <Text style={styles.planStatValue}>{generatedPlan.totalProtein}g</Text>
-                    <Text style={styles.planStatLabel}>{t('mealPlanner:proteinTotal')}</Text>
+                    <Text style={styles.planStatLabel}>Protein</Text>
                   </View>
                   <View style={styles.planStat}>
                     <Text style={styles.planStatValue}>{generatedPlan.totalCarbs}g</Text>
-                    <Text style={styles.planStatLabel}>{t('mealPlanner:carbsTotal')}</Text>
+                    <Text style={styles.planStatLabel}>Carbs</Text>
                   </View>
                   <View style={styles.planStat}>
                     <Text style={styles.planStatValue}>{generatedPlan.totalFat}g</Text>
-                    <Text style={styles.planStatLabel}>{t('mealPlanner:fatTotal')}</Text>
+                    <Text style={styles.planStatLabel}>Fat</Text>
                   </View>
                 </View>
               </View>
 
               {/* Meals */}
-              {renderMealSection(t('mealPlanner:breakFast'), generatedPlan.meals.breakfast, '#F59E0B')}
-              {renderMealSection(t('mealPlanner:lunch'), generatedPlan.meals.lunch, '#EF4444')}
-              {renderMealSection(t('mealPlanner:dinner'), generatedPlan.meals.dinner, '#8B5CF6')}
+              {renderMealSection('Breakfast', generatedPlan.meals.breakfast, '#F59E0B')}
+              {renderMealSection('Lunch', generatedPlan.meals.lunch, '#EF4444')}
+              {renderMealSection('Dinner', generatedPlan.meals.dinner, '#8B5CF6')}
 
               {/* Action Buttons */}
-              <View style={styles.actionButtons}>
+              <View style={styles.planActionButtons}>
                 <TouchableOpacity 
                   style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
                   onPress={handleSavePlan}
                   disabled={isSaving}
                 >
                   <Text style={styles.saveButtonText}>
-                    {isSaving ? 'Saving...' : t('mealPlanner:savePlan')}
+                    {isSaving ? 'Saving...' : 'Save Plan'}
                   </Text>
                 </TouchableOpacity>
                 
@@ -1196,7 +563,7 @@ const styles = StyleSheet.create({
                   style={styles.newPlanButton}
                   onPress={() => setGeneratedPlan(null)}
                 >
-                  <Text style={styles.newPlanButtonText}>{t('mealPlanner:createNewPlan')}</Text>
+                  <Text style={styles.newPlanButtonText}>Create New Plan</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1212,3 +579,528 @@ const styles = StyleSheet.create({
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollViewContent: {
+    paddingBottom: 100,
+  },
+  
+  // Header Styles
+  header: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerContent: {
+    flex: 1,
+    marginHorizontal: 16,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  premiumBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  
+  // Premium Gate Styles
+  premiumGate: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  premiumGateHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  premiumGateIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  premiumGateTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  premiumGateDescription: {
+    fontSize: 16,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  premiumGateButton: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  premiumGateButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // Input Section Styles
+  inputSection: {
+    padding: 20,
+  },
+  sectionHeader: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  targetsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  disabledCard: {
+    opacity: 0.6,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  required: {
+    color: '#EF4444',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1E293B',
+  },
+  inputUnit: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '600',
+    backgroundColor: '#E2E8F0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  
+  // Advanced Options
+  advancedToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  advancedToggleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  advancedToggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748B',
+    marginLeft: 8,
+  },
+  
+  // Advanced Section
+  advancedSection: {
+    gap: 16,
+  },
+  advancedCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 16,
+  },
+  
+  // Options Grid
+  optionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  optionChip: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  optionChipSelected: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  optionChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  optionChipTextSelected: {
+    color: '#FFFFFF',
+  },
+  exclusionChip: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  exclusionChipSelected: {
+    backgroundColor: '#EF4444',
+    borderColor: '#EF4444',
+  },
+  exclusionChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  exclusionChipTextSelected: {
+    color: '#FFFFFF',
+  },
+  
+  // Action Section
+  actionSection: {
+    marginTop: 24,
+    gap: 12,
+  },
+  generateButton: {
+    backgroundColor: '#10B981',
+    borderRadius: 16,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  generateButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+    shadowOpacity: 0,
+  },
+  generateButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  savedPlansButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  savedPlansButtonText: {
+    color: '#64748B',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // Plan Section
+  planSection: {
+    padding: 20,
+  },
+  planHeader: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  planTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  planTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  regenerateButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  planStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  planStat: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  planStatValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#10B981',
+    marginBottom: 4,
+  },
+  planStatLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  
+  // Meal Section
+  mealSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  mealHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  mealIndicator: {
+    width: 4,
+    height: 24,
+    borderRadius: 2,
+    marginRight: 12,
+  },
+  mealTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E293B',
+    flex: 1,
+  },
+  mealCalories: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748B',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  mealItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
+  },
+  mealImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    marginRight: 16,
+    backgroundColor: '#F8FAFC',
+  },
+  mealInfo: {
+    flex: 1,
+  },
+  mealItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  mealPortion: {
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 8,
+  },
+  mealNutrition: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  nutritionText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  mealCaloriesContainer: {
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  mealItemCalories: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#10B981',
+  },
+  caloriesLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  
+  // Plan Action Buttons
+  planActionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#10B981',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+    shadowOpacity: 0,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  newPlanButton: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  newPlanButtonText: {
+    color: '#64748B',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
