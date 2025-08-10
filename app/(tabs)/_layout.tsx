@@ -42,7 +42,6 @@ export default function TabLayout() {
       <Tabs.Screen name="meal-plan-details"  />
       <Tabs.Screen name="meal-planner-food-details" />
       <Tabs.Screen name="profile" options={{ title: t('common:profile') }} />
-      <Tabs.Screen name="faqs" options={{ headerShown: false }} /> {/* NEW: Add this line */}
       {/* NEW: Add this line for the food request feature */}
       <Tabs.Screen name="food-request" options={{ headerShown: false }} />
     </Tabs>

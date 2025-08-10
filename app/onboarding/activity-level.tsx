@@ -15,10 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSequence,
-  withDelay, 
   withTiming,
-  Easing,
 } from 'react-native-reanimated';
 import LottieView from 'lottie-react-native';
 
@@ -34,7 +31,6 @@ export default function ActivityLevelScreen() {
   // Animation values
   const contentOpacity = useSharedValue(0);
   const contentTranslateY = useSharedValue(30);
-  const buttonScale = useSharedValue(1);
   
   useEffect(() => {
     // Animate content on mount
@@ -46,12 +42,6 @@ export default function ActivityLevelScreen() {
     return {
       opacity: contentOpacity.value,
       transform: [{ translateY: contentTranslateY.value }],
-    };
-  });
-  
-  const buttonStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: buttonScale.value }],
     };
   });
   
@@ -89,12 +79,6 @@ export default function ActivityLevelScreen() {
   const handleComplete = async () => {
     try {
       setIsSubmitting(true);
-      
-      // Animate button press
-      buttonScale.value = withSequence(
-        withTiming(0.95, { duration: 100 }),
-        withTiming(1, { duration: 100 })
-      );
       
       // Get stored personal info
       const personalInfoStr = await AsyncStorage.getItem('onboardingPersonalInfo');
@@ -184,24 +168,45 @@ export default function ActivityLevelScreen() {
         
         <View style={styles.optionsContainer}>
           {activityOptions.map((option, index) => (
-            <AnimatedButton
+            <TouchableOpacity
               key={option.id}
-              label={option.label}
-              description={option.description}
-              icon={option.icon}
-              selected={activityLevel === option.id}
+              style={[
+                styles.optionButton,
+                activityLevel === option.id && styles.optionButtonSelected,
+                { borderColor: activityLevel === option.id ? option.color : '#E5E7EB' }
+              ]}
               onPress={() => setActivityLevel(option.id)}
-              color={option.color}
-              index={index}
-            />
+              activeOpacity={0.7}
+            >
+              <View style={[
+                styles.iconContainer,
+                { backgroundColor: activityLevel === option.id ? option.color : '#F3F4F6' }
+              ]}>
+                {React.cloneElement(option.icon, {
+                  color: activityLevel === option.id ? '#FFFFFF' : '#6B7280'
+                })}
+              </View>
+              <View style={styles.optionTextContainer}>
+                <Text style={[
+                  styles.optionLabel,
+                  { color: activityLevel === option.id ? option.color : '#111827' }
+                ]}>
+                  {option.label}
+                </Text>
+                <Text style={styles.optionDescription}>
+                  {option.description}
+                </Text>
+              </View>
+            </TouchableOpacity>
           ))}
         </View>
         
-        <Animated.View style={[styles.buttonContainer, buttonStyle]}>
+        <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={[styles.completeButton, isSubmitting && styles.completeButtonDisabled]}
             onPress={handleComplete}
             disabled={isSubmitting}
+            activeOpacity={0.8}
           >
             <Text style={styles.completeButtonText}>
               {isSubmitting 
@@ -209,7 +214,7 @@ export default function ActivityLevelScreen() {
                 : t('onboarding:completeSetup', 'Complete Setup')}
             </Text>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
       </Animated.View>
 
       {showSuccessAnimation && (
@@ -241,6 +246,39 @@ const styles = StyleSheet.create({
   },
   optionsContainer: {
     marginBottom: 32,
+  },
+  optionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 12,
+  },
+  optionButtonSelected: {
+    backgroundColor: '#F8FAFC',
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  optionTextContainer: {
+    flex: 1,
+  },
+  optionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  optionDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
   },
   buttonContainer: {
     marginTop: 'auto',

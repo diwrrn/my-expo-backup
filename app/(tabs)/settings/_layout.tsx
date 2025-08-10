@@ -6,6 +6,7 @@ export default function SettingsLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="personal-info" />
       <Stack.Screen name="account-settings" />
+      <Stack.Screen name="faqs" />
     </Stack>
   );
 }

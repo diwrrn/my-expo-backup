@@ -68,6 +68,23 @@ export interface WorkoutSession {
     duration: number;
   }>;
 }
+export interface MonthlyReportDocument {
+  startDate: string;
+  endDate: string;
+  timezone?: string;
+  generatedAt: string;
+  daysWithData: number;
+  reportData: any;
+}
+
+export interface WeeklyReportDocument {
+  startDate: string;
+  endDate: string;
+  timezone?: string;
+  generatedAt: string;
+  daysWithData: number;
+  reportData: any;
+}
 
 export class FirebaseService {
   // Phone-based Authentication
@@ -2790,6 +2807,129 @@ static calculateMealCategoryTotals(allMealsData: any): any {
       return () => {}; // Return a no-op unsubscribe function
     }
   }
+  static weeklyReportDocRef(userId: string, startDate: string, endDate: string) {
+    return doc(db, 'users', userId, 'weeklyReports', `${startDate}_${endDate}`);
+  }
+  
+  static async getWeeklyReport(userId: string, startDate: string, endDate: string): Promise<WeeklyReportDocument | null> {
+    try {
+      const ref = this.weeklyReportDocRef(userId, startDate, endDate);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return null;
+      return snap.data() as WeeklyReportDocument;
+    } catch (error) {
+      console.error('getWeeklyReport error:', error);
+      return null;
+    }
+  }
+  
+  static async saveWeeklyReport(userId: string, data: WeeklyReportDocument): Promise<void> {
+    try {
+      const ref = this.weeklyReportDocRef(userId, data.startDate, data.endDate);
+      await setDoc(ref, data, { merge: false });
+    } catch (error) {
+      console.error('saveWeeklyReport error:', error);
+      throw error;
+    }
+  }
+  
+  static async getOrCreateWeeklyReport(userId: string, startDate: string, endDate: string, timezone?: string): Promise<WeeklyReportDocument> {
+    const existing = await this.getWeeklyReport(userId, startDate, endDate);
+    if (existing) return existing;
+  
+    const weeklyStats = await this.getWeeklyCategoryStats(userId, startDate, endDate);
+    const reportData = this.filterWeeklyStatsForReport(weeklyStats);
+    const daysWithData = weeklyStats?.daysWithData ?? 0;
+  
+    const docToSave: WeeklyReportDocument = {
+      startDate,
+      endDate,
+      timezone,
+      generatedAt: new Date().toISOString(),
+      daysWithData,
+      reportData,
+    };
+  
+    await this.saveWeeklyReport(userId, docToSave);
+    return docToSave;
+  }
+  
+  static async listWeeklyReports(userId: string, limitCount = 12): Promise<WeeklyReportDocument[]> {
+    try {
+      const colRef = collection(db, 'users', userId, 'weeklyReports');
+      const qy = query(colRef, orderBy('endDate', 'desc'), limit(limitCount));
+      const qs = await getDocs(qy);
+      return qs.docs.map(d => d.data() as WeeklyReportDocument);
+    } catch (error) {
+      console.error('listWeeklyReports error:', error);
+      return [];
+    }
+  }
+  // ===== Monthly Reports (compute-once, then read) =====
+
+static monthlyReportDocRef(userId: string, startDate: string, endDate: string) {
+  return doc(db, 'users', userId, 'monthlyReports', `${startDate}_${endDate}`);
+}
+
+static async getMonthlyReport(userId: string, startDate: string, endDate: string): Promise<MonthlyReportDocument | null> {
+  try {
+    const ref = this.monthlyReportDocRef(userId, startDate, endDate);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    return snap.data() as MonthlyReportDocument;
+  } catch (error) {
+    console.error('getMonthlyReport error:', error);
+    return null;
+  }
+}
+
+static async saveMonthlyReport(userId: string, data: MonthlyReportDocument): Promise<void> {
+  try {
+    const ref = this.monthlyReportDocRef(userId, data.startDate, data.endDate);
+    await setDoc(ref, data, { merge: false });
+  } catch (error) {
+    console.error('saveMonthlyReport error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Compute once and store, or return existing doc if already stored.
+ * Reuses the weekly range aggregator for a month date range.
+ */
+static async getOrCreateMonthlyReport(userId: string, startDate: string, endDate: string, timezone?: string): Promise<MonthlyReportDocument> {
+  const existing = await this.getMonthlyReport(userId, startDate, endDate);
+  if (existing) return existing;
+
+  // Reuse the same range-based aggregator
+  const stats = await this.getWeeklyCategoryStats(userId, startDate, endDate);
+  const reportData = this.filterWeeklyStatsForReport(stats);
+  const daysWithData = stats?.daysWithData ?? 0;
+
+  const docToSave: MonthlyReportDocument = {
+    startDate,
+    endDate,
+    timezone,
+    generatedAt: new Date().toISOString(),
+    daysWithData,
+    reportData,
+  };
+
+  await this.saveMonthlyReport(userId, docToSave);
+  return docToSave;
+}
+
+static async listMonthlyReports(userId: string, limitCount = 12): Promise<MonthlyReportDocument[]> {
+  try {
+    const colRef = collection(db, 'users', userId, 'monthlyReports');
+    const qy = query(colRef, orderBy('endDate', 'desc'), limit(limitCount));
+    const qs = await getDocs(qy);
+    return qs.docs.map(d => d.data() as MonthlyReportDocument);
+  } catch (error) {
+    console.error('listMonthlyReports error:', error);
+    return [];
+  }
+}
 
 static async getDailyMealDatesForMonth(userId: string, year: number, month: number): Promise<string[]> {
     try {

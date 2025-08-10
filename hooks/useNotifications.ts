@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './useAuth';
 import { FirebaseService } from '@/services/firebaseService';
 
@@ -14,52 +15,84 @@ Notifications.setNotificationHandler({
   }),
 });
 
+type CacheShape = {
+  timezone?: string;
+  token?: string;
+  savedAt?: number;
+};
+
 export function useNotifications() {
   const { user } = useAuth();
   const [permissionStatus, setPermissionStatus] = useState<string>('unknown');
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const hasInitializedRef = useRef(false);
 
-  // Check permission status
   useEffect(() => {
     const checkPermission = async () => {
       const { status } = await Notifications.getPermissionsAsync();
       setPermissionStatus(status);
     };
-    
     checkPermission();
   }, []);
 
-  // Initialize notifications and get push token
   useEffect(() => {
-    if (!user?.id || permissionStatus !== 'granted') {
-      return;
-    }
+    if (!user?.id || permissionStatus !== 'granted') return;
+
+    // Avoid double invoke in dev StrictMode / repeated mounts
+    if (hasInitializedRef.current) return;
+    hasInitializedRef.current = true;
 
     const initializeNotifications = async () => {
       try {
         setIsLoading(true);
 
-        // Save timezone
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        await FirebaseService.saveUserTimezone(user.id, timezone);
-        console.log('📱 Timezone saved:', timezone);
+        const cacheKey = `notif:lastSaved:${user.id}`;
+        const raw = await AsyncStorage.getItem(cacheKey);
+        let cache: CacheShape = {};
+        try {
+          cache = raw ? JSON.parse(raw) : {};
+        } catch {
+          cache = {};
+        }
 
-        // Get Expo push token (now with FCM credentials)
+        // Save timezone only if changed (no Firestore read)
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (cache.timezone !== timezone) {
+          await FirebaseService.saveUserTimezone(user.id, timezone);
+          cache.timezone = timezone;
+          cache.savedAt = Date.now();
+          console.log('📱 Timezone saved:', timezone);
+        } else {
+          console.log('📱 Timezone unchanged, skip save');
+        }
+
+        // Get Expo push token (must be physical device)
         if (!Device.isDevice) {
           console.log('📱 Must use physical device for Push Notifications');
           return;
         }
 
-        const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+        const projectId =
+          (Constants.expoConfig as any)?.extra?.eas?.projectId ??
+          (Constants as any)?.easConfig?.projectId;
+
         const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
         console.log('📱 Expo push token obtained:', token);
         setExpoPushToken(token);
 
-        // Save push token to Firebase
-        await FirebaseService.savePushToken(user.id, token);
-        console.log('📱 Push token saved to Firebase');
+        // Save push token only if changed (no Firestore read)
+        if (cache.token !== token) {
+          await FirebaseService.savePushToken(user.id, token);
+          cache.token = token;
+          cache.savedAt = Date.now();
+          console.log('📱 Push token saved to Firebase');
+        } else {
+          console.log('📱 Push token unchanged, skip save');
+        }
 
+        // Persist cache
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(cache));
       } catch (error) {
         console.error(' Error initializing notifications:', error);
       } finally {
@@ -85,9 +118,7 @@ export function useNotifications() {
   };
 
   const sendTestNotification = async () => {
-    if (permissionStatus !== 'granted') {
-      return false;
-    }
+    if (permissionStatus !== 'granted') return false;
 
     try {
       await Notifications.scheduleNotificationAsync({
@@ -111,5 +142,5 @@ export function useNotifications() {
     isLoading,
     requestPermission,
     sendTestNotification,
-  };
-}
+  }; 
+}  

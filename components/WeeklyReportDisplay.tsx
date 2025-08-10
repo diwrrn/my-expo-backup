@@ -30,11 +30,7 @@ export const WeeklyReportDisplay: React.FC<WeeklyReportDisplayProps> = ({
   
   const isRTL = useRTL();
 
-  // Add debugging
-  console.log('🔍 WeeklyReportDisplay - reportData:', reportData);
-  console.log('🔍 WeeklyReportDisplay - userName:', userName);
-  console.log('🔍 WeeklyReportDisplay - dailyCalorieGoal:', dailyCalorieGoal);
-
+  
   // Demo data for artifact preview - remove in production
   const demoData = {
     weekStart: "Jan 15",
@@ -67,18 +63,12 @@ export const WeeklyReportDisplay: React.FC<WeeklyReportDisplayProps> = ({
 
   // Use passed props or demo data for preview
   const data = reportData || demoData;
-  console.log('🔍 WeeklyReportDisplay - final data:', data);
-  console.log('🔍 WeeklyReportDisplay - data.foodCountsPerCategory:', data.foodCountsPerCategory);
-  console.log('🔍 WeeklyReportDisplay - data.dailyCalories:', data.dailyCalories);
-
   const name = userName || "Alex";
   const calorieGoal = dailyCalorieGoal || 2200;
 
   const categories = Object.entries(data.foodCountsPerCategory || {});
   const dailyEntries = Object.entries(data.dailyCalories || {});
 
-  console.log('🔍 WeeklyReportDisplay - categories:', categories);
-  console.log('🔍 WeeklyReportDisplay - dailyEntries:', dailyEntries);
 
   // Get actual start and end dates from dailyEntries
   const getWeekDateRange = () => {

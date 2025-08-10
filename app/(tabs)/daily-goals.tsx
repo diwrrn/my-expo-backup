@@ -11,6 +11,7 @@ import { DailyGoalsSkeleton } from '@/components/DailyGoalsSkeleton';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
+import { useProfileContext } from '@/contexts/ProfileContext';
 interface ProgressBarProps {
   label: string;
   current: number;
@@ -97,8 +98,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
 export default function DailyGoalsScreen() {
   const { t } = useTranslation();
   const isRTL = useRTL();
-  const { user, profileCache } = useAuth();
-  const { dailyTotals, loading: dailyMealsLoading } = useDailyMealsContext();
+  const { user } = useAuth();
+  const { isLoading: profileLoading } = useProfileContext();
+    const { dailyTotals, loading: dailyMealsLoading } = useDailyMealsContext();
   const { getUserProfile, updateUserProfile } = useFirebaseData();  
   const [goals, setGoals] = useState({
     calories: 2000,
@@ -272,8 +274,8 @@ export default function DailyGoalsScreen() {
   // Show skeleton while profile data is loading
   // Check all loading states to prevent flickering
 
-  if (profileCache.isLoading || dailyMealsLoading || !user?.profile) {
-        return (
+  if (profileLoading || dailyMealsLoading || !user?.profile) {
+            return (
       <SafeAreaView style={styles.container}>
         <DailyGoalsSkeleton />
       </SafeAreaView>

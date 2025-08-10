@@ -1,16 +1,14 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, User, Phone, Lock, Eye, EyeOff, Save } from 'lucide-react-native';
+import { ArrowLeft, User, Phone, Lock, Eye, EyeOff, Save, Shield } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { auth } from '@/config/firebase';
-import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 
 export default function AccountSettingsScreen() {
   const { user, updateProfile } = useAuth();
-  const isRTL = useRTL();
   
   // Profile form state
   const [name, setName] = useState(user?.name || '');
@@ -162,317 +160,468 @@ export default function AccountSettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+          <ArrowLeft size={24} color="#1E293B" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Account Settings</Text>
+          <Text style={styles.headerSubtitle}>Manage your account information</Text>
+        </View>
+        <TouchableOpacity 
+          onPress={handleUpdateProfile} 
+          style={[styles.saveButton, isProfileLoading && styles.saveButtonDisabled]}
+          disabled={isProfileLoading}
+        >
+          <Save size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView 
         style={styles.scrollView} 
+        contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.scrollViewContent}>
-        {/* Header */}
-        <View style={[styles.header, { flexDirection: getFlexDirection(isRTL) }]}>
-          <TouchableOpacity 
-            style={[styles.backButton, { marginRight: isRTL ? 0 : 16, marginLeft: isRTL ? 16 : 0 }]} 
-            onPress={handleGoBack}
-          >
-            {isRTL ? <ArrowLeft size={24} color="#111827" style={{ transform: [{ rotate: '180deg' }] }} /> : <ArrowLeft size={24} color="#111827" />}
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <Text style={[styles.headerTitle, { textAlign: getTextAlign(isRTL) }]}>Account Settings</Text>
-            <Text style={[styles.headerSubtitle, { textAlign: getTextAlign(isRTL) }]}>Manage your account information</Text>
+        {/* Profile Information Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardTitleRow}>
+              <User size={22} color="#10B981" />
+              <Text style={styles.cardTitle}>Profile Information</Text>
+            </View>
+            <Text style={styles.cardSubtitle}>Update your personal details</Text>
           </View>
-        </View>
-
-        {/* Profile Information Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { textAlign: getTextAlign(isRTL) }]}>Profile Information</Text>
           
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { textAlign: getTextAlign(isRTL) }]}>Full Name</Text>
-            <View style={[styles.inputContainer, { flexDirection: getFlexDirection(isRTL) }]}>
-              <User size={20} color="#6B7280" />
-              <TextInput 
-                style={[styles.input, { marginLeft: isRTL ? 0 : 12, marginRight: isRTL ? 12 : 0, textAlign: getTextAlign(isRTL) }]}
+          <View style={styles.inputGrid}>
+            <View style={styles.inputRow}>
+              <InputField
+                icon={<User size={18} color="#64748B" />}
                 placeholder="Enter your full name"
                 value={name}
                 onChangeText={setName}
+                label="Full Name"
                 autoCapitalize="words"
-                placeholderTextColor="#9CA3AF"
               />
             </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { textAlign: getTextAlign(isRTL) }]}>Phone Number</Text>
-            <View style={[styles.inputContainer, { flexDirection: getFlexDirection(isRTL) }]}>
-              <Phone size={20} color="#6B7280" />
-              <TextInput 
-                style={[styles.input, { marginLeft: isRTL ? 0 : 12, marginRight: isRTL ? 12 : 0, textAlign: getTextAlign(isRTL) }]}
+            
+            <View style={styles.inputRow}>
+              <InputField
+                icon={<Phone size={18} color="#64748B" />}
                 placeholder="Enter your phone number"
                 value={phoneNumber}
                 onChangeText={setPhoneNumber}
+                label="Phone Number"
                 keyboardType="phone-pad"
-                placeholderTextColor="#9CA3AF"
               />
             </View>
           </View>
-
-          <TouchableOpacity
-            style={[styles.updateButton, isProfileLoading && styles.updateButtonDisabled, { flexDirection: getFlexDirection(isRTL) }]}
-            onPress={handleUpdateProfile}
-            disabled={isProfileLoading}
-          >
-            <Save size={20} color="#FFFFFF" />
-            <Text style={styles.updateButtonText}>
-              {isProfileLoading ? 'Updating...' : 'Update Profile'}
-            </Text>
-          </TouchableOpacity>
         </View>
 
-        {/* Password Change Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { textAlign: getTextAlign(isRTL) }]}>Change Password</Text>
-          <Text style={[styles.sectionDescription, { textAlign: getTextAlign(isRTL) }]}>
-            For security reasons, you'll need to enter your current password to set a new one.
-          </Text>
+        {/* Password Change Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardTitleRow}>
+              <Lock size={22} color="#10B981" />
+              <Text style={styles.cardTitle}>Change Password</Text>
+            </View>
+            <Text style={styles.cardSubtitle}>Update your account password for security</Text>
+          </View>
           
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { textAlign: getTextAlign(isRTL) }]}>Current Password</Text>
-            <View style={[styles.inputContainer, { flexDirection: getFlexDirection(isRTL) }]}>
-              <Lock size={20} color="#6B7280" />
-              <TextInput 
-                style={[styles.input, { marginLeft: isRTL ? 0 : 12, marginRight: isRTL ? 12 : 0, textAlign: getTextAlign(isRTL) }]}
+          <View style={styles.inputGrid}>
+            <View style={styles.inputRow}>
+              <PasswordField
+                icon={<Lock size={18} color="#64748B" />}
                 placeholder="Enter current password"
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
-                secureTextEntry={!showCurrentPassword}
-                placeholderTextColor="#9CA3AF"
+                label="Current Password"
+                showPassword={showCurrentPassword}
+                onToggleShow={() => setShowCurrentPassword(!showCurrentPassword)}
               />
-              <TouchableOpacity
-                style={styles.eyeIcon}
-                onPress={() => setShowCurrentPassword(!showCurrentPassword)}
-              >
-                {showCurrentPassword ? (
-                  <EyeOff size={20} color="#6B7280" />
-                ) : (
-                  <Eye size={20} color="#6B7280" />
-                )}
-              </TouchableOpacity>
             </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { textAlign: getTextAlign(isRTL) }]}>New Password</Text>
-            <View style={[styles.inputContainer, { flexDirection: getFlexDirection(isRTL) }]}>
-              <Lock size={20} color="#6B7280" />
-              <TextInput 
-                style={[styles.input, { marginLeft: isRTL ? 0 : 12, marginRight: isRTL ? 12 : 0, textAlign: getTextAlign(isRTL) }]}
+            
+            <View style={styles.inputRow}>
+              <PasswordField
+                icon={<Lock size={18} color="#64748B" />}
                 placeholder="Enter new password"
                 value={newPassword}
                 onChangeText={setNewPassword}
-                secureTextEntry={!showNewPassword}
-                placeholderTextColor="#9CA3AF"
+                label="New Password"
+                showPassword={showNewPassword}
+                onToggleShow={() => setShowNewPassword(!showNewPassword)}
               />
-              <TouchableOpacity
-                style={styles.eyeIcon}
-                onPress={() => setShowNewPassword(!showNewPassword)}
-              >
-                {showNewPassword ? (
-                  <EyeOff size={20} color="#6B7280" />
-                ) : (
-                  <Eye size={20} color="#6B7280" />
-                )}
-              </TouchableOpacity>
             </View>
-          </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { textAlign: getTextAlign(isRTL) }]}>Confirm New Password</Text>
-            <View style={[styles.inputContainer, { flexDirection: getFlexDirection(isRTL) }]}>
-              <Lock size={20} color="#6B7280" />
-              <TextInput 
-                style={[styles.input, { marginLeft: isRTL ? 0 : 12, marginRight: isRTL ? 12 : 0, textAlign: getTextAlign(isRTL) }]}
+            <View style={styles.inputRow}>
+              <PasswordField
+                icon={<Lock size={18} color="#64748B" />}
                 placeholder="Confirm new password"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                secureTextEntry={!showConfirmPassword}
-                placeholderTextColor="#9CA3AF"
+                label="Confirm New Password"
+                showPassword={showConfirmPassword}
+                onToggleShow={() => setShowConfirmPassword(!showConfirmPassword)}
               />
-              <TouchableOpacity
-                style={styles.eyeIcon}
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                {showConfirmPassword ? (
-                  <EyeOff size={20} color="#6B7280" />
-                ) : (
-                  <Eye size={20} color="#6B7280" />
-                )}
-              </TouchableOpacity>
             </View>
           </View>
-
-          <TouchableOpacity
-            style={[styles.changePasswordButton, isPasswordLoading && styles.updateButtonDisabled, { flexDirection: getFlexDirection(isRTL) }]}
-            onPress={handleChangePassword}
-            disabled={isPasswordLoading}
-          >
-            <Lock size={20} color="#FFFFFF" />
-            <Text style={styles.updateButtonText}>
-              {isPasswordLoading ? 'Changing...' : 'Change Password'}
-            </Text>
-          </TouchableOpacity>
         </View>
 
-        {/* Security Notice */}
-        <View style={styles.securityNotice}>
-          <Text style={styles.securityTitle}>🔒 Security Notice</Text>
-          <Text style={styles.securityText}>
-            • Use a strong password with at least 6 characters
-          </Text>
-          <Text style={styles.securityText}>
-            • Don't share your password with anyone
-          </Text>
-          <Text style={styles.securityText}>
-            • If you suspect unauthorized access, change your password immediately
-          </Text>
+        {/* Security Notice Card */}
+        <View style={styles.securityCard}>
+          <View style={styles.securityHeader}>
+            <View style={styles.securityTitleRow}>
+              <Shield size={22} color="#F59E0B" />
+              <Text style={styles.securityTitle}>Security Guidelines</Text>
+            </View>
+            <Text style={styles.securitySubtitle}>Keep your account safe</Text>
+          </View>
+          
+          <View style={styles.securityContent}>
+            <View style={styles.securityItem}>
+              <View style={styles.securityBullet} />
+              <Text style={styles.securityText}>Use a strong password with at least 6 characters</Text>
+            </View>
+            <View style={styles.securityItem}>
+              <View style={styles.securityBullet} />
+              <Text style={styles.securityText}>Don't share your password with anyone</Text>
+            </View>
+            <View style={styles.securityItem}>
+              <View style={styles.securityBullet} />
+              <Text style={styles.securityText}>If you suspect unauthorized access, change your password immediately</Text>
+            </View>
+          </View>
         </View>
-        </View>
+            
+        {/* Action Buttons */}
+        <TouchableOpacity 
+          onPress={handleUpdateProfile} 
+          style={[styles.saveButtonLarge, isProfileLoading && styles.saveButtonLargeDisabled]}
+          disabled={isProfileLoading}
+        >
+          <Save size={20} color="#FFFFFF" style={styles.saveButtonIcon} />
+          <Text style={styles.saveButtonText}>
+            {isProfileLoading ? 'Updating Profile...' : 'Update Profile'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          onPress={handleChangePassword} 
+          style={[styles.passwordButtonLarge, isPasswordLoading && styles.saveButtonLargeDisabled]}
+          disabled={isPasswordLoading}
+        >
+          <Lock size={20} color="#FFFFFF" style={styles.saveButtonIcon} />
+          <Text style={styles.saveButtonText}>
+            {isPasswordLoading ? 'Changing Password...' : 'Change Password'}
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// Input Field Component
+const InputField = ({ 
+  icon, 
+  placeholder, 
+  value, 
+  onChangeText, 
+  label,
+  keyboardType,
+  autoCapitalize
+}: {
+  icon: React.ReactNode;
+  placeholder: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  label: string;
+  keyboardType?: any;
+  autoCapitalize?: any;
+}) => (
+  <View style={styles.fieldContainer}>
+    <Text style={styles.fieldLabel}>{label}</Text>
+    <View style={styles.inputContainer}>
+      <View style={styles.inputIconContainer}>
+        {icon}
+      </View>
+      <TextInput
+        style={styles.input}
+        placeholder={placeholder}
+        value={value}
+        onChangeText={onChangeText}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+        placeholderTextColor="#9CA3AF"
+      />
+    </View>
+  </View>
+);
+
+// Password Field Component
+const PasswordField = ({ 
+  icon, 
+  placeholder, 
+  value, 
+  onChangeText, 
+  label,
+  showPassword,
+  onToggleShow
+}: {
+  icon: React.ReactNode;
+  placeholder: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  label: string;
+  showPassword: boolean;
+  onToggleShow: () => void;
+}) => (
+  <View style={styles.fieldContainer}>
+    <Text style={styles.fieldLabel}>{label}</Text>
+    <View style={styles.inputContainer}>
+      <View style={styles.inputIconContainer}>
+        {icon}
+      </View>
+      <TextInput
+        style={styles.input}
+        placeholder={placeholder}
+        value={value}
+        onChangeText={onChangeText}
+        secureTextEntry={!showPassword}
+        placeholderTextColor="#9CA3AF"
+      />
+      <TouchableOpacity style={styles.eyeButton} onPress={onToggleShow}>
+        {showPassword ? (
+          <EyeOff size={18} color="#64748B" />
+        ) : (
+          <Eye size={18} color="#64748B" />
+        )}
+      </TouchableOpacity>
+    </View>
+  </View>
+);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F8FAFC',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  saveButton: {
+    backgroundColor: '#10B981',
+    padding: 10,
+    borderRadius: 10,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+    shadowOpacity: 0,
   },
   scrollView: {
     flex: 1,
   },
   scrollViewContent: {
-    paddingBottom: 90, // Space for footer navigation
+    padding: 20,
+    paddingBottom: 100,
   },
-  header: {
+  card: {
     backgroundColor: '#FFFFFF',
-    padding: 24,
-    paddingTop: 60,
+    borderRadius: 16,
+    marginBottom: 20,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  cardHeader: {
+    padding: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#F1F5F9',
+  },
+  cardTitleRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
     alignItems: 'center',
-  },
-  headerContent: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
     marginBottom: 4,
   },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  section: {
-    paddingHorizontal: 24,
-    marginBottom: 32,
-    marginTop: 24,
-  },
-  sectionTitle: {
-    fontSize: 20,
+  cardTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
+    color: '#1E293B',
+    marginLeft: 8,
   },
-  sectionDescription: {
+  cardSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 20,
-    lineHeight: 20,
+    color: '#64748B',
+    marginTop: 2,
   },
-  inputGroup: {
-    marginBottom: 20,
+  inputGrid: {
+    padding: 20,
+    gap: 16,
   },
-  inputLabel: {
-    fontSize: 16,
+  inputRow: {
+    width: '100%',
+  },
+  fieldContainer: {
+    marginBottom: 4,
+  },
+  fieldLabel: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1E293B',
     marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    minHeight: 52,
+  },
+  inputIconContainer: {
+    marginRight: 10,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#111827',
+    color: '#1E293B',
   },
-  eyeIcon: {
+  eyeButton: {
     padding: 4,
+    marginLeft: 8,
   },
-  updateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#22C55E',
-    borderRadius: 12,
-    paddingVertical: 16,
-    gap: 8,
-    marginTop: 8,
-  },
-  changePasswordButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#3B82F6',
-    borderRadius: 12,
-    paddingVertical: 16,
-    gap: 8,
-    marginTop: 8,
-  },
-  updateButtonDisabled: {
-    opacity: 0.6,
-  },
-  updateButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  securityNotice: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: 12,
-    padding: 20,
-    marginHorizontal: 24,
-    marginBottom: 32,
+  securityCard: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 16,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: '#FDE68A',
   },
+  securityHeader: {
+    padding: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FDE68A',
+  },
+  securityTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   securityTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: '#92400E',
-    marginBottom: 12,
+    marginLeft: 8,
+  },
+  securitySubtitle: {
+    fontSize: 14,
+    color: '#B45309',
+    marginTop: 2,
+  },
+  securityContent: {
+    padding: 20,
+    gap: 12,
+  },
+  securityItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  securityBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#F59E0B',
+    marginTop: 8,
+    marginRight: 12,
   },
   securityText: {
+    flex: 1,
     fontSize: 14,
     color: '#92400E',
     lineHeight: 20,
-    marginBottom: 4,
+  },
+  saveButtonLarge: {
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  passwordButtonLarge: {
+    backgroundColor: '#3B82F6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  saveButtonLargeDisabled: {
+    backgroundColor: '#9CA3AF',
+    shadowOpacity: 0,
+  },
+  saveButtonIcon: {
+    marginRight: 8,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

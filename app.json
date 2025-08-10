@@ -17,13 +17,13 @@
       "bundleIdentifier": "com.kurddev.juulaapp"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#FFFFFF"
-      },
-      "package": "com.kurddev.juulaapp",
-      "googleServicesFile": "./google-services.json"
-    },
+  "adaptiveIcon": {
+    "foregroundImage": "./assets/images/icon.png",
+    "backgroundColor": "#FFFFFF"
+  },
+  "package": "com.kurddev.juulaapp",
+  "googleServicesFile": "./google-services.json"  
+},
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
@@ -33,14 +33,7 @@
       "expo-router",
       "expo-font",
       "expo-notifications",
-      [
-        "@react-native-firebase/app",
-        {
-          "android_package_name": "com.kurddev.juulaapp",
-          "ios_bundle_id": "com.kurddev.juulaapp"
-        }
-      ],
-      [
+        [
         "expo-router",
         {
           "origin": false,

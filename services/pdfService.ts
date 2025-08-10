@@ -10,10 +10,9 @@ export class PDFService {
     try {
       console.log('📄 PDFService: Starting PDF generation for:', userName);
       
-      // Create HTML template with updated design
+      // Create HTML template with updated design matching WeeklyReportScreen
       const htmlContent = this.createWeeklyReportHTML(reportData, userName, dailyCalorieGoal);
       
-      console.log('📄 PDFService: HTML content length:', htmlContent.length);
       
       // Generate PDF using expo-print
       const { uri } = await Print.printToFileAsync({
@@ -21,7 +20,7 @@ export class PDFService {
         base64: false,
         width: 612,
         height: 792,
-        margins: {
+        margins: {  
           left: 40,
           top: 40,
           right: 40,
@@ -29,7 +28,6 @@ export class PDFService {
         }
       });
       
-      console.log('✅ PDFService: PDF generated successfully:', uri);
       
       // Share the PDF
       if (await Sharing.isAvailableAsync()) {
@@ -37,13 +35,10 @@ export class PDFService {
           mimeType: 'application/pdf',
           dialogTitle: `${userName}'s Weekly Nutrition Report`
         });
-        console.log('✅ PDFService: PDF shared successfully');
-      } else {
-        console.log('⚠️ PDFService: Sharing not available on this device');
-      }
+      } 
       
     } catch (error) {
-      console.error('❌ PDFService error:', error);
+    
       throw error;
     }
   }
@@ -83,8 +78,8 @@ export class PDFService {
             body {
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
               line-height: 1.6;
-              color: #1A1A1A;
-              background: #FAFAFA;
+              color: #111827;
+              background: #FFFFFF;
               font-size: 14px;
             }
             
@@ -97,286 +92,269 @@ export class PDFService {
             
             .header {
               background: #FFFFFF;
-              padding: 30px 40px;
-              border-bottom: 1px solid #F0F0F0;
+              padding: 16px;
+              border-bottom: 1px solid #E5E7EB;
+              display: flex;
+              flex-direction: row;
+              align-items: center;
+              justify-content: space-between;
             }
             
-            .title {
-              font-size: 32px;
+            .header-title {
+              font-size: 18px;
               font-weight: 700;
-              color: #1A1A1A;
-              margin-bottom: 16px;
-              text-align: left;
+              color: #111827;
             }
             
-            .header-info {
-              margin-top: 12px;
+            .dl-btn {
+              display: flex;
+              flex-direction: row;
+              align-items: center;
+              background: #22C55E;
+              padding: 8px 12px;
+              border-radius: 8px;
+              gap: 6px;
             }
             
-            .header-label {
-              font-size: 16px;
-              color: #6B7280;
-              font-weight: 500;
-              margin-bottom: 4px;
-              display: block;
-            }
-            
-            .header-value {
-              color: #1A1A1A;
+            .dl-txt {
+              color: #FFFFFF;
               font-weight: 600;
             }
             
+            .period-row {
+              display: flex;
+              flex-direction: row;
+              align-items: center;
+              gap: 10px;
+              padding: 10px 16px;
+              border-bottom: 1px solid #F3F4F6;
+            }
+            
+            .period-txt {
+              color: #111827;
+              font-weight: 600;
+            }
+            
+            .subtle {
+              color: #6B7280;
+              font-size: 12px;
+            }
+            
             .content {
-              padding: 0 40px;
+              padding: 0 16px;
             }
             
             .stats-section {
               background: #FFFFFF;
-              padding: 30px 0;
+              padding: 24px 0;
               margin-bottom: 20px;
             }
             
             .stats-grid {
               display: grid;
               grid-template-columns: repeat(3, 1fr);
-              gap: 20px;
+              gap: 16px;
             }
             
             .stat-card {
               text-align: center;
-              padding: 24px 16px;
-              background: #F8FDF9;
-              border-radius: 12px;
-              border: 1px solid #E8F5E8;
-              position: relative;
-            }
-            
-            .stat-icon {
-              width: 36px;
-              height: 36px;
-              border-radius: 18px;
-              background: #FFFFFF;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              margin: 0 auto 16px;
-              box-shadow: 0 1px 3px rgba(76, 175, 80, 0.2);
+              padding: 20px 16px;
+              background: #F9FAFB;
+              border-radius: 10px;
+              border: 1px solid #F3F4F6;
             }
             
             .stat-value {
-              font-size: 28px;
+              font-size: 24px;
               font-weight: 700;
-              color: #1A1A1A;
-              margin-bottom: 6px;
+              color: #111827;
+              margin-bottom: 4px;
             }
             
             .stat-label {
               font-size: 14px;
               font-weight: 600;
               color: #374151;
-              margin-bottom: 4px;
+              margin-bottom: 2px;
             }
             
             .stat-subtitle {
               font-size: 12px;
-              color: #9CA3AF;
+              color: #6B7280;
               font-weight: 500;
             }
             
             .section {
               background: #FFFFFF;
               margin-bottom: 20px;
-              padding: 24px 0;
-            }
-            
-            .section-header {
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              margin-bottom: 24px;
+              padding: 20px 0;
             }
             
             .section-title {
-              font-size: 24px;
+              font-size: 18px;
               font-weight: 700;
-              color: #1A1A1A;
-            }
-            
-            .target-info {
-              background: #F3F4F6;
-              padding: 8px 12px;
-              border-radius: 6px;
-            }
-            
-            .target-text {
-              font-size: 12px;
-              color: #6B7280;
-              font-weight: 500;
+              color: #111827;
+              margin-bottom: 16px;
             }
             
             .category-card {
-              padding: 24px;
-              background: #FAFAFA;
-              border-radius: 12px;
-              margin-bottom: 16px;
-              border: 1px solid #F0F0F0;
+              padding: 16px;
+              background: #F9FAFB;
+              border-radius: 10px;
+              margin-bottom: 12px;
+              border: 1px solid #F3F4F6;
             }
             
             .category-header {
-              margin-bottom: 16px;
+              margin-bottom: 12px;
             }
             
             .category-title-row {
               display: flex;
               align-items: center;
+              justify-content: space-between;
+            }
+            
+            .category-left {
+              display: flex;
+              align-items: center;
             }
             
             .category-icon {
-              font-size: 32px;
-              margin-right: 16px;
+              font-size: 24px;
+              margin-right: 12px;
             }
             
             .category-name {
-              font-size: 20px;
+              font-size: 16px;
               font-weight: 700;
-              color: #1A1A1A;
-              flex: 1;
+              color: #111827;
             }
             
             .items-badge {
-              background: #E8F5E8;
-              padding: 8px 16px;
-              border-radius: 16px;
-              border: 1px solid #4CAF50;
+              background: #22C55E;
+              padding: 4px 8px;
+              border-radius: 6px;
             }
             
             .items-count {
-              font-size: 14px;
-              font-weight: 700;
-              color: #4CAF50;
+              font-size: 12px;
+              font-weight: 600;
+              color: #FFFFFF;
             }
             
             .category-description {
-              font-size: 16px;
+              font-size: 14px;
               color: #6B7280;
               font-weight: 500;
-              margin-bottom: 20px;
-              line-height: 1.5;
+              margin-bottom: 12px;
             }
             
             .calories-summary {
               text-align: center;
-              background: #F8FDF9;
-              padding: 16px;
+              background: #FFFFFF;
+              padding: 12px;
               border-radius: 8px;
-              border: 1px solid #E8F5E8;
+              border: 1px solid #F3F4F6;
             }
             
             .total-calories {
-              font-size: 28px;
-              font-weight: 900;
-              color: #4CAF50;
-              margin-bottom: 4px;
+              font-size: 20px;
+              font-weight: 700;
+              color: #22C55E;
+              margin-bottom: 2px;
             }
             
             .calories-unit {
-              font-size: 14px;
+              font-size: 12px;
               color: #6B7280;
-              font-weight: 600;
+              font-weight: 500;
             }
             
             .daily-grid {
               display: grid;
-              grid-template-columns: repeat(3, 1fr);
+              grid-template-columns: repeat(2, 1fr);
               gap: 12px;
             }
             
             .day-card {
-              background: #FAFAFA;
+              background: #F9FAFB;
               border-radius: 8px;
-              padding: 16px;
-              border: 1px solid #F0F0F0;
+              padding: 12px;
+              border: 1px solid #F3F4F6;
             }
             
             .day-header {
               display: flex;
               justify-content: space-between;
               align-items: center;
-              margin-bottom: 12px;
+              margin-bottom: 8px;
             }
             
             .day-name {
               font-size: 14px;
               font-weight: 600;
-              color: #6B7280;
+              color: #111827;
             }
             
             .day-percentage {
               font-size: 12px;
               font-weight: 600;
-              color: #4CAF50;
+              color: #22C55E;
             }
             
             .day-calories {
-              font-size: 18px;
+              font-size: 16px;
               font-weight: 700;
-              color: #1A1A1A;
-              margin-bottom: 12px;
+              color: #111827;
+              margin-bottom: 8px;
             }
             
             .day-progress {
               width: 100%;
               height: 4px;
-              background: #E5E7EB;
+              background: #F3F4F6;
               border-radius: 2px;
               overflow: hidden;
             }
             
             .day-progress-fill {
               height: 100%;
-              background: #4CAF50;
+              background: #22C55E;
               border-radius: 2px;
-              transition: width 0.3s ease;
             }
             
             .summary-section {
-              padding: 24px 0;
+              padding: 20px 0;
             }
             
             .summary-card {
-              background: #FFFFFF;
-              border-radius: 12px;
-              padding: 24px;
-              border: 1px solid #F0F0F0;
-            }
-            
-            .summary-header {
-              display: flex;
-              align-items: center;
-              margin-bottom: 16px;
+              background: #F9FAFB;
+              border-radius: 10px;
+              padding: 16px;
+              border: 1px solid #F3F4F6;
             }
             
             .summary-title {
-              font-size: 18px;
-              font-weight: 600;
-              color: #1A1A1A;
-              margin-left: 12px;
+              font-size: 16px;
+              font-weight: 700;
+              color: #111827;
+              margin-bottom: 8px;
             }
             
             .summary-text {
-              font-size: 15px;
+              font-size: 14px;
               color: #6B7280;
-              line-height: 1.6;
-              margin-bottom: 20px;
+              line-height: 1.5;
             }
             
             .footer {
               text-align: center;
-              padding: 40px;
-              color: #9CA3AF;
+              padding: 24px 16px;
+              color: #6B7280;
               font-size: 12px;
-              border-top: 1px solid #F0F0F0;
-              background: #FAFAFA;
+              border-top: 1px solid #F3F4F6;
+              background: #F9FAFB;
             }
             
             @media print {
@@ -398,12 +376,16 @@ export class PDFService {
           <div class="container">
             <!-- Header -->
             <div class="header">
-              <h1 class="title">Weekly Report</h1>
-              <div class="header-info">
-                <span class="header-label">Name: <span class="header-value">${userName}</span></span>
-                <span class="header-label">From: <span class="header-value">${reportData.weekStart}</span></span>
-                <span class="header-label">To: <span class="header-value">${reportData.weekEnd}</span></span>
+              <h1 class="header-title">Weekly Report</h1>
+              <div class="dl-btn">
+                <span class="dl-txt">PDF Report</span>
               </div>
+            </div>
+
+            <!-- Period Info -->
+            <div class="period-row">
+              <span class="period-txt">Period: ${reportData.weekStart} → ${reportData.weekEnd} (Fri→Thu)</span>
+              <span class="subtle">${reportData.daysWithData} day(s) with logs</span>
             </div>
 
             <div class="content">
@@ -411,19 +393,16 @@ export class PDFService {
               <div class="stats-section">
                 <div class="stats-grid">
                   <div class="stat-card">
-                    <div class="stat-icon">🎯</div>
                     <div class="stat-value">${reportData.overallAverageCaloriesPerDay.toLocaleString()}</div>
                     <div class="stat-label">Daily Average</div>
                     <div class="stat-subtitle">calories</div>
                   </div>
                   <div class="stat-card">
-                    <div class="stat-icon">📅</div>
                     <div class="stat-value">${reportData.daysWithData}</div>
                     <div class="stat-label">Days Tracked</div>
                     <div class="stat-subtitle">of 7 days</div>
                   </div>
                   <div class="stat-card">
-                    <div class="stat-icon">📊</div>
                     <div class="stat-value">${Object.keys(reportData.foodCountsPerCategory).length}</div>
                     <div class="stat-label">Food Groups</div>
                     <div class="stat-subtitle">tracked</div>
@@ -433,9 +412,7 @@ export class PDFService {
 
               <!-- Food Categories -->
               <div class="section">
-                <div class="section-header">
-                  <h2 class="section-title">Food Categories</h2>
-                </div>
+                <h2 class="section-title">Food Categories</h2>
                 
                 ${Object.entries(reportData.foodCountsPerCategory).map(([category, count]) => {
                   const avgCalories = reportData.averageCaloriesPerCategory[category];
@@ -445,8 +422,10 @@ export class PDFService {
                     <div class="category-card">
                       <div class="category-header">
                         <div class="category-title-row">
-                          <span class="category-icon">${categoryIcons[category] || '🍽️'}</span>
-                          <span class="category-name">${category.charAt(0).toUpperCase() + category.slice(1)}</span>
+                          <div class="category-left">
+                            <span class="category-icon">${categoryIcons[category] || '🍽️'}</span>
+                            <span class="category-name">${category.charAt(0).toUpperCase() + category.slice(1)}</span>
+                          </div>
                           <div class="items-badge">
                             <span class="items-count">${count}</span>
                           </div>
@@ -466,12 +445,7 @@ export class PDFService {
 
               <!-- Daily Breakdown -->
               <div class="section">
-                <div class="section-header">
-                  <h2 class="section-title">Daily Breakdown</h2>
-                  <div class="target-info">
-                    <span class="target-text">Target: ${calorieGoal.toLocaleString()} cal</span>
-                  </div>
-                </div>
+                <h2 class="section-title">Daily Breakdown</h2>
                 
                 <div class="daily-grid">
                   ${dailyPercentages.map(({ day, calories, percentage }) => {
@@ -497,10 +471,7 @@ export class PDFService {
               <!-- Weekly Summary -->
               <div class="summary-section">
                 <div class="summary-card">
-                  <div class="summary-header">
-                    <span style="font-size: 20px;">👥</span>
-                    <h3 class="summary-title">Week Summary</h3>
-                  </div>
+                  <h3 class="summary-title">Week Summary</h3>
                   <div class="summary-text">
                     You tracked ${reportData.daysWithData} out of 7 days this week. 
                     Your daily average was ${reportData.overallAverageCaloriesPerDay} calories, 

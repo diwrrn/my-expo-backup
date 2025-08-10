@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { useState, useEffect } from 'react';
 import { router, usePathname } from 'expo-router';
 import { Plus, Calculator, ChartBar as BarChart3, Chrome as Home, User, UtensilsCrossed } from 'lucide-react-native';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { useTranslation, TFunction } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 
 import Animated, { 
   useSharedValue, 
@@ -34,8 +34,13 @@ export function FooterNavigation() {
   const homePressAnimation = useSharedValue(0);
   const mealPlannerPressAnimation = useSharedValue(0);
   const profilePressAnimation = useSharedValue(0);
+  
   const { t } = useTranslation();
   const isRTL = useRTL();
+
+  // Double-tap prevention
+  const lastPressTime = useRef<number>(0);
+  const DOUBLE_TAP_DELAY = 500; // 500ms cooldown
 
   const navItems: NavItem[] = [
     {
@@ -76,9 +81,15 @@ export function FooterNavigation() {
     setActiveRoute(pathname);
   }, [pathname]);
 
-  const handleNavPress = (route: string, itemId: string) => {
+  const handleNavPress = useCallback((route: string, itemId: string) => {
+    const now = Date.now();
+    if (now - lastPressTime.current < DOUBLE_TAP_DELAY) {
+      return; // Prevent double-tap
+    }
+    lastPressTime.current = now;
+    
     router.push(route as any);
-  };
+  }, []);
 
   const getAnimationValue = (itemId: string) => {
     switch (itemId) {
@@ -91,22 +102,22 @@ export function FooterNavigation() {
     }
   };
 
-  const handlePressIn = (itemId: string) => {
+  const handlePressIn = useCallback((itemId: string) => {
     const animation = getAnimationValue(itemId);
     animation.value = withTiming(1, { duration: 150 });
-  };
+  }, []);
 
-  const handlePressOut = (itemId: string) => {
+  const handlePressOut = useCallback((itemId: string) => {
     const animation = getAnimationValue(itemId);
     animation.value = withTiming(0, { duration: 200 });
-  };
+  }, []);
 
-  const isActive = (route: string) => {
+  const isActive = useCallback((route: string) => {
     if (route === '/(tabs)/') {
       return activeRoute === '/(tabs)/' || activeRoute === '/';
     }
     return activeRoute === route;
-  };
+  }, [activeRoute]);
 
   return (
     <View style={styles.container}>
@@ -123,7 +134,7 @@ export function FooterNavigation() {
           const animationValue = getAnimationValue(item.id);
           
           if (item.isHome) {
-            // Home button with special press animation
+            // Home button with special press animation (keep as-is)
             const homeAnimatedStyle = useAnimatedStyle(() => {
               const scale = withSpring(1 - homePressAnimation.value * 0.1);
               const shadowOpacity = 0.3 + (homePressAnimation.value * 0.2);
@@ -159,15 +170,15 @@ export function FooterNavigation() {
             );
           }
 
-          // Create animated style for press effect on the entire button
-          const animatedStyle = useAnimatedStyle(() => {
+          // Create animated background style
+          const animatedBackgroundStyle = useAnimatedStyle(() => {
             const backgroundColor = interpolateColor(
               animationValue.value,
               [0, 1],
               ['transparent', active ? 'rgba(34, 197, 94, 0.2)' : 'rgba(107, 114, 128, 0.1)']
             );
             
-            const scale = withSpring(1 - animationValue.value * 0.05);
+            const scale = withSpring(1 - animationValue.value * 0.02);
             
             return {
               backgroundColor,
@@ -176,12 +187,13 @@ export function FooterNavigation() {
           });
 
           return (
-            <Animated.View
-              key={item.id}
-              style={[styles.navItem, animatedStyle]}
-            >
+            <View key={item.id} style={styles.navItem}>
+              {/* Animated background layer - fills entire nav item */}
+              <Animated.View style={[styles.animatedBackground, animatedBackgroundStyle]} />
+              
+              {/* Touch layer on top */}
               <TouchableOpacity
-                style={styles.navItemTouchable}
+                style={styles.fullTouchArea}
                 onPress={() => handleNavPress(item.route, item.id)}
                 onPressIn={() => handlePressIn(item.id)}
                 onPressOut={() => handlePressOut(item.id)}
@@ -197,7 +209,7 @@ export function FooterNavigation() {
                   {item.title}
                 </Text>
               </TouchableOpacity>
-            </Animated.View>
+            </View>
           );
         })}
       </View>
@@ -246,19 +258,38 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
     height: Platform.OS === 'ios' ? 92 : 76,
   },
+  
+  // NEW: Nav item with relative positioning for absolute children
   navItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
     flex: 1,
-    borderRadius: 12,
+    height: '100%',
+    position: 'relative', // Allow absolute positioned children
     marginHorizontal: 2,
   },
-  navItemTouchable: {
+  
+  // NEW: Absolute positioned animated background that bleeds into padding
+  animatedBackground: {
+    position: 'absolute',
+    top: -16,    // Extend up into nav container's paddingTop
+    left: -8,    // Extend left into horizontal spacing
+    right: -8,   // Extend right into horizontal spacing  
+    bottom: Platform.OS === 'ios' ? -34 : -16, // Extend down into paddingBottom
+    borderRadius: 12,
+    zIndex: 1, // Behind touch layer
+  },
+  
+  // NEW: Full touch area on top of background
+  fullTouchArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    width: '100%',
-    flex: 1,
+    zIndex: 2, // Above background
   },
+  
   navIconContainer: {
     width: 44,
     height: 44,
@@ -279,7 +310,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   
-  // Home button specific styles
+  // Home button specific styles (unchanged)
   homeContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -321,4 +352,4 @@ const styles = StyleSheet.create({
   homeLabelActive: {
     color: '#15803D',
   },
-});
+}); 

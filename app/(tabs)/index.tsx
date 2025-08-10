@@ -606,8 +606,8 @@ const progressPercentage = (caloriesConsumed / caloriesGoal) * 100;
                 <MealCardWithSearch
                   title={mealConfig.title}
                   calories={mealTotals[mealConfig.id]?.calories || 0}
-                  items={mealTotals[mealConfig.id]?.items || 0}
-                  color={mealConfig.color}
+                  items={getFoodsFromMeal(mealConfig.id).length}
+                                    color={mealConfig.color}
                   icon={mealConfig.icon}
                   mealType={mealConfig.id as 'breakfast' | 'lunch' | 'dinner' | 'snacks'}
                   foods={getFoodsFromMeal(mealConfig.id)}

@@ -651,89 +651,102 @@ export const resetPasswordRequest = functions.https.onRequest(
   });
 
 
-// Add this function after existing functions:
-export const sendWeeklyReportNotifications = functions.scheduler
+  export const sendWeeklyReportNotifications = functions.scheduler
   .onSchedule({
-    schedule: '0 8 * * 5',
-    timeZone: 'UTC'
+    schedule: "0 8 * * 5",
+    timeZone: "UTC",
   }, async (event) => {
     try {
-      console.log('📱 Starting weekly report notifications...');
-      
-      // Get all users
-      const usersSnapshot = await admin.firestore().collection('users').get();
+      console.log("📱 Starting weekly report notifications...");
+
+      const usersSnapshot = await admin.firestore().collection("users").get();
       const users = usersSnapshot.docs;
-      
+
       console.log(`📱 Found ${users.length} users to notify`);
-      
+
       let successCount = 0;
       let errorCount = 0;
-      
-      // Process users in batches to avoid rate limits
+
       const batchSize = 50;
       for (let i = 0; i < users.length; i += batchSize) {
         const batch = users.slice(i, i + batchSize);
-        
+
         const promises = batch.map(async (userDoc) => {
           try {
             const userData = userDoc.data();
             const pushToken = userData.pushToken;
-            
+        
             if (!pushToken) {
               console.log(`📱 No push token for user ${userDoc.id}`);
               return;
             }
-            
-            // Send notification
+        
+             
+            // Check if it's an Expo token
+            if (pushToken.startsWith('ExponentPushToken[')) {
+              console.log(`📱 DEBUG - ✅ Valid Expo token format`);
+            } else {
+              console.log(`📱 DEBUG - ❌ NOT Expo token format - might be FCM token`);
+            }
+        
             const message = {
               to: pushToken,
-              sound: 'default',
-              title: '📊 Your Weekly Report is Ready!',
-              body: 'Generate your nutrition summary for the previous week and track your progress.',
+              sound: "default",
+              title: "📊 Your Weekly Report is Ready!",
+              body: "Generate your nutrition summary for the previous week and track your progress.",
               data: {
-                type: 'weekly_report_ready',
-                action: 'open_stats'
+                type: "weekly_report_ready",
+                action: "open_stats",
               },
-              badge: 1
+              badge: 1,
             };
-            
-            const response = await fetch('https://exp.host/--/api/v2/push/send', {
-              method: 'POST',
+        
+            // 🔍 LOG THE MESSAGE BEING SENT:
+            console.log(`📱 DEBUG - Message payload:`, JSON.stringify(message, null, 2));
+        
+            const response = await fetch("https://exp.host/--/api/v2/push/send", {
+              method: "POST",
               headers: {
-                Accept: 'application/json',
-                'Accept-encoding': 'gzip, deflate',
-                'Content-Type': 'application/json',
+                Accept: "application/json",
+                "Accept-encoding": "gzip, deflate",
+                "Content-Type": "application/json",
               },
               body: JSON.stringify(message),
             });
-            
-            const result = await response.json() as { data?: { status?: string } };
-            
-            if (result.data && result.data.status === 'ok') {
-              console.log(`📱 Weekly report notification sent to user ${userDoc.id}`);
+        
+            // 🔍 LOG THE RESPONSE:
+            console.log(`📱 DEBUG - Response status: ${response.status}`);
+            console.log(`📱 DEBUG - Response headers:`, response.headers);
+        
+            const result = await response.json() as {data?: {status?: string}};
+        
+            // 🔍 LOG THE FULL RESULT:
+            console.log(`📱 DEBUG - Full result:`, JSON.stringify(result, null, 2));
+        
+            if (result.data && result.data.status === "ok") {
+              console.log(`📱 ✅ Weekly report notification sent to user ${userDoc.id}`);
               successCount++;
             } else {
-              console.error(`📱 Failed to send notification to user ${userDoc.id}:`, result);
+              console.error(`📱 ❌ Failed to send notification to user ${userDoc.id}:`, result);
               errorCount++;
             }
           } catch (error) {
-            console.error(`📱 Error sending notification to user ${userDoc.id}:`, error);
+            console.error(`📱 💥 Error sending notification to user ${userDoc.id}:`, error);
             errorCount++;
           }
         });
-        
+
         await Promise.all(promises);
-        
-        // Add delay between batches to avoid rate limits
+
         if (i + batchSize < users.length) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
-      
+
       console.log(`📱 Weekly report notifications completed. Success: ${successCount}, Errors: ${errorCount}`);
-      
+
     } catch (error) {
-      console.error('📱 Error in weekly report notifications:', error);
+      console.error("📱 Error in weekly report notifications:", error);
       throw error;
     }
   });
