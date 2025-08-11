@@ -1,9 +1,10 @@
 // hooks/usePurchases.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Purchases, { CustomerInfo, PurchasesOfferings, PurchasesPackage } from 'react-native-purchases';
 import { revenueCatService } from '@/services/revenueCatService';
 import { useAuth } from '@/hooks/useAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 
 // Entitlement identifiers (configure these in RevenueCat dashboard)
 export const ENTITLEMENTS = {
@@ -36,7 +37,7 @@ interface UsePurchasesReturn {
 }
 
 // Cache configuration
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_DURATION = 1 * 60 * 60 * 1000; // 1 hour
 const getCacheKey = (userId: string) => `premium_status_${userId}`;
 
 // Helper function to get cached premium status
@@ -97,10 +98,29 @@ export const usePurchases = (): UsePurchasesReturn => {
   const [loading, setLoading] = useState<boolean>(true);
   const [cachedPremium, setCachedPremium] = useState<boolean | null>(null);
 
-  // Check premium status with cache fallback
-  const hasPremium = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium] != null || cachedPremium || false;
+// Enhanced premium check with local expiration validation
+const hasPremium = useMemo(() => {
+  const hasActiveEntitlement = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium] != null;
+  
+  if (!hasActiveEntitlement) return cachedPremium || false;
 
-  // Load cached premium status immediately when user changes
+  // Additional local expiration check
+  const premium = customerInfo.entitlements.active[ENTITLEMENTS.premium];
+  if (premium.expirationDate) {
+    const isNotExpired = new Date(premium.expirationDate) > new Date();
+    if (!isNotExpired) {
+      console.log('🚨 Local expiration check: subscription expired');
+      // Update cache to reflect expiration
+      if (user?.id) {
+        savePremiumStatusToCache(user.id, false, customerInfo);
+      }
+      return false;
+    }
+  }
+
+  return true;
+}, [customerInfo, cachedPremium, user?.id, savePremiumStatusToCache]);
+// Load cached premium status immediately when user changes
   useEffect(() => {
     const loadCachedPremium = async () => {
       if (!user?.id) {
@@ -205,21 +225,25 @@ export const usePurchases = (): UsePurchasesReturn => {
       Purchases.removeCustomerInfoUpdateListener(purchaseUpdateListener);
     };
   }, [user?.id]);
+  
 
   const purchasePackage = async (pkg: PurchasesPackage): Promise<{ success: boolean; error?: string }> => {
     try {
       console.log('🛒 Attempting to purchase package for user', user?.id + ':', pkg.identifier);
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       
-      // Update cache after successful purchase
+      // IMMEDIATELY update state before cache operations
+      setCustomerInfo(customerInfo);
       const newPremiumStatus = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium] != null;
+      setCachedPremium(newPremiumStatus);
+      
+      // Update cache after successful purchase
       if (user?.id) {
         await savePremiumStatusToCache(user.id, newPremiumStatus, customerInfo);
       }
       
-      setCustomerInfo(customerInfo);
-      setCachedPremium(newPremiumStatus);
       console.log('✅ Purchase successful for user:', user?.id);
+      console.log('🎉 Premium status immediately updated to:', newPremiumStatus);
       return { success: true };
     } catch (error: any) {
       console.error('❌ Purchase failed for user', user?.id + ':', error);
@@ -228,7 +252,7 @@ export const usePurchases = (): UsePurchasesReturn => {
         error: error.message || 'Purchase failed' 
       };
     }
-  };
+  }; 
 
   const restorePurchases = async (): Promise<RestoreResult> => {
     try {
@@ -289,6 +313,23 @@ export const usePurchases = (): UsePurchasesReturn => {
   const getAvailablePackages = (): PurchasesPackage[] => {
     return offerings?.current?.availablePackages || [];
   };
+  // Add this new useEffect for background refresh
+  useEffect(() => {
+    if (!user?.id) return;
+  
+    const backgroundRefresh = setInterval(async () => {
+      if (AppState.currentState === 'active') { // ← Fixed
+        console.log('🔄 Background subscription status refresh...');
+        try {
+          await refreshCustomerInfo();
+        } catch (error) {
+          console.warn('Background refresh failed:', error);
+        }
+      }
+    }, 15 * 60 * 1000);
+  
+    return () => clearInterval(backgroundRefresh);
+  }, [user?.id, refreshCustomerInfo]);
 
   return {
     customerInfo,

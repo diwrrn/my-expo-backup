@@ -1,5 +1,5 @@
 // app/(tabs)/subscription.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Clipboard } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { usePurchases } from '@/hooks/usePurchases';
@@ -8,23 +8,71 @@ import { RevenueCatFallback } from '@/components/RevenueCatFallback';
 import { useRTL } from '@/hooks/useRTL';
 import { useAuth } from '@/hooks/useAuth';
 import { usePremiumContext } from '@/contexts/PremiumContext';
+import { useSubscriptionExpirationMonitor } from '@/hooks/useSubscriptionExpirationMonitor';
 
 
 export default function SubscriptionScreen() {
   const { t, i18n } = useTranslation();
   const { isRTL } = useRTL();
   const { user } = useAuth();
-  const { customerInfo, offerings, purchasePackage, restorePurchases } = usePurchases();
-  const [showPaywall, setShowPaywall] = useState(false);
+  const { customerInfo, offerings, purchasePackage, restorePurchases, refreshCustomerInfo } = usePurchases();
+    const [showPaywall, setShowPaywall] = useState(false);
   const { hasPremium, loading } = usePremiumContext();
+  const [localPremiumStatus, setLocalPremiumStatus] = useState<boolean | null>(null);
 
+  // Use local status if available, otherwise fall back to context
+ // Add expiration monitoring
+const { isExpired, timeUntilExpiry } = useSubscriptionExpirationMonitor(
+  customerInfo, 
+  handleExpirationDetected
+);
+
+// Enhanced effective premium status
+const effectiveHasPremium = useMemo(() => {
+  // If locally detected as expired, override everything
+  if (isExpired) return false;
+  
+  // Otherwise use existing logic
+  return localPremiumStatus !== null ? localPremiumStatus : hasPremium;
+}, [isExpired, localPremiumStatus, hasPremium]);
+
+// Show expiration warning for subscriptions expiring within 3 days
+const showExpirationWarning = useMemo(() => {
+  if (!timeUntilExpiry || timeUntilExpiry <= 0) return false;
+  return timeUntilExpiry < 3 * 24 * 60 * 60 * 1000; // 3 days
+}, [timeUntilExpiry]);
+  
   const handleShowPaywall = () => {
     setShowPaywall(true);
   };
-
+  const handlePurchaseSuccess = async () => {
+    console.log('🎉 Purchase successful, updating UI immediately');
+    
+    // Immediately update local state to show premium
+    setLocalPremiumStatus(true);
+    
+    // Refresh customer info in background
+    try {
+      await refreshCustomerInfo();
+      console.log('✅ Customer info refreshed after purchase');
+    } catch (error) {
+      console.error('❌ Failed to refresh customer info after purchase:', error);
+    }
+  };
+// Handle expiration detection
+const handleExpirationDetected = useCallback(async () => {
+  console.log('🚨 Subscription expiration detected, refreshing...');
+  setLocalPremiumStatus(false); // Immediately update UI
+  await refreshCustomerInfo(); // Refresh from server
+}, [refreshCustomerInfo]);
   const handleRestorePurchases = async () => {
     const result = await restorePurchases();
     if (result.success) {
+      // Update local state immediately
+      if (result.customerInfo?.entitlements?.active?.premium) {
+        setLocalPremiumStatus(true);
+      }
+      
       Alert.alert(
         t('subscription:restoreSuccess'),
         t('subscription:restoreSuccessMessage')
@@ -36,6 +84,12 @@ export default function SubscriptionScreen() {
       );
     }
   };
+// Reset local status when context updates
+useEffect(() => {
+  if (effectiveHasPremium !== undefined) {
+    setLocalPremiumStatus(null); // Clear local override when context is updated
+  }
+}, [effectiveHasPremium]);  
 
   const handleRefresh = async () => {
     await refreshCustomerInfo();
@@ -49,8 +103,8 @@ export default function SubscriptionScreen() {
   };
 
   // Show fallback if RevenueCat is not available
-  if (!customerInfo && !loading) {
-    return <RevenueCatFallback onRetry={handleRefresh} />;
+  if (!customerInfo && !loading && !effectiveHasPremium) {
+        return <RevenueCatFallback onRetry={handleRefresh} />;
   }
 
   return (
@@ -60,6 +114,17 @@ export default function SubscriptionScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+        {/* Show expiration warning if needed */}
+{showExpirationWarning && timeUntilExpiry && timeUntilExpiry > 0 && (
+  <View style={styles.expirationWarning}>
+    <Text style={styles.warningText}>
+      ⚠️ Your subscription expires in {Math.ceil(timeUntilExpiry / (24 * 60 * 60 * 1000))} days
+    </Text>
+    <TouchableOpacity onPress={handleShowPaywall} style={styles.renewButton}>
+      <Text style={styles.renewButtonText}>Renew Now</Text>
+    </TouchableOpacity>
+  </View>
+)}
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>{t('subscription:title')}</Text>
@@ -78,18 +143,17 @@ export default function SubscriptionScreen() {
                 <View>
                   <Text style={styles.statusTitle}>Current Plan</Text>
                   <Text style={styles.statusSubtitle}>
-                    {hasPremium ? 'Premium Nutrition Plan' : 'Basic Nutrition Plan'}
+                    {effectiveHasPremium ? 'Premium Nutrition Plan' : 'Basic Nutrition Plan'}
                   </Text>
                 </View>
-                <View style={[styles.statusBadge, hasPremium ? styles.premiumBadge : styles.freeBadge]}>
+                <View style={[styles.statusBadge, effectiveHasPremium ? styles.premiumBadge : styles.freeBadge]}>
                   <Text style={styles.statusBadgeText}>
-                    {hasPremium ? 'PRO' : 'FREE'}
+                    {effectiveHasPremium ? 'PRO' : 'FREE'}
                   </Text>
                 </View>
               </View>
               
-              {/* Premium Expiry */}
-              {hasPremium && customerInfo && (
+              {effectiveHasPremium && customerInfo && customerInfo.entitlements?.active?.premium?.expirationDate && (
                 <View style={styles.expirySection}>
                   <View style={styles.expiryRow}>
                     <Text style={styles.expiryLabel}>Valid until</Text>
@@ -103,15 +167,12 @@ export default function SubscriptionScreen() {
                     </View>
                   </View>
                   <Text style={styles.expiryDate}>
-                    {customerInfo.entitlements?.active?.premium?.expirationDate 
-                      ? new Date(customerInfo.entitlements.active.premium.expirationDate).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })
-                      : 'No expiry date available'
-                    }
+                    {new Date(customerInfo.entitlements.active.premium.expirationDate).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
                   </Text>
                 </View>
               )}
@@ -136,7 +197,7 @@ export default function SubscriptionScreen() {
             </View>
 
             {/* Features Section */}
-            {hasPremium ? (
+            {effectiveHasPremium ? (
               <View style={styles.featuresCard}>
                 <Text style={styles.featuresTitle}>🌟 Premium Features Unlocked</Text>
                 <View style={styles.featuresList}>
@@ -186,12 +247,12 @@ export default function SubscriptionScreen() {
       </ScrollView>
 
       {showPaywall && (
-        <CustomPaywall
-          offerings={offerings}
-          onPurchase={purchasePackage}
-          onClose={() => setShowPaywall(false)}
-        />
-      )}
+  <CustomPaywall
+    visible={showPaywall}
+    onClose={() => setShowPaywall(false)}
+    onPurchaseSuccess={handlePurchaseSuccess}
+  />
+)}
     </View>
   );
 }
@@ -220,7 +281,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 32,
+    paddingBottom: 100,
   },
   header: {
     paddingHorizontal: 24,
@@ -383,6 +444,37 @@ const styles = StyleSheet.create({
   copyButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  expirationWarning: {
+    backgroundColor: '#FEF3C7',
+    borderLeftWidth: 4,
+    borderLeftColor: '#F59E0B',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 24,
+    marginTop: 16,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  warningText: {
+    color: '#92400E',
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+  },
+  renewButton: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginLeft: 12,
+  },
+  renewButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '600',
   },
   featuresCard: {

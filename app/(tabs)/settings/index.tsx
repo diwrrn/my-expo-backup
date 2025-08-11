@@ -14,39 +14,21 @@ export default function SettingsScreen() {
   const { currentLanguage, changeLanguage } = useLanguage();
 
   const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
+// Replace the handleLanguageSelected function
+const handleLanguageSelected = async (languageCode: string) => {
+  setIsLanguageModalVisible(false);
 
-  const handleLanguageSelected = async (languageCode: string) => {
-    setIsLanguageModalVisible(false);
+  if (languageCode === currentLanguage) {
+    return; // Just close modal if same language
+  }
 
-    if (languageCode === currentLanguage) {
-      Alert.alert(t('common:languageTitle'), t('common:languageAlreadySelected'));
-      return;
-    }
-
-    Alert.alert(
-      t('common:languageTitle'),
-      t('common:confirmLanguageChange', { language: languageCode }),
-      [
-        {
-          text: t('common:cancel'),
-          style: 'cancel',
-        },
-        {
-          text: t('common:ok'),
-          onPress: async () => {
-            try {
-              await changeLanguage(languageCode);
-              router.replace('/(tabs)/');
-            } catch (error) {
-              console.error('Error changing language:', error);
-              Alert.alert(t('common:error'), t('common:languageChangeError'));
-            }
-          },
-        },
-      ]
-    );
-  };
-
+  try {
+    await changeLanguage(languageCode);
+    // Language changes instantly, no alerts needed
+  } catch (error) {
+    console.error('Error changing language:', error);
+  }
+};
   const handleGoBack = () => {
     router.back();
   };
@@ -84,7 +66,7 @@ export default function SettingsScreen() {
             icon={<Crown size={20} color="#F59E0B" />}
             title={t('subscription:title', 'Subscription')}
             subtitle="Manage your premium subscription"
-            onPress={() => router.push('/(tabs)/subscription')}
+            onPress={() => router.push('/settings/subscription')}
           />
         </View>
 

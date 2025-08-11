@@ -34,9 +34,10 @@ const { width, height } = Dimensions.get('window');
 interface CustomPaywallProps {
   visible: boolean;
   onClose: () => void;
+  onPurchaseSuccess?: () => void;
 }
 
-export function CustomPaywall({ visible, onClose }: CustomPaywallProps) {
+export function CustomPaywall({ visible, onClose, onPurchaseSuccess }: CustomPaywallProps) {
   const { getAvailablePackages, purchasePackage } = usePurchases();
   const { t } = useTranslation();
   const [purchasing, setPurchasing] = React.useState(false);
@@ -113,8 +114,11 @@ export function CustomPaywall({ visible, onClose }: CustomPaywallProps) {
       const result = await purchasePackage(pkg);
       
       if (result.success) {
+        // Call the success callback BEFORE showing alert
+        onPurchaseSuccess?.();
+        
         Alert.alert(
-          '�� Welcome to Premium!',
+          '🎉 Welcome to Premium!',
           'Your nutrition journey just got supercharged!',
           [
             {

@@ -324,44 +324,51 @@ const extractUnit = (unitString) => {
         {foods.length > 0 && (
           <Animated.View style={[styles.expandedContent, animatedExpandedContentStyle]}>
             <View style={styles.foodsList}>
-              {foods.map((food, index) => (
-                <View key={`${food.foodKey}-${index}`} style={styles.foodItem}>
-                  <View style={styles.foodInfo}>
-                    <Text style={styles.foodName}>
-                      {i18n.language === 'ku' && food.kurdishName && food.kurdishName !== 'N/A' && food.kurdishName !== ''
-                        ? food.kurdishName
-                        : i18n.language === 'ar' && food.arabicName && food.arabicName !== 'N/A' && food.arabicName !== ''
-                          ? food.arabicName
-                          : food.name || food.foodName || (food.foodId ? `Food ${food.foodId}` : 'Unknown Food')}
-                    </Text>
-                    <View style={styles.foodDetails}>
-                      <Text style={styles.foodQuantity}>
-                        {food.quantity} {t(`common:${extractUnit(food.unit)}`)}
-                      </Text>
-                      <Text style={styles.foodCalories}>
-                        {Math.round(food.calories || 0)} {t('homeScreen:kcal')}
-                      </Text>
-                    </View>
-                    <View style={styles.macroInfo}>
-                      <Text style={styles.macroText}>
-                        {t("common:p")}: {Math.round((food.protein || 0) * 10) / 10}g
-                      </Text>
-                      <Text style={styles.macroText}>
-                        {t("common:c")}: {Math.round((food.carbs || 0) * 10) / 10}g
-                      </Text>
-                      <Text style={styles.macroText}>
-                        {t("common:f")}: {Math.round((food.fat || 0) * 10) / 10}g
-                      </Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.removeButton}
-                    onPress={() => onRemoveFood(food.foodKey)}
-                  >
-                    <Trash2 size={16} color="#EF4444" />
-                  </TouchableOpacity>
-                </View>
-              ))}
+            {foods.map((food, index) => {
+  // Extract the food key properly
+  const foodKey = food.foodKey || food.key || `food${index + 1}`;
+  
+  return (
+    <View key={`${foodKey}-${index}`} style={styles.foodItem}>
+      <View style={styles.foodInfo}>
+        <Text style={styles.foodName}>
+          {i18n.language === 'ku' && food.kurdishName && food.kurdishName !== 'N/A' && food.kurdishName !== ''
+            ? food.kurdishName
+            : i18n.language === 'ar' && food.arabicName && food.arabicName !== 'N/A' && food.arabicName !== ''
+              ? food.arabicName
+              : food.name || food.foodName || (food.foodId ? `Food ${food.foodId}` : 'Unknown Food')}
+        </Text>
+        <View style={styles.foodDetails}>
+          <Text style={styles.foodQuantity}>
+            {food.quantity} {t(`common:${extractUnit(food.unit)}`)}
+          </Text>
+          <Text style={styles.foodCalories}>
+            {Math.round(food.calories || 0)} {t('homeScreen:kcal')}
+          </Text>
+        </View>
+        <View style={styles.macroInfo}>
+          <Text style={styles.macroText}>
+            {t("common:p")}: {Math.round((food.protein || 0) * 10) / 10}g
+          </Text>
+          <Text style={styles.macroText}>
+            {t("common:c")}: {Math.round((food.carbs || 0) * 10) / 10}g
+          </Text>
+          <Text style={styles.macroText}>
+            {t("common:f")}: {Math.round((food.fat || 0) * 10) / 10}g
+          </Text>
+        </View>
+      </View>
+      <TouchableOpacity
+        style={styles.removeButton}
+        onPress={() => {
+          onRemoveFood(foodKey);
+        }}
+      >
+        <Trash2 size={16} color="#EF4444" />
+      </TouchableOpacity>
+    </View>
+  );
+})}
             </View>
           </Animated.View>
         )}

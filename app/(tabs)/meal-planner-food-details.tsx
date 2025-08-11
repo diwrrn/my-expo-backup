@@ -11,11 +11,14 @@ import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useTranslation, TFunction } from 'react-i18next';
 import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
 export default function MealPlannerFoodDetailsScreen() {
-  const { foodId, quantity: quantityParam, unit: unitParam } = useLocalSearchParams<{
+  const { foodId, quantity: quantityParam, unit: unitParam, fromMealPlan, origin, planId } = useLocalSearchParams<{
     foodId: string;
     quantity: string;
     unit: string;
-  }>(); 
+    fromMealPlan?: string;
+    origin?: string;
+    planId?: string;
+  }>();  
    
   const { addFoodToDailyMeal } = useDailyMealsContext();
   const { foodCache } = useFirebaseData();  
@@ -431,7 +434,19 @@ export default function MealPlannerFoodDetailsScreen() {
   const completeNutrition = getCompleteNutrition();
 
   const handleGoBack = () => {
-    router.replace('/(tabs)/meal-planner');
+    if (fromMealPlan === 'true' && planId) {
+      // If we came from a meal plan, go back to meal plan details
+      router.push({
+        pathname: '/(tabs)/meal-plan-details',
+        params: {
+          planId: planId,
+          origin: origin || 'saved-plans'
+        }
+      });
+    } else {
+      // If we came from meal planner, go back to meal planner
+      router.replace('/(tabs)/meal-planner');
+    }
   };
 
   return (

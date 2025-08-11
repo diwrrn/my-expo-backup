@@ -191,7 +191,7 @@ export default function MealFoodSearchScreen() {
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => {
           if (fromHome === 'true') {
-            router.replace('/(tabs)/');
+            router.replace('/(tabs)/'); 
           } else {
             router.back();
           }

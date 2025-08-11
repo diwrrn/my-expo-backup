@@ -377,11 +377,17 @@ export default function FoodEntryScreen() {
         setFood(foundFood);
         
         const actualDisplayUnits = (foundFood.availableUnits || []).filter(unit => unit !== '100g');
-
+  
         if (actualDisplayUnits.length > 0) {
           const firstUnit = actualDisplayUnits[0];
           setSelectedUnit(firstUnit);
-          setQuantity(1); 
+          
+          // Check if the first unit is grams-related
+          if (firstUnit.toLowerCase().includes('g') || firstUnit.toLowerCase().includes('gram')) {
+            setQuantity(100); // Default to 100 for gram units
+          } else {
+            setQuantity(1); // Default to 1 for other units
+          }
         } else {
           setSelectedUnit('');
           setQuantity(0);
@@ -486,6 +492,10 @@ export default function FoodEntryScreen() {
     console.log('Food category:', food.category);
     console.log('Food nutritionPer100:', food.nutritionPer100);
     console.log('Nutrition totalGrams:', nutrition.totalGrams);
+    console.log('Vitamin A value:', food.nutritionPer100.vitaminA);
+    console.log('Vitamin C value:', food.nutritionPer100.vitaminC);
+    console.log('Vitamin D value:', food.nutritionPer100.vitaminD);
+    console.log('Vitamin E value:', food.nutritionPer100.vitaminE);
     
     const baseNutrition = food.nutritionPer100;
     const multiplier = nutrition.totalGrams / 100;
@@ -499,7 +509,7 @@ export default function FoodEntryScreen() {
     // Only process the fields we actually display
     const fieldsToProcess = [
       'calories', 'protein', 'carbs', 'fat', 'fiber', 'sugar',
-      'vitaminA', 'vitaminB12', 'vitaminC', 'vitaminD',
+      'vitaminA', 'vitaminB12', 'vitaminC', 'vitaminD', 'vitaminE',
       'calcium', 'iron', 'potassium', 'sodium'
     ];
     
@@ -770,6 +780,12 @@ export default function FoodEntryScreen() {
                         <Text style={styles.nutritionRowLabel}>Vitamin D</Text>
                         <Text style={styles.nutritionRowValue}>{formatNutritionValue(completeNutrition?.vitaminD, ' IU')}</Text>
                       </View>
+                      <View style={styles.nutritionDetailRow}>
+      <Text style={styles.nutritionRowLabel}>Vitamin E</Text>
+      <Text style={styles.nutritionRowValue}>{formatNutritionValue(completeNutrition?.vitaminE, 'mg')}</Text>
+    </View>
+
+                      
                       <View style={styles.nutritionDetailRow}>
                         <Text style={styles.nutritionRowLabel}>Vitamin B12</Text>
                         <Text style={styles.nutritionRowValue}>{formatNutritionValue(completeNutrition?.vitaminB12, 'mcg')}</Text>

@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Search, X, SlidersHorizontal, ChevronDown, ChevronUp, Zap, Leaf, Flame, Target } from 'lucide-react-native';
@@ -98,7 +98,7 @@ export default function ExploreFoodsScreen() {
         f.category.toLowerCase().includes(q)
       );
     }
-    // Sorting
+// Sorting
 if (selectedMicro) {
   const getVal = (f: any) => {
     const raw = (f.nutritionPer100 as any)?.[selectedMicro];
@@ -108,7 +108,7 @@ if (selectedMicro) {
   result.sort((a, b) => {
     const va = getVal(a);
     const vb = getVal(b);
-    return microSortOrder === 'asc' ? va - vb : vb - va;
+    return microSortOrder === 'asc' ? vb - va : va - vb;
   });
 } else if (sortBy === 'protein') {
   result.sort((a, b) => {
@@ -126,6 +126,7 @@ if (selectedMicro) {
   // Popularity sort
   result.sort((a: any, b: any) => (b.popularity || 0) - (a.popularity || 0));
 }
+
 
     // Category filter
     if (selectedCategory) {
@@ -163,27 +164,9 @@ if (selectedMicro) {
       return true;
     });
 
-    // Sorting
-    if (sortBy === 'protein') {
-      result.sort((a, b) => {
-        const aProtein = a.nutritionPer100?.protein ?? a.protein ?? 0;
-        const bProtein = b.nutritionPer100?.protein ?? b.protein ?? 0;
-        return bProtein - aProtein;
-      });
-    } else if (sortBy === 'calories') {
-      result.sort((a, b) => {
-        const aCals = a.nutritionPer100?.calories ?? a.calories ?? 0;
-        const bCals = b.nutritionPer100?.calories ?? b.calories ?? 0;
-        return aCals - bCals;
-      });
-    } else {
-      // Popularity sort
-      result.sort((a: any, b: any) => (b.popularity || 0) - (a.popularity || 0));
-    }
 
     return result;
-  }, [foodCache?.foods, query, selectedCategory, selectedMicro, highProtein, lowCarb, lowCalorie, calMin, calMax, sortBy]);
-  // Paginated display foods
+  }, [foodCache?.foods, query, selectedCategory, selectedMicro, microSortOrder, highProtein, lowCarb, lowCalorie, calMin, calMax, sortBy]);  // Paginated display foods
   const displayedFoods = useMemo(() => {
     return allFilteredFoods.slice(0, displayCount);
   }, [allFilteredFoods, displayCount]);
@@ -325,206 +308,217 @@ if (selectedMicro) {
           </TouchableOpacity>
 
           {showFilters && (
-            <View style={styles.filtersContent}>
-              {/* Micronutrients */}
-              <View style={styles.filterGroup}>
+            <View style={styles.filtersContentWrapper}>
+              <ScrollView 
+                style={styles.filtersContent}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+              >
+                {/* Micronutrients */}
+                <View style={styles.filterGroup}>
                   <View style={styles.filterHeader}>
-    <Target size={16} color="#6B7280" />
-    <Text style={styles.filterLabel}>Micronutrients</Text>
-  </View>
-  <View style={styles.chipGrid}>
-    {[
-      { key: 'fiber', label: 'Fiber' },
-      { key: 'calcium', label: 'Calcium' },
-      { key: 'sodium', label: 'Sodium' },
-      { key: 'potassium', label: 'Potassium' },
-      { key: 'magnesium', label: 'Magnesium' },
-      { key: 'sugar', label: 'Sugar' },
-      { key: 'iron', label: 'Iron' },
-      { key: 'vitaminB12', label: 'Vit B12' },
-      { key: 'vitaminA', label: 'Vit A' },
-      { key: 'vitaminC', label: 'Vit C' },
-      { key: 'vitaminD', label: 'Vit D' },
-      { key: 'vitaminE', label: 'Vit E' },
-    ].map(m => (
-      <TouchableOpacity
-        key={m.key}
-        style={[styles.filterChip, selectedMicro === (m.key as MicroKey) && styles.filterChipActive]}
-                onPress={() => toggleMicro(m.key as MicroKey)}
-      >
-<Text style={[styles.filterChipText, selectedMicro === (m.key as MicroKey) && styles.filterChipTextActive]}>
-            {m.label}
-        </Text>
-      </TouchableOpacity>
-    ))}
-  </View>
-  {selectedMicro && (
-  <View style={styles.microSortRow}>
-    <Text style={styles.microSortLabel}>
-      Sort by {MICRO_LABELS[selectedMicro]}
-    </Text>
-    <View style={styles.sortToggleRow}>
-      <TouchableOpacity
-        style={[styles.sortToggle, microSortOrder === 'asc' && styles.sortToggleActive]}
-        onPress={() => setMicroSortOrder('asc')}
-        accessibilityRole="button"
-        accessibilityLabel="Sort ascending"
-      >
-        <Text style={[styles.sortToggleText, microSortOrder === 'asc' && styles.sortToggleTextActive]}>
-          Asc
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.sortToggle, microSortOrder === 'desc' && styles.sortToggleActive]}
-        onPress={() => setMicroSortOrder('desc')}
-        accessibilityRole="button"
-        accessibilityLabel="Sort descending"
-      >
-        <Text style={[styles.sortToggleText, microSortOrder === 'desc' && styles.sortToggleTextActive]}>
-          Desc
-        </Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-)}
-</View>
-
-              {/* Nutrition Focus */}
-              <View style={styles.filterGroup}>
-                <View style={styles.filterHeader}>
-                  <Target size={16} color="#6B7280" />
-                  <Text style={styles.filterLabel}>Nutrition Focus</Text>
-                </View>
-                <View style={styles.chipGrid}>
-                  <TouchableOpacity
-                    style={[styles.nutritionChip, highProtein && styles.nutritionChipActive]}
-                    onPress={() => setHighProtein(!highProtein)}
-                  >
-                    <Zap size={14} color={highProtein ? '#FFFFFF' : '#EF4444'} />
-                    <Text style={[styles.nutritionChipText, highProtein && styles.nutritionChipTextActive]}>
-                      High Protein
-                    </Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[styles.nutritionChip, lowCarb && styles.nutritionChipActive]}
-                    onPress={() => setLowCarb(!lowCarb)}
-                  >
-                    <Leaf size={14} color={lowCarb ? '#FFFFFF' : '#22C55E'} />
-                    <Text style={[styles.nutritionChipText, lowCarb && styles.nutritionChipTextActive]}>
-                      Low Carb
-                    </Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[styles.nutritionChip, lowCalorie && styles.nutritionChipActive]}
-                    onPress={() => setLowCalorie(!lowCalorie)}
-                  >
-                    <Flame size={14} color={lowCalorie ? '#FFFFFF' : '#F59E0B'} />
-                    <Text style={[styles.nutritionChipText, lowCalorie && styles.nutritionChipTextActive]}>
-                      Low Calorie
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Calorie Range */}
-              <View style={styles.filterGroup}>
-                <Text style={styles.filterLabel}>Calories per 100g</Text>
-                <View style={styles.rangeInputs}>
-                  <View style={styles.rangeInputContainer}>
-                    <TextInput
-                      style={styles.rangeInput}
-                      value={calMin}
-                      onChangeText={setCalMin}
-                      placeholder="Min"
-                      placeholderTextColor="#9CA3AF"
-                      keyboardType="numeric"
-                    />
+                    <Target size={16} color="#6B7280" />
+                    <Text style={styles.filterLabel}>Micronutrients</Text>
                   </View>
-                  <Text style={styles.rangeSeparator}>to</Text>
-                  <View style={styles.rangeInputContainer}>
-                    <TextInput
-                      style={styles.rangeInput}
-                      value={calMax}
-                      onChangeText={setCalMax}
-                      placeholder="Max"
-                      placeholderTextColor="#9CA3AF"
-                      keyboardType="numeric"
-                    />
+                  <View style={styles.chipGrid}>
+                    {[
+                      { key: 'fiber', label: 'Fiber' },
+                      { key: 'calcium', label: 'Calcium' },
+                      { key: 'sodium', label: 'Sodium' },
+                      { key: 'potassium', label: 'Potassium' },
+                      { key: 'magnesium', label: 'Magnesium' },
+                      { key: 'sugar', label: 'Sugar' },
+                      { key: 'iron', label: 'Iron' },
+                      { key: 'vitaminB12', label: 'Vit B12' },
+                      { key: 'vitaminA', label: 'Vit A' },
+                      { key: 'vitaminC', label: 'Vit C' },
+                      { key: 'vitaminD', label: 'Vit D' },
+                      { key: 'vitaminE', label: 'Vit E' },
+                    ].map(m => (
+                      <TouchableOpacity
+                        key={m.key}
+                        style={[styles.filterChip, selectedMicro === (m.key as MicroKey) && styles.filterChipActive]}
+                        onPress={() => toggleMicro(m.key as MicroKey)}
+                      >
+                        <Text style={[styles.filterChipText, selectedMicro === (m.key as MicroKey) && styles.filterChipTextActive]}>
+                          {m.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
-                </View>
-                
-                {/* Quick calorie presets */}
-                <View style={styles.presetRow}>
-                  <TouchableOpacity 
-                    style={styles.presetChip}
-                    onPress={() => { setCalMin(''); setCalMax('120'); }}
-                  >
-                    <Text style={styles.presetText}>Low (≤120)</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.presetChip}
-                    onPress={() => { setCalMin('120'); setCalMax('300'); }}
-                  >
-                    <Text style={styles.presetText}>Medium (120-300)</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.presetChip}
-                    onPress={() => { setCalMin('300'); setCalMax(''); }}
-                  >
-                    <Text style={styles.presetText}>High (300+)</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Categories */}
-              <View style={styles.filterGroup}>
-                <Text style={styles.filterLabel}>Categories</Text>
-                <FlatList
-                  data={[{ key: '', label: 'All' }, ...categories.map(cat => ({ key: cat, label: cat }))]}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={[styles.categoryChip, selectedCategory === item.key && styles.categoryChipActive]}
-                      onPress={() => setSelectedCategory(selectedCategory === item.key ? '' : item.key)}
-                    >
-                      <Text style={[styles.categoryChipText, selectedCategory === item.key && styles.categoryChipTextActive]}>
-                        {item.label}
+                  {selectedMicro && (
+                    <View style={styles.microSortRow}>
+                      <Text style={styles.microSortLabel}>
+                        Sort by {MICRO_LABELS[selectedMicro]}
                       </Text>
-                    </TouchableOpacity>
+                      <View style={styles.sortToggleRow}>
+                        <TouchableOpacity
+                          style={[styles.sortToggle, microSortOrder === 'asc' && styles.sortToggleActive]}
+                          onPress={() => setMicroSortOrder('asc')}
+                          accessibilityRole="button"
+                          accessibilityLabel="Sort ascending (highest first)"
+                        >
+                          <ChevronUp size={16} color={microSortOrder === 'asc' ? '#FFFFFF' : '#374151'} />
+                          <Text style={[styles.sortToggleText, microSortOrder === 'asc' && styles.sortToggleTextActive]}>
+                            Highest
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.sortToggle, microSortOrder === 'desc' && styles.sortToggleActive]}
+                          onPress={() => setMicroSortOrder('desc')}
+                          accessibilityRole="button"
+                          accessibilityLabel="Sort descending (lowest first)"
+                        >
+                          <ChevronDown size={16} color={microSortOrder === 'desc' ? '#FFFFFF' : '#374151'} />
+                          <Text style={[styles.sortToggleText, microSortOrder === 'desc' && styles.sortToggleTextActive]}>
+                            Lowest
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   )}
-                  keyExtractor={(item) => item.key}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                />
-              </View>
+                </View>
 
-              {/* Sort Options */}
-              <View style={styles.filterGroup}>
-                <Text style={styles.filterLabel}>Sort By</Text>
-                <View style={styles.sortOptions}>
-                  {[
-                    { key: 'popularity', label: 'Popular' },
-                    { key: 'protein', label: 'Protein' },
-                    { key: 'calories', label: 'Calories' },
-                  ].map(option => (
+                {/* Nutrition Focus */}
+                <View style={styles.filterGroup}>
+                  <View style={styles.filterHeader}>
+                    <Target size={16} color="#6B7280" />
+                    <Text style={styles.filterLabel}>Nutrition Focus</Text>
+                  </View>
+                  <View style={styles.chipGrid}>
                     <TouchableOpacity
-                      key={option.key}
-                      style={[styles.sortOption, sortBy === option.key && styles.sortOptionActive]}
-                      onPress={() => setSortBy(option.key as any)}
+                      style={[styles.nutritionChip, highProtein && styles.nutritionChipActive]}
+                      onPress={() => setHighProtein(!highProtein)}
                     >
-                      <Text style={[styles.sortOptionText, sortBy === option.key && styles.sortOptionTextActive]}>
-                        {option.label}
+                      <Zap size={14} color={highProtein ? '#FFFFFF' : '#EF4444'} />
+                      <Text style={[styles.nutritionChipText, highProtein && styles.nutritionChipTextActive]}>
+                        High Protein
                       </Text>
                     </TouchableOpacity>
-                  ))}
+                    
+                    <TouchableOpacity
+                      style={[styles.nutritionChip, lowCarb && styles.nutritionChipActive]}
+                      onPress={() => setLowCarb(!lowCarb)}
+                    >
+                      <Leaf size={14} color={lowCarb ? '#FFFFFF' : '#22C55E'} />
+                      <Text style={[styles.nutritionChipText, lowCarb && styles.nutritionChipTextActive]}>
+                        Low Carb
+                      </Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[styles.nutritionChip, lowCalorie && styles.nutritionChipActive]}
+                      onPress={() => setLowCalorie(!lowCalorie)}
+                    >
+                      <Flame size={14} color={lowCalorie ? '#FFFFFF' : '#F59E0B'} />
+                      <Text style={[styles.nutritionChipText, lowCalorie && styles.nutritionChipTextActive]}>
+                        Low Calorie
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
 
-              {/* Clear Filters */}
-              <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
-                <Text style={styles.clearButtonText}>Clear All Filters</Text>
-              </TouchableOpacity>
+                {/* Calorie Range */}
+                <View style={styles.filterGroup}>
+                  <Text style={styles.filterLabel}>Calories per 100g</Text>
+                  <View style={styles.rangeInputs}>
+                    <View style={styles.rangeInputContainer}>
+                      <TextInput
+                        style={styles.rangeInput}
+                        value={calMin}
+                        onChangeText={setCalMin}
+                        placeholder="Min"
+                        placeholderTextColor="#9CA3AF"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                    <Text style={styles.rangeSeparator}>to</Text>
+                    <View style={styles.rangeInputContainer}>
+                      <TextInput
+                        style={styles.rangeInput}
+                        value={calMax}
+                        onChangeText={setCalMax}
+                        placeholder="Max"
+                        placeholderTextColor="#9CA3AF"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+                  
+                  {/* Quick calorie presets */}
+                  <View style={styles.presetRow}>
+                    <TouchableOpacity 
+                      style={styles.presetChip}
+                      onPress={() => { setCalMin(''); setCalMax('120'); }}
+                    >
+                      <Text style={styles.presetText}>Low (≤120)</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.presetChip}
+                      onPress={() => { setCalMin('120'); setCalMax('300'); }}
+                    >
+                      <Text style={styles.presetText}>Medium (120-300)</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.presetChip}
+                      onPress={() => { setCalMin('300'); setCalMax(''); }}
+                    >
+                      <Text style={styles.presetText}>High (300+)</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Categories */}
+                <View style={styles.filterGroup}>
+                  <Text style={styles.filterLabel}>Categories</Text>
+                  <FlatList
+                    data={[{ key: '', label: 'All' }, ...categories.map(cat => ({ key: cat, label: cat }))]}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={[styles.categoryChip, selectedCategory === item.key && styles.categoryChipActive]}
+                        onPress={() => setSelectedCategory(selectedCategory === item.key ? '' : item.key)}
+                      >
+                        <Text style={[styles.categoryChipText, selectedCategory === item.key && styles.categoryChipTextActive]}>
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    keyExtractor={(item) => item.key}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                  />
+                </View>
+
+                {/* Sort Options */}
+                <View style={styles.filterGroup}>
+                  <Text style={styles.filterLabel}>Sort By</Text>
+                  <View style={styles.sortOptions}>
+                    {[
+                      { key: 'popularity', label: 'Popular' },
+                      { key: 'protein', label: 'Protein' },
+                      { key: 'calories', label: 'Calories' },
+                    ].map(option => (
+                      <TouchableOpacity
+                        key={option.key}
+                        style={[styles.sortOption, sortBy === option.key && styles.sortOptionActive]}
+                        onPress={() => setSortBy(option.key as any)}
+                      >
+                        <Text style={[styles.sortOptionText, sortBy === option.key && styles.sortOptionTextActive]}>
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Clear Filters */}
+                <View style={styles.filterGroup}>
+                  <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
+                    <Text style={styles.clearButtonText}>Clear All Filters</Text>
+                  </TouchableOpacity>
+                </View>
+
+              </ScrollView>
             </View>
           )}
         </View>
@@ -669,9 +663,12 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginLeft: 8,
   },
-  filtersContent: {
+  filtersContentWrapper: {
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
+    maxHeight: 400, // Set maximum height for scrollable area
+  },
+  filtersContent: {
     padding: 16,
   },
   
@@ -744,12 +741,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sortToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 8,
+    gap: 4,
   },
   sortToggleActive: {
     backgroundColor: '#111827',

@@ -5,6 +5,7 @@ import { X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useLanguage } from '@/contexts/LanguageContext';
+import KurdistanFlag from '../assets/icons/kurdistan.svg';
 
 interface LanguageSelectionModalProps {
   isVisible: boolean;
@@ -16,16 +17,21 @@ export function LanguageSelectionModal({
   isVisible,
   onClose,
   onSelectLanguage,
-}: LanguageSelectionModalModalProps) {
-  const { t, i18n } = useTranslation();
+}: LanguageSelectionModalProps) {
+    const { t, i18n } = useTranslation();
   const isRTL = useRTL();
   const { currentLanguage } = useLanguage();
 
   const languages = [
-    { code: 'en', name: 'English', flag: '🇺🇸' },
-    { code: 'ku', name: 'کوردی', flag: '🇮🇶' },
+    { code: 'en', name: 'English', flag: '🇺🇸' },  // Fixed: Use emoji flag
+    { 
+      code: 'ku', 
+      name: 'کوردی', 
+      flag: '🇮🇶'  // Iraq flag as fallback, but Kurdistan SVG will show
+    },
     { code: 'ar', name: 'العربية', flag: '🇸🇦' },
   ];
+  
 
   const styles = StyleSheet.create({
     modalOverlay: {
@@ -80,12 +86,31 @@ export function LanguageSelectionModal({
       marginRight: isRTL ? 0 : 16,
       marginLeft: isRTL ? 16 : 0,
     },
+    flagContainer: {
+      flexDirection: getFlexDirection(isRTL),
+      alignItems: 'center',
+      marginRight: isRTL ? 0 : 16,
+      marginLeft: isRTL ? 16 : 0,
+    },
+    dualFlagContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
     languageText: {
       flex: 1,
       fontSize: 16,
       fontWeight: '600',
       color: '#111827',
       textAlign: getTextAlign(isRTL),
+    },
+    flagLabel: {
+      fontSize: 10,
+      color: '#6B7280',
+      marginTop: 2,
+    },
+    flagLabelSelected: {
+      color: '#FFFFFF',
     },
     languageTextSelected: {
       color: '#FFFFFF',
@@ -119,7 +144,15 @@ export function LanguageSelectionModal({
                   ]}
                   onPress={() => onSelectLanguage(lang.code)}
                 >
-                  <Text style={styles.flag}>{lang.flag}</Text>
+                  {lang.code === 'ku' ? (
+                    <View style={styles.flagContainer}>
+                      <KurdistanFlag width={24} height={24} />
+                    </View>
+                  ) : (
+                    <View style={styles.flagContainer}>
+                      <Text style={styles.flag}>{lang.flag}</Text>
+                    </View>
+                  )}
                   <Text
                     style={[
                       styles.languageText,

@@ -6,6 +6,8 @@
     "signUp": "إنشاء حساب",
     "cancel": "إلغاء",
     "save": "حفظ",
+    "languageChangedSuccessfully": "تم تغيير اللغة بنجاح!",
+
     "error": "خطأ",
     "success": "نجاح",
     "loading": "جار التحميل...",
@@ -182,7 +184,6 @@
   "breakFast": "الفطور",
   "lunch": "الغداء",
   "dinner": "العشاء",
-  "savePlan": "احفظ الخطة",
   "savedSuccess": "تم حفظ خطة الوجبات بنجاح",
   },
   "profileScreen": {

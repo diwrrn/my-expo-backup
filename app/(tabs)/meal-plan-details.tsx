@@ -172,7 +172,8 @@ export default function MealPlanDetailsScreen() {
                   quantity: meal.grams.toString(),
                   unit: 'g',
                   fromMealPlan: 'true',
-                  origin: origin || 'saved-plans'
+                  origin: origin || 'saved-plans',
+                  planId: planId // Add this line
                 }
               });
             }}

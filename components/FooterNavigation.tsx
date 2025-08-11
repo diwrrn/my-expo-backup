@@ -103,8 +103,12 @@ export function FooterNavigation() {
   };
 
   const handlePressIn = useCallback((itemId: string) => {
-    const animation = getAnimationValue(itemId);
-    animation.value = withTiming(1, { duration: 150 });
+    try {
+      const animation = getAnimationValue(itemId);
+      animation.value = withTiming(1, { duration: 150 });
+    } catch (error) {
+      console.warn('Animation error:', error);
+    }
   }, []);
 
   const handlePressOut = useCallback((itemId: string) => {
@@ -118,6 +122,15 @@ export function FooterNavigation() {
     }
     return activeRoute === route;
   }, [activeRoute]);
+  useEffect(() => {
+    // Force re-render on mount to fix transparency issues
+    const timer = setTimeout(() => {
+      setActiveRoute(pathname);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
 
   return (
     <View style={styles.container}>
@@ -223,7 +236,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    zIndex: 1000,
+    zIndex: 9999, // Increase z-index significantly
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -231,7 +244,8 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 10,
+    elevation: 20, // Increase elevation for Android
+    backgroundColor: '#FFFFFF', // Add explicit background
   },
   background: {
     ...StyleSheet.absoluteFillObject,
@@ -257,6 +271,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
     height: Platform.OS === 'ios' ? 92 : 76,
+    backgroundColor: 'transparent', // Ensure transparency
   },
   
   // NEW: Nav item with relative positioning for absolute children

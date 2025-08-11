@@ -3,6 +3,7 @@ import { FirebaseService } from '@/services/firebaseService';
 import { useAuth } from '@/hooks/useAuth';
 import { getTodayDateString } from '@/utils/dateUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StreakService } from '@/services/streakService';
 
 const DailyMealsContext = createContext<any>(undefined);
 
@@ -122,11 +123,21 @@ export function DailyMealsProvider({ children }: { children: React.ReactNode }) 
 
   const addFoodToDailyMeal = useCallback(async (meal: string, foodData: any, targetDate?: string) => {
     if (!user?.id) return;
-
+  
     const dateToUse = targetDate || currentDateRef.current || defaultDate;
     
     try {
       await FirebaseService.addDailyMeal(user.id, dateToUse, meal, foodData);
+      
+      // Update streak when food is added (only for today's date)
+      if (dateToUse === getTodayDateString()) {
+        try {
+          await StreakService.updateStreak(user.id, dateToUse);
+          console.log('�� Streak updated for today:', dateToUse);
+        } catch (streakError) {
+          console.log('❌ Error updating streak:', streakError);
+        }
+      }
       
       // If it's not today, invalidate cache so next load gets fresh data
       if (dateToUse !== getTodayDateString()) {
@@ -140,11 +151,37 @@ export function DailyMealsProvider({ children }: { children: React.ReactNode }) 
 
   const removeFoodFromDailyMeal = useCallback(async (meal: string, foodKey: string, targetDate?: string) => {
     if (!user?.id) return;
-
+  
     const dateToUse = targetDate || currentDateRef.current || defaultDate;
     
     try {
       await FirebaseService.removeFoodFromDailyMeal(user.id, dateToUse, meal, foodKey);
+      
+      // Check if this was the last food for today before updating streak
+      if (dateToUse === getTodayDateString()) {
+        try {
+          // Get the updated meals data after removal
+          const updatedMeals = await FirebaseService.getDailyMeals(user.id, dateToUse);
+          
+          // Check if there are any foods left for today
+          const hasAnyFoods = ['breakfast', 'lunch', 'dinner', 'snacks'].some(mealType => {
+            const mealData = updatedMeals.meals?.[mealType];
+            if (!mealData || typeof mealData !== 'object') return false;
+            
+            // Count foods in this meal
+            const foodCount = Object.keys(mealData).filter(key => key.startsWith('food')).length;
+            return foodCount > 0;
+          });
+          
+          // Only update streak if there are no foods left (streak should reset)
+          if (!hasAnyFoods) {
+            await StreakService.updateStreak(user.id, dateToUse);
+          } else {
+          }
+        } catch (streakError) {
+          console.log('❌ Error checking streak after food removal:', streakError);
+        }
+      }
       
       // If it's not today, invalidate cache so next load gets fresh data
       if (dateToUse !== getTodayDateString()) {
@@ -177,7 +214,11 @@ export function DailyMealsProvider({ children }: { children: React.ReactNode }) 
         if (foodKey.startsWith('food')) {
           const foodItem = mealData[foodKey];
           if (foodItem && foodItem["0"]) {
-            foods.push(foodItem["0"]);
+            // Add the foodKey to the food object so it can be used for deletion
+            foods.push({
+              ...foodItem["0"],
+              foodKey: foodKey // Add this line
+            });
           }
         }
       });

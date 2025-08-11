@@ -23,7 +23,9 @@ import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFirebaseData } from '@/hooks/useFirebaseData';
 import { useStreakGlobal } from '@/hooks/useStreakGlobal';
-
+import { streakGlobal } from '@/contexts/StreakGlobal';
+import { StreakService } from '@/services/streakService';
+import { router } from 'expo-router';
 // Simplified function to check if homepage data is ready
 const isHomeDataReady = (
   authLoading: boolean,
@@ -67,13 +69,15 @@ export default function HomeScreen() {
     removeFoodFromDailyMeal, 
     dailyMeals,
     changeDate,
+    addFoodToDailyMeal, // Rename this
+
   } = useDailyMealsContext(); 
   const { 
     updateWaterIntake, 
     loading 
   } = useFirebaseData(currentViewDate);
-  const { currentStreak } = useStreakGlobal();
-    const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>({
+  const { currentStreak, bestStreak, isLoading: streakLoading, error: streakError } = useStreakGlobal();
+      const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>({
     breakfast: false,
     lunch: false,  
     dinner: false,
@@ -162,21 +166,8 @@ export default function HomeScreen() {
       // Silent error handling
     }
   };
-  const debugAsyncStorage = async () => {
-    try {
-      const keys = await AsyncStorage.getAllKeys();
-      console.log('📱 AsyncStorage Keys:', keys);
-      
-      for (const key of keys) {
-        const value = await AsyncStorage.getItem(key);
-        console.log(`📱 ${key}:`, JSON.parse(value || '{}'));
-      }
-    } catch (error) {
-      console.error('Error reading AsyncStorage:', error);
-    }
-  };
 
-  const handleUpdateWaterIntake = async (glasses: number) => {
+const handleUpdateWaterIntake = async (glasses: number) => {
     try {
       await updateWaterIntake(glasses);
     } catch (error) {
@@ -408,6 +399,11 @@ export default function HomeScreen() {
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  dateAndStreakRow: {
+    flexDirection: getFlexDirection(isRTL),
+    alignItems: 'center',
+    gap: 8,
+  },
     // Expandable Food List Styles
     foodListContainer: {
       backgroundColor: '#FFFFFF',
@@ -521,19 +517,25 @@ const progressPercentage = (caloriesConsumed / caloriesGoal) * 100;
             style={styles.headerGradient}
           >
             <View style={styles.header}>
-              <View style={styles.headerTop}>
+            <View style={styles.headerTop}>
                 <HamburgerMenu currentRoute="/(tabs)/" />
                 <View style={styles.headerContent}>
                   <Text style={[styles.headerTitle, { textAlign: getTextAlign(isRTL) }]}>
                     {t('homeScreen:title')}
                   </Text>
-                  <Text style={styles.headerDate}>
-{new Date().toLocaleDateString('en-GB', { 
-  month: 'numeric',  
-  day: 'numeric',
-  year: 'numeric'
-})}
-                  </Text>
+                  <View style={styles.dateAndStreakRow}>
+                    <Text style={styles.headerDate}>
+                      {new Date().toLocaleDateString('en-GB', { 
+                        month: 'numeric',  
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </Text>
+                    <View style={styles.streakBadge}>
+                    <Text style={{ fontSize: 16 }}>🔥</Text>
+                    <Text style={styles.streakText}>{currentStreak}</Text>
+                    </View>
+                  </View>
                 </View>
               </View>
             </View>
@@ -653,7 +655,7 @@ const progressPercentage = (caloriesConsumed / caloriesGoal) * 100;
             
             <Text style={[styles.dateInputLabel, { textAlign: getTextAlign(isRTL) }]}>
               {t('common:enterDateFormat')}
-            </Text>
+            </Text> 
             <TextInput 
               style={[styles.dateInput, { textAlign: getTextAlign(isRTL) }]}
               value={dateInput}

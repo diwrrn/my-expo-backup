@@ -1,8 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import i18n from '../services/i18n';
 import { useTranslation } from 'react-i18next';
-import { I18nManager, Alert, Platform } from 'react-native';
-import * as Updates from 'expo-updates';
+import { I18nManager, Platform } from 'react-native';
 
 interface LanguageContextType {
   currentLanguage: string;
@@ -34,51 +33,23 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       };
     }
   }, [i18n]);
+
   const changeLanguage = useCallback(async (lng: string) => {
     if (i18n.language === lng) return;
 
-    const wasRTL = Platform.OS !== 'web' ? I18nManager.isRTL : false;
-    const willBeRTL = ['ar', 'ku'].includes(lng);
-
     try {
       await i18n.changeLanguage(lng);
-      console.log(`Attempted to change language to: ${lng}`);
-
-      if (wasRTL !== willBeRTL) {
-        // If direction changes, prompt for app restart
-        Alert.alert(
-          i18n.t('common:restartRequiredTitle'),
-          i18n.t('common:restartRequiredMessage'),
-          [
-            {
-              text: i18n.t('common:cancel'),
-              style: 'cancel',
-            },
-            {
-              text: i18n.t('common:restart'),
-              onPress: async () => {
-                if (Platform.OS === 'web') {
-                  window.location.reload();
-                } else {
-                  try {
-                    await Updates.reloadAsync();
-                  } catch (error) {
-                    console.error('Failed to reload app:', error);
-                    Alert.alert(
-                      i18n.t('common:error'),
-                      'Failed to restart the app. Please restart manually.'
-                    );
-                  }
-                }
-              },
-            },
-          ],
-          { cancelable: false }
-        );
-      }
+      console.log(`Language changed to: ${lng}`);
+      
+      // Update RTL state immediately
+      const newIsRTL = ['ar', 'ku'].includes(lng);
+      setIsRTL(newIsRTL);
+      
+      // REMOVE THE I18nManager.forceRTL CALL COMPLETELY
+      // Let React Native handle RTL automatically based on the language
+      
     } catch (error) {
       console.error('Failed to change language:', error);
-      Alert.alert(i18n.t('common:error'), i18n.t('common:languageChangeError'));
     }
   }, [i18n]);
 

@@ -160,36 +160,44 @@ export default function RootLayout() {
     );
   }
 
-return (
-  <I18nextProvider i18n={i18n}>
-    <LanguageProvider>
-      <FoodCacheProvider>
-        <PremiumProvider>
-          <ProfileProvider>
-            <DailyMealsProvider>
-              <Stack>
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-                <Stack.Screen name="+not-found" />
-              </Stack>
-              <Animated.View style={[
-                {
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  zIndex: 1000
-                },
-                footerAnimatedStyle
-              ]}>
-                <FooterNavigation />
-              </Animated.View>
-            </DailyMealsProvider>
-          </ProfileProvider>
-        </PremiumProvider>
-      </FoodCacheProvider>
-    </LanguageProvider>
-  </I18nextProvider>
-);
+  return (
+    <I18nextProvider i18n={i18n}>
+      <LanguageProvider>
+        <FoodCacheProvider>
+          <PremiumProvider>
+            <ProfileProvider>
+              <DailyMealsProvider>
+                  {loading || !i18nInitialized || !fontsLoaded || !revenueCatInitialized ? (
+                    <View style={{ flex: 1, backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center' }}>
+                      <Text>Loading application resources...</Text>
+                    </View>
+                  ) : (
+                    <>
+                      <Stack>
+                        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                        <Stack.Screen name="+not-found" />
+                      </Stack>
+                      {!isAuthScreen && user && (
+                        <View style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          zIndex: 9999,
+                        }}>
+                          <FooterNavigation />
+                        </View>
+                      )}
+                    </>
+                  )}
+              </DailyMealsProvider>
+
+            </ProfileProvider>
+          </PremiumProvider>
+        </FoodCacheProvider>
+      </LanguageProvider>
+    </I18nextProvider>
+  );
 }

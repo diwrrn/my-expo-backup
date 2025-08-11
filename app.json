@@ -14,16 +14,19 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.kurddev.juulaapp"
+      "bundleIdentifier": "com.kurddev.juulaapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-  "adaptiveIcon": {
-    "foregroundImage": "./assets/images/icon.png",
-    "backgroundColor": "#FFFFFF"
-  },
-  "package": "com.kurddev.juulaapp",
-  "googleServicesFile": "./google-services.json"  
-},
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.kurddev.juulaapp",
+      "googleServicesFile": "./google-services.json"
+    },
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
@@ -33,11 +36,19 @@
       "expo-router",
       "expo-font",
       "expo-notifications",
-        [
+      [
         "expo-router",
         {
           "origin": false,
           "root": "./app"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
         }
       ]
     ],
