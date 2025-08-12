@@ -119,7 +119,7 @@ const hasPremium = useMemo(() => {
   }
 
   return true;
-}, [customerInfo, cachedPremium, user?.id, savePremiumStatusToCache]);
+}, [customerInfo, cachedPremium, user?.id]);
 // Load cached premium status immediately when user changes
   useEffect(() => {
     const loadCachedPremium = async () => {

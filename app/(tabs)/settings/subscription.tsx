@@ -17,10 +17,14 @@ export default function SubscriptionScreen() {
   const { user } = useAuth();
   const { customerInfo, offerings, purchasePackage, restorePurchases, refreshCustomerInfo } = usePurchases();
     const [showPaywall, setShowPaywall] = useState(false);
-  const { hasPremium, loading } = usePremiumContext();
-  const [localPremiumStatus, setLocalPremiumStatus] = useState<boolean | null>(null);
+    const { hasPremium, loading, setImmediatePremium } = usePremiumContext();
+      const [localPremiumStatus, setLocalPremiumStatus] = useState<boolean | null>(null);
 
-  // Use local status if available, otherwise fall back to context
+// Handle expiration detection
+const handleExpirationDetected = useCallback(async () => {
+  console.log('🚨 Subscription expiration detected, refreshing...');
+  setImmediatePremium(false); // Use enhanced context
+}, [setImmediatePremium]);
  // Add expiration monitoring
 const { isExpired, timeUntilExpiry } = useSubscriptionExpirationMonitor(
   customerInfo, 
@@ -32,9 +36,10 @@ const effectiveHasPremium = useMemo(() => {
   // If locally detected as expired, override everything
   if (isExpired) return false;
   
-  // Otherwise use existing logic
-  return localPremiumStatus !== null ? localPremiumStatus : hasPremium;
-}, [isExpired, localPremiumStatus, hasPremium]);
+  // Otherwise use enhanced context
+  return hasPremium;
+}, [isExpired, hasPremium]);
+
 
 // Show expiration warning for subscriptions expiring within 3 days
 const showExpirationWarning = useMemo(() => {
@@ -48,29 +53,16 @@ const showExpirationWarning = useMemo(() => {
   const handlePurchaseSuccess = async () => {
     console.log('🎉 Purchase successful, updating UI immediately');
     
-    // Immediately update local state to show premium
-    setLocalPremiumStatus(true);
-    
-    // Refresh customer info in background
-    try {
-      await refreshCustomerInfo();
-      console.log('✅ Customer info refreshed after purchase');
-    } catch (error) {
-      console.error('❌ Failed to refresh customer info after purchase:', error);
-    }
+    // Use enhanced PremiumContext for instant update
+    setImmediatePremium(true);
   };
-// Handle expiration detection
-const handleExpirationDetected = useCallback(async () => {
-  console.log('🚨 Subscription expiration detected, refreshing...');
-  setLocalPremiumStatus(false); // Immediately update UI
-  await refreshCustomerInfo(); // Refresh from server
-}, [refreshCustomerInfo]);
+
   const handleRestorePurchases = async () => {
     const result = await restorePurchases();
     if (result.success) {
-      // Update local state immediately
+      // Use enhanced PremiumContext for instant update
       if (result.customerInfo?.entitlements?.active?.premium) {
-        setLocalPremiumStatus(true);
+        setImmediatePremium(true);
       }
       
       Alert.alert(
@@ -84,12 +76,7 @@ const handleExpirationDetected = useCallback(async () => {
       );
     }
   };
-// Reset local status when context updates
-useEffect(() => {
-  if (effectiveHasPremium !== undefined) {
-    setLocalPremiumStatus(null); // Clear local override when context is updated
-  }
-}, [effectiveHasPremium]);  
+
 
   const handleRefresh = async () => {
     await refreshCustomerInfo();
