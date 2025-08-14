@@ -1,12 +1,12 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useAppStore } from '@/store/appStore';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign } from '@/hooks/useRTL';
 
 export function LanguageSelector() {
-  const { currentLanguage, changeLanguage, isRTL } = useLanguage();
-  const { t } = useTranslation();
+  const { currentLanguage, changeLanguage, isRTL } = useAppStore();
+    const { t } = useTranslation();
 
   const languages = [
     { code: 'en', name: 'English', flag: '🇬🇧' },

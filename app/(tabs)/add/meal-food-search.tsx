@@ -8,7 +8,7 @@ import { Food } from '@/types/api';
 import { getTodayDateString } from '@/utils/dateUtils';
 import { useFirebaseData } from '@/hooks/useFirebaseData';
 import { useRecentlyLoggedFoods } from '@/hooks/useRecentlyLoggedFoods';
-import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
+import { useAppStore } from '@/store/appStore';
 // Add this utility function if it doesn't exist
 const formatDisplayDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -37,7 +37,7 @@ export default function MealFoodSearchScreen() {
   const [includeSnacks, setIncludeSnacks] = useState(false);
   const [displaySectionTitle, setDisplaySectionTitle] = useState('Loading...');
 
-  const { addFoodToDailyMeal } = useDailyMealsContext();
+  const { addFoodToMeal } = useAppStore();
   const { searchFoods, getPopularFoods } = useFirebaseData(currentViewDate);
   // Initial load when component mounts
   useEffect(() => {
@@ -116,7 +116,7 @@ export default function MealFoodSearchScreen() {
       const nutrition = calculateNutritionForFood(food, 100, '100g');
       
       
-      await addFoodToDailyMeal(mealType as 'breakfast' | 'lunch' | 'dinner' | 'snacks', {
+      await addFoodToMeal(mealType as 'breakfast' | 'lunch' | 'dinner' | 'snacks', {
         foodId: food.id,
         foodName: food.name,
         calories: Math.round(nutrition.calories * 10) / 10,

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useAuth } from '@/hooks/useAuth';
-import { useProfileContext } from '@/contexts/ProfileContext';
+import { useAppStore } from '@/store/appStore';
 import { FirebaseService } from '@/services/firebaseService';
 import { PDFService } from '@/services/pdfService';
 import { WeeklyReportDisplay } from '@/components/WeeklyReportDisplay';
@@ -25,7 +25,7 @@ export default function WeeklyReportScreen() {
   const startDate = String(start);
   const endDate = String(end);
   const { user } = useAuth();
-  const { profile } = useProfileContext();
+  const { profile } = useAppStore();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

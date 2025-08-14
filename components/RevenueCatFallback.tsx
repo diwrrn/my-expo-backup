@@ -1,9 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Crown, AlertTriangle } from 'lucide-react-native';
+import { AlertTriangle } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign } from '@/hooks/useRTL';
-import { useLanguage } from '@/contexts/LanguageContext';
 
 interface RevenueCatFallbackProps {
   onRetry?: () => void;

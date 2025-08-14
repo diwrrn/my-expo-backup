@@ -3,15 +3,35 @@ import { FirebaseService } from '@/services/firebaseService';
 import { DiaryEntry, Food, UserProfile } from '@/types/api';
 import { useAuth } from './useAuth';
 import { getTodayDateString } from '@/utils/dateUtils';
-import { useFoodCacheContext } from '@/contexts/FoodCacheContext';
+import { useAppStore } from '@/store/appStore';
 import { StreakService } from '@/services/streakService';
 import { useDailyMealsCache } from './useDailyMealsCache';
 import { GeneratedMealPlan } from '@/services/mealPlanningService';
 
 export function useFirebaseData(selectedDate?: string) {
   const { user } = useAuth();
-  const foodCache = useFoodCacheContext();
-  
+  const { 
+    foods, 
+    categories, 
+    foodsLoading, 
+    foodsError,
+    searchFoodsInCache,
+    getFoodsByCategoryFromCache,
+    getPopularFoodsFromCache,
+    refreshFoodCache,
+    clearFoodCache
+  } = useAppStore();
+  const foodCache = {
+    foods,
+    categories,
+    isLoading: foodsLoading,
+    error: foodsError,
+    searchFoodsInCache,
+    getFoodsByCategoryFromCache,
+    getPopularFoodsFromCache,
+    refreshCache: refreshFoodCache,
+    clearAsyncStorageCache: clearFoodCache,
+  };
   // Stable date parameter using useMemo
   const date = useMemo(() => selectedDate || getTodayDateString(), [selectedDate]);
   

@@ -3,7 +3,7 @@ import { FirebaseService } from '@/services/firebaseService';
 import { useAuth } from './useAuth';
 import { getTodayDateString } from '@/utils/dateUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { useAppStore } from '@/store/appStore';
 interface WeightLog {
   date: string;
   weight: number;
@@ -160,8 +160,11 @@ export function useWeightHistory(userId?: string) {
       // Add weight log to Firebase with timestamp
       await FirebaseService.addWeightLog(userId, weight, timestamp);
       
-      // Update the user's main profile weight
+      // Update the user's main profile weight in Firebase
       await FirebaseService.updateUserProfileDocument(userId, { weight: weight });
+  
+      // Update Zustand store to sync the UI immediately
+      useAppStore.getState().updateProfileData({ weight: weight });
   
       // Add new weight log to local state and cache WITH TIMESTAMP
       const newWeightLog: WeightLog = { date: timestamp, weight }; // Use timestamp instead of today

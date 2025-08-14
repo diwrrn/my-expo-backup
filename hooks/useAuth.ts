@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 import { FirebaseService } from '@/services/firebaseService';
@@ -13,6 +13,10 @@ export function useAuth() {
  const [user, setUser] = useState<AuthUser | null>(null);
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState<string | null>(null);
+ const [prevUser, setPrevUser] = useState<AuthUser | null>(null);
+ 
+ // ADD PROCESSING GUARD TO PREVENT INFINITE LOOPS
+ const processingAuthChange = useRef(false);
 
  // Load user profile from Firebase
  const loadUserProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
@@ -42,39 +46,90 @@ export function useAuth() {
    }
  }, []);
 
- // Auth state change handler
- useEffect(() => {
-   const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
-     try {
-       if (firebaseUser) {
-         // Load user data and profile in parallel
-         const [userData, userProfile] = await Promise.all([
-           loadUserData(firebaseUser),
-           loadUserProfile(firebaseUser.uid)
-         ]);
+// Add debounce ref at the component level
+const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
-         const finalUser = {
-           ...userData,
-           profile: userProfile ?? undefined,
-         };
-         setUser(finalUser);
-         useAppStore.getState().setUser(finalUser);
-       } else {
-         setUser(null);
-         useAppStore.getState().setUser(null);
-       }
-     } catch (err) {
-       console.error('Auth state change error:', err);
-       setError(err instanceof Error ? err.message : 'Authentication error');
-     } finally {
-       setLoading(false);
-       useAppStore.getState().setUserLoading(false);
-     }
-   });
+// Auth state change handler
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
+    // GUARD: Prevent recursive auth state changes
+    if (processingAuthChange.current) {
+      console.log('🛑 Auth change already processing, skipping...');
+      return;
+    }
+    
+    processingAuthChange.current = true;
+    console.log('�� onAuthStateChanged FIRED - Firebase user changed');
+    
+    try {
+      if (firebaseUser) {
+        // Load user data and profile in parallel
+        const [userData, userProfile] = await Promise.all([
+          loadUserData(firebaseUser),
+          loadUserProfile(firebaseUser.uid)
+        ]);
 
-   return unsubscribe;
- }, [loadUserData, loadUserProfile]);
+        const finalUser = {
+          ...userData,
+          profile: userProfile ?? undefined,
+        };
+        
+        // ONLY UPDATE IF USER ACTUALLY CHANGED
+        const userChanged = !prevUser || 
+          finalUser.id !== prevUser.id ||
+          finalUser.name !== prevUser.name ||
+          finalUser.phoneNumber !== prevUser.phoneNumber ||
+          finalUser.onboardingCompleted !== prevUser.onboardingCompleted ||
+          JSON.stringify(finalUser.profile) !== JSON.stringify(prevUser.profile);
 
+        if (userChanged) {
+          // Clear any existing timeout
+          if (debounceTimeout.current) {
+            clearTimeout(debounceTimeout.current);
+          }
+          
+          // Debounce the update
+          debounceTimeout.current = setTimeout(() => {
+            console.log('🔄 User actually changed, updating...', {
+              id: finalUser.id !== prevUser?.id,
+              name: finalUser.name !== prevUser?.name,
+              updatedAt: finalUser.profile?.updatedAt !== prevUser?.profile?.updatedAt
+            });
+            setUser(finalUser);
+            setPrevUser(finalUser);
+            useAppStore.getState().setUser(finalUser);
+          }, 100); // 100ms debounce
+        } else {
+          console.log('🔍 User unchanged, skipping update');
+        }
+      } else {
+        if (prevUser !== null) {
+          setUser(null);
+          setPrevUser(null);
+          useAppStore.getState().setUser(null);
+        }
+      }
+    } catch (err) {
+      console.error('Auth state change error:', err);
+      setError(err instanceof Error ? err.message : 'Authentication error');
+    } finally {
+      setLoading(false);
+      useAppStore.getState().setUserLoading(false);
+      // RESET PROCESSING FLAG
+      processingAuthChange.current = false;
+    }
+  });
+
+  return unsubscribe;
+}, [loadUserData, loadUserProfile]);
+useEffect(() => {
+  return () => {
+    // Cleanup timeout on unmount
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+  }; 
+}, []);
  // Auth methods
  const signUp = useCallback(async (email: string, password: string, name: string) => {
    try {

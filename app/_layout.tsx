@@ -7,17 +7,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { router, usePathname } from 'expo-router';
 import { View, Text, Platform } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
-import { LanguageProvider } from '@/contexts/LanguageContext';
 import { I18nextProvider } from 'react-i18next';
-import { FoodCacheProvider } from '@/contexts/FoodCacheContext';
 import i18n from '@/services/i18n';
 import { useFonts } from 'expo-font';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
-import Purchases from 'react-native-purchases';
-import { PremiumProvider } from '@/contexts/PremiumContext';
-import { ProfileProvider } from '@/contexts/ProfileContext';
-import { DailyMealsProvider } from '@/contexts/DailyMealsProvider';
-
 import Animated, {
  useSharedValue,
  useAnimatedStyle,
@@ -30,6 +23,7 @@ import {
 } from 'react-native-reanimated'; 
 
 import { revenueCatService } from '@/services/revenueCatService';
+import { useAppStore } from '@/store/appStore';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -41,6 +35,10 @@ configureReanimatedLogger({
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  useEffect(() => {
+    console.log('🚨 ROOT LAYOUT RE-RENDERED');
+  });
+
  // Call ALL hooks first before any conditional logic
  useFrameworkReady();
  const { user, loading } = useAuth();
@@ -58,6 +56,7 @@ export default function RootLayout() {
    user: user 
  });
 
+
  const [fontsLoaded, fontError] = useFonts({
    'rudawregular2': require('../assets/fonts/rudawregular2.ttf'),
  });
@@ -71,11 +70,23 @@ export default function RootLayout() {
                      pathname?.includes('/meal-selection');
 
  const footerAnimatedStyle = useAnimatedStyle(() => {
-   return {
+   return {  
      opacity: footerOpacity.value,
      pointerEvents: footerOpacity.value === 1 ? 'auto' : 'none',
    };
+   
  });
+ useEffect(() => {
+  console.log('🔍 ROOT LAYOUT - user changed:', !!user, user?.id);
+}, [user]);
+
+useEffect(() => {
+  console.log('🔍 ROOT LAYOUT - loading changed:', loading);
+}, [loading]);
+
+useEffect(() => {
+  console.log('🔍 ROOT LAYOUT - pathname changed:', pathname);
+}, [pathname]);
 
  // Footer visibility logic
  useEffect(() => {
@@ -100,7 +111,10 @@ export default function RootLayout() {
    
    return () => clearTimeout(timer);
  }, []);
-
+// Initialize premium status from AsyncStorage
+useEffect(() => {
+  useAppStore.getState().initializePremiumStatus();
+}, []);
  // Background initialization - don't block app
  useEffect(() => {
    if (i18nInitialized && fontsLoaded && !loading) {
@@ -122,7 +136,12 @@ export default function RootLayout() {
      setTimeout(initRevenueCat, 100);
    }
  }, [user?.id, i18nInitialized, fontsLoaded, loading]);
-
+ useEffect(() => {
+  const { user } = useAppStore.getState();
+  if (user?.id) {
+    useAppStore.getState().loadDailyMeals();
+  }
+}, []);  
  // Reset navigation flag on user change
  useEffect(() => {
    hasNavigatedRef.current = false;
@@ -170,11 +189,6 @@ useEffect(() => {
 
  return (
    <I18nextProvider i18n={i18n}>
-     <LanguageProvider>
-       <FoodCacheProvider>
-         <PremiumProvider>
-           <ProfileProvider>
-             <DailyMealsProvider>
                <>
                  <Stack>
                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -194,11 +208,6 @@ useEffect(() => {
                    </View>
                  )}
                </>
-             </DailyMealsProvider>
-           </ProfileProvider>
-         </PremiumProvider>
-       </FoodCacheProvider>
-     </LanguageProvider>
    </I18nextProvider>
  );
 }

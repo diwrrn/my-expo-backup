@@ -7,60 +7,66 @@ import { CustomPaywall } from '@/components/CustomPaywall';
 import { RevenueCatFallback } from '@/components/RevenueCatFallback';
 import { useRTL } from '@/hooks/useRTL';
 import { useAuth } from '@/hooks/useAuth';
-import { usePremiumContext } from '@/contexts/PremiumContext';
-import { useSubscriptionExpirationMonitor } from '@/hooks/useSubscriptionExpirationMonitor';
 import { useAppStore } from '@/store/appStore';
+import { useSubscriptionExpirationMonitor } from '@/hooks/useSubscriptionExpirationMonitor';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function SubscriptionScreen() {
   const { t, i18n } = useTranslation();
   const { isRTL } = useRTL();
   const { user } = useAuth();
   const { customerInfo, hasPremium, subscriptionLoading } = useAppStore();
+  
   const { offerings, purchasePackage, restorePurchases, refreshCustomerInfo } = usePurchases();
-  const { setImmediatePremium } = usePremiumContext();
+  const { setImmediatePremium } = useAppStore();
   const [showPaywall, setShowPaywall] = useState(false);
 
-// Handle expiration detection
-const handleExpirationDetected = useCallback(async () => {
-  console.log('🚨 Subscription expiration detected, refreshing...');
-  setImmediatePremium(false); // Use enhanced context
-}, [setImmediatePremium]);
- // Add expiration monitoring
-const { isExpired, timeUntilExpiry } = useSubscriptionExpirationMonitor(
-  customerInfo, 
-  handleExpirationDetected
-);
+  const handleExpirationDetected = useCallback(async () => {
+    console.log('🚨 Subscription expired, clearing cache and updating Zustand store...');
+    
+    // Clear AsyncStorage cache
+    await AsyncStorage.removeItem('user_premium_status');
+    
+    // Update Zustand store with actual RevenueCat status
+    const actualPremiumStatus = customerInfo?.entitlements?.active?.premium?.isActive ?? false;
+    useAppStore.getState().setPremium(actualPremiumStatus);
+    setImmediatePremium(false);
+  }, [setImmediatePremium, customerInfo]);
 
-// Enhanced effective premium status
-const effectiveHasPremium = useMemo(() => {
-  // If locally detected as expired, override everything
-  if (isExpired) return false;
-  
-  // Otherwise use enhanced context
-  return hasPremium;
-}, [isExpired, hasPremium]);
+  // Add expiration monitoring
+  const { isExpired, timeUntilExpiry } = useSubscriptionExpirationMonitor(
+    customerInfo, 
+    handleExpirationDetected
+  );
 
+  // Use Zustand state as primary source
+  const effectiveHasPremium = useMemo(() => {
+    // If subscription is expired, return false regardless of hasPremium
+    if (isExpired) {
+      return false;
+    }
+    
+    // Use Zustand state as primary source
+    return hasPremium;
+  }, [hasPremium, isExpired]);
 
-// Show expiration warning for subscriptions expiring within 3 days
-const showExpirationWarning = useMemo(() => {
-  if (!timeUntilExpiry || timeUntilExpiry <= 0) return false;
-  return timeUntilExpiry < 3 * 24 * 60 * 60 * 1000; // 3 days
-}, [timeUntilExpiry]);
+  // Show expiration warning for subscriptions expiring within 3 days
+  const showExpirationWarning = useMemo(() => {
+    if (!timeUntilExpiry || timeUntilExpiry <= 0) return false;
+    return timeUntilExpiry < 3 * 24 * 60 * 60 * 1000; // 3 days
+  }, [timeUntilExpiry]);
   
   const handleShowPaywall = () => {
     setShowPaywall(true);
   };
+
   const handlePurchaseSuccess = async () => {
-    console.log('🎉 Purchase successful, updating UI immediately');
-    
-    // Use enhanced PremiumContext for instant update
     setImmediatePremium(true);
   };
 
   const handleRestorePurchases = async () => {
     const result = await restorePurchases();
     if (result.success) {
-      // Use enhanced PremiumContext for instant update
       if (result.customerInfo?.entitlements?.active?.premium) {
         setImmediatePremium(true);
       }
@@ -77,7 +83,6 @@ const showExpirationWarning = useMemo(() => {
     }
   };
 
-
   const handleRefresh = async () => {
     await refreshCustomerInfo();
   };
@@ -88,7 +93,51 @@ const showExpirationWarning = useMemo(() => {
       Alert.alert('✓ Copied!', 'User ID copied to clipboard');
     }
   };
+// Sync Zustand store with actual RevenueCat status
+useEffect(() => {
+  const actualPremiumStatus = customerInfo?.entitlements?.active?.premium?.isActive ?? false;
+  const currentZustandStatus = hasPremium;
+  
+  console.log(' Premium Sync Check:', {
+    actualPremiumStatus,
+    currentZustandStatus,
+    shouldUpdate: actualPremiumStatus !== currentZustandStatus,
+    entitlements: customerInfo?.entitlements?.active
+  });
+  
+  // Update if they're different (including when no entitlements exist)
+  if (actualPremiumStatus !== currentZustandStatus) {
+    console.log('🔄 Syncing Zustand premium status with RevenueCat:', actualPremiumStatus);
+    useAppStore.getState().setPremium(actualPremiumStatus);
+    
+    // Verify the update
+    setTimeout(() => {
+      const newStatus = useAppStore.getState().hasPremium;
+      console.log('🔄 Premium status after update:', newStatus);
+    }, 100);
+  }
+}, [customerInfo?.entitlements?.active?.premium?.isActive, hasPremium]);
 
+useEffect(() => {
+  const checkAsyncStorage = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('user_premium_status');
+      console.log('🔍 AsyncStorage premium status:', stored);
+    } catch (error) {
+      console.log('�� AsyncStorage error:', error);
+    }
+  };
+  checkAsyncStorage();
+}, [hasPremium]);
+// Debug: Log current states
+console.log('🔍 Premium Debug:', {
+  hasPremiumFromZustand: hasPremium,
+  customerInfoExists: !!customerInfo,
+  actualPremiumStatus: customerInfo?.entitlements?.active?.premium?.isActive,
+  isExpired,
+  effectiveHasPremium,
+  customerInfoEntitlements: customerInfo?.entitlements?.active
+});
   // Show fallback if RevenueCat is not available
   if (!customerInfo && !subscriptionLoading && !hasPremium) {
     return <RevenueCatFallback onRetry={handleRefresh} />;
@@ -102,16 +151,17 @@ const showExpirationWarning = useMemo(() => {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Show expiration warning if needed */}
-{showExpirationWarning && timeUntilExpiry && timeUntilExpiry > 0 && (
-  <View style={styles.expirationWarning}>
-    <Text style={styles.warningText}>
-      ⚠️ Your subscription expires in {Math.ceil(timeUntilExpiry / (24 * 60 * 60 * 1000))} days
-    </Text>
-    <TouchableOpacity onPress={handleShowPaywall} style={styles.renewButton}>
-      <Text style={styles.renewButtonText}>Renew Now</Text>
-    </TouchableOpacity>
-  </View>
-)}
+        {showExpirationWarning && timeUntilExpiry && timeUntilExpiry > 0 && (
+          <View style={styles.expirationWarning}>
+            <Text style={styles.warningText}>
+              ⚠️ Your subscription expires in {Math.ceil(timeUntilExpiry / (24 * 60 * 60 * 1000))} days
+            </Text>
+            <TouchableOpacity onPress={handleShowPaywall} style={styles.renewButton}>
+              <Text style={styles.renewButtonText}>Renew Now</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>{t('subscription:title')}</Text>
@@ -234,12 +284,12 @@ const showExpirationWarning = useMemo(() => {
       </ScrollView>
 
       {showPaywall && (
-  <CustomPaywall
-    visible={showPaywall}
-    onClose={() => setShowPaywall(false)}
-    onPurchaseSuccess={handlePurchaseSuccess}
-  />
-)}
+        <CustomPaywall
+          visible={showPaywall}
+          onClose={() => setShowPaywall(false)}
+          onPurchaseSuccess={handlePurchaseSuccess}
+        />
+      )}
     </View>
   );
 }

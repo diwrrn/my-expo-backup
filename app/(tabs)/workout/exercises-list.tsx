@@ -11,10 +11,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { AddExerciseSetsRepsModal } from '@/components/AddExerciseSetsRepsModal';
 import { ChoosePlanActionModal } from '@/components/ChoosePlanActionModal';
 import { SelectWorkoutPlanModal } from '@/components/SelectWorkoutPlanModal';
-import { usePremiumContext } from '@/contexts/PremiumContext';
 import { CustomPaywall } from '@/components/CustomPaywall';
 import { FirebaseService } from '@/services/firebaseService'; 
-
+import { useAppStore } from '@/store/appStore';
 export default function ExercisesListScreen() {
   const { categoryId, subcategoryId, subcategoryName, targetPlanId } = useLocalSearchParams<{
     categoryId: string;
@@ -25,7 +24,7 @@ export default function ExercisesListScreen() {
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();
   const { user } = useAuth();
-  const { hasPremium } = usePremiumContext();
+  const { hasPremium } = useAppStore();
   const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
   
   const { exercises, exercisesLoading, exercisesError, loadExercises } = useWorkoutCache();

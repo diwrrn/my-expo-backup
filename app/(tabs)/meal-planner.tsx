@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { UtensilsCrossed, Target, Zap, Clock, ChefHat, Sparkles, RefreshCw, ChevronDown, ChevronUp, ListFilter as Filter, Crown } from 'lucide-react-native';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { router, usePathname } from 'expo-router';
@@ -54,12 +54,10 @@ export default function MealPlannerScreen() {
   
   const { isRTL, currentLanguage } = useAppStore();
   const { t } = useTranslation(); // Keep only for translation function
-  const useKurdishFont = currentLanguage === 'ku' || currentLanguage === 'ckb' || currentLanguage === 'ar';
-  console.log('🔍 Language debug:', {
-    currentLang: i18n.language,
-    isRTL: isRTL,
-    timestamp: Date.now()
-  });
+  const useKurdishFont = useMemo(() => 
+    currentLanguage === 'ku' || currentLanguage === 'ckb' || currentLanguage === 'ar',
+    [currentLanguage]
+  );
   
   const toggleExcludedFood = (baseName: string) => { 
     setExcludedFoodBaseNames(prev => 

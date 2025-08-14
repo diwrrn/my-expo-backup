@@ -14,6 +14,10 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { i18n } = useTranslation();
+  // ADD THIS LOGGING:
+  useEffect(() => {
+    console.log('🔍 LanguageProvider re-rendered');
+  });
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
   const [isRTL, setIsRTL] = useState(Platform.OS !== 'web' ? I18nManager.isRTL : false);
 

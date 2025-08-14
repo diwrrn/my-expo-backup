@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'rea
 import { X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useAppStore } from '@/store/appStore';
 import KurdistanFlag from '../assets/icons/kurdistan.svg';
 
 interface LanguageSelectionModalProps {
@@ -20,7 +20,7 @@ export function LanguageSelectionModal({
 }: LanguageSelectionModalProps) {
     const { t, i18n } = useTranslation();
   const isRTL = useRTL();
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage } = useAppStore();
 
   const languages = [
     { code: 'en', name: 'English', flag: '🇺🇸' },  // Fixed: Use emoji flag

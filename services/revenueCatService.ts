@@ -169,7 +169,25 @@ export class RevenueCatService {
       return false;
     }
   }
-
+  async refreshCustomerInfo(): Promise<void> {
+    try {
+      if (!this.isInitialized) {
+        console.warn('⚠️ RevenueCat not initialized, attempting to initialize...');
+        await this.initialize();
+      }
+  
+      if (!Purchases) {
+        console.warn('⚠️ RevenueCat not available - cannot refresh customer info');
+        return;
+      }
+  
+      const customerInfo = await Purchases.getCustomerInfo();
+      console.log('✅ Customer info refreshed:', customerInfo);
+    } catch (error) {
+      console.error('❌ Failed to refresh customer info:', error);
+      // Don't throw error to prevent app crashes
+    }
+  }
   async setUser(userId: string): Promise<void> {
     try {
       if (!this.isInitialized) {

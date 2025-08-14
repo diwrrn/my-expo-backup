@@ -8,11 +8,10 @@ import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useWeightHistory } from '@/hooks/useWeightHistory';
 import { WeightChart } from '@/components/WeightChart';
 import { StreakCalendar } from '@/components/StreakCalendar';
-import { useProfileContext } from '@/contexts/ProfileContext';
 import { WeightInputModal } from '@/components/WeightInputModal';
 import { useAppStore } from '@/store/appStore';
 import { useStreakManager } from '@/contexts/StreakGlobal';
@@ -24,17 +23,21 @@ import womanAvatar from '@/assets/icons/gender/woman.png';
 
 export default function ProfileScreen() { 
   console.log('ProfileScreen rendering');
-  const { user, userLoading, profile, hasPremium } = useAppStore();
+  const { 
+    user, 
+    userLoading, 
+    profile, 
+    hasPremium, 
+    isRTL, 
+    currentLanguage, 
+    profileLoading, 
+    updateProfileData 
+  } = useAppStore();
   const { signOut } = useAuth();
   const { currentStreak, bestStreak, isLoading: streakLoading, initializeUser, cleanup } = useStreakManager();
-
-  const { isRTL, currentLanguage } = useAppStore();
   const { t } = useTranslation(); // Keep only for translation function
   const useKurdishFont = currentLanguage === 'ku' || currentLanguage === 'ckb' || currentLanguage === 'ar';
   const [showWeightModal, setShowWeightModal] = useState(false);
-  const { isLoading } = useProfileContext();
-  const { updateProfile } = useAuth();
-  
   // Early exit if user is null and not in a loading state
   if (!user && !userLoading) {
     return null;
@@ -62,19 +65,38 @@ export default function ProfileScreen() {
       return () => clearTimeout(timer);
     }
   }, [profile?.goals]);
-  
+
   // Initialize streak tracking
+  const streakInitializedRef = useRef(false);
+
+// With this stable version:
 useEffect(() => {
-  if (user?.id) {
+  if (user?.id && !streakInitializedRef.current) {
+    console.log('🔥 Initializing streak for user:', user.id);
     initializeUser(user.id);
-  } else {
+    streakInitializedRef.current = true;
+  } else if (!user?.id && streakInitializedRef.current) {
+    console.log('�� Cleaning up streak - no user');
     cleanup();
+    streakInitializedRef.current = false;
   }
   
-  return () => cleanup();
-}, [user?.id, initializeUser, cleanup]);
+  // Only cleanup on component unmount, not on every render
+  return () => {
+    if (streakInitializedRef.current) {
+      console.log('�� Cleaning up streak - component unmount');
+      cleanup();
+      streakInitializedRef.current = false;
+    }
+  };
+}, [user?.id]);
 
-
+useEffect(() => {
+  if (user?.id && !profile) {
+    // Load profile if user exists but profile is not loaded
+    useAppStore.getState().loadProfile();
+  }
+}, [user?.id, profile]); 
 
   // Check if profile data is fully loaded
   const isProfileComplete = profile && 
@@ -302,9 +324,8 @@ useEffect(() => {
   });
 
   // Show skeleton while loading auth, profile data, or if profile is incomplete
-  const shouldShowSkeleton = userLoading || isLoading || !profile;
-   
-  if (shouldShowSkeleton) {
+  const shouldShowSkeleton = userLoading || (!profile && profileLoading);
+    if (shouldShowSkeleton) {
     return (
       <SafeAreaView style={styles.container}>
         <ProfileSkeleton />
@@ -389,10 +410,12 @@ useEffect(() => {
 
         {/* Streak Calendar Section */}
         <View style={styles.goalsSection}>
-          {user.id ? (
+          {user?.id && user.id.length > 0 ? (
             <StreakCalendar userId={user.id} />
           ) : (
-            <Text style={styles.loadingText}>Sign in to view streak calendar</Text>
+            <Text style={styles.loadingText}>
+              {user ? 'Loading streak calendar...' : 'Sign in to view streak calendar'}
+            </Text>
           )}
         </View>
 
@@ -407,15 +430,21 @@ useEffect(() => {
       </ScrollView>
       
       <WeightInputModal
-        visible={showWeightModal}
-        onClose={() => setShowWeightModal(false)}
-        onSave={async (weight) => {
-          await updateProfile({ weight });
-          await logWeight(weight);
-          await clearCache();
-          setShowWeightModal(false);
-        }}
-      />
+  visible={showWeightModal}
+  onClose={() => setShowWeightModal(false)}
+  onSave={async (weight) => {
+    try {
+      // Update weight history first
+      await logWeight(weight);
+      // Clear cache
+      await clearCache();
+      // Close modal
+      setShowWeightModal(false);
+    } catch (error) {
+      console.error('Error updating weight:', error);
+    }
+  }} 
+/>  
     </SafeAreaView>
   );
 }

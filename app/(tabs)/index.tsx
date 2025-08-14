@@ -7,7 +7,6 @@ import { MealCardWithSearch } from '@/components/MealCardWithSearch';
 import { WaterIntakeCard } from '@/components/WaterIntakeCard';
 import { HomeSkeleton } from '@/components/HomeSkeleton';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
-import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
 import { useAuth } from '@/hooks/useAuth';
 import { useState, useEffect, useMemo } from 'react';
 import { getTodayDateString, addDays, formatDisplayDate, isToday, parseDateString, formatDateToString } from '@/utils/dateUtils';
@@ -49,30 +48,25 @@ export default function HomeScreen() {
   const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
   const isRTL = useRTL();
   const { initializeUser } = useStreakManager();
-
   // Stable currentViewDate with useMemo
   const [selectedDate, setSelectedDate] = useState(() => getTodayDateString());
   const currentViewDate = useMemo(() => selectedDate, [selectedDate]);
-
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateInput, setDateInput] = useState('');
-  
   const { dailyTotals, mealTotals, dailyMeals } = useAppStore();
   const removeFoodFromDailyMeal = async (mealType: string, foodKey: string) => {
     if (!user?.id) return;
     await FirebaseService.removeFoodFromDailyMeal(user.id, currentViewDate, mealType, foodKey);
   };
-  
   const addFoodToDailyMeal = async (mealType: string, foodData: any) => {
     if (!user?.id) return;
     await FirebaseService.addDailyMeal(user.id, currentViewDate, mealType, foodData);
   };
-  
+
   const changeDate = async (newDate: string) => {
     setSelectedDate(newDate);
-    // The DailyMealsProvider will automatically sync new date data to Zustand
   };
-  
+      
   
   // Get foods from Zustand instead
   const getFoodsFromMeal = (mealName: string) => {
@@ -83,7 +77,7 @@ export default function HomeScreen() {
     Object.keys(mealData).forEach(foodKey => {
       if (foodKey.startsWith('food')) {
         const foodItem = mealData[foodKey];
-        if (foodItem && foodItem["0"]) {
+        if (foodItem && foodItem["0"]) {  
           foods.push({
             ...foodItem["0"],
             foodKey: foodKey
@@ -109,15 +103,17 @@ export default function HomeScreen() {
   const [showContent, setShowContent] = useState(false);
 
   // Simplified data ready check
-  const dataReady = !userLoading && user && dailyMeals;
+  const dataReady = !userLoading && user;
 
-  useEffect(() => {
-    changeDate(currentViewDate);
-  }, [currentViewDate, changeDate]);
+ 
   // Wait for initial data to be ready
   useEffect(() => {
     if (dataReady) {
-      setShowContent(true);
+      // Add a small delay to ensure data is loaded
+      const timer = setTimeout(() => {
+        setShowContent(true);
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [dataReady]);
 
@@ -126,17 +122,28 @@ export default function HomeScreen() {
       initializeUser(user.id);
     }
   }, [user?.id, initializeUser]);
-  
-  // DEBUG: Check AsyncStorage contents
+  useEffect(() => {  
+    if (user?.id) {
+      useAppStore.getState().loadDailyMeals();
+    }
+  }, [user?.id]);
   // Navigation functions for date
   const handlePreviousDay = () => {
-    setSelectedDate(prevDate => addDays(prevDate, -1));
+    const newDate = addDays(currentViewDate, -1);
+    setSelectedDate(newDate);
+    if (user?.id) {
+      useAppStore.getState().loadDailyMeals(newDate);
+    }
   };
 
   const handleNextDay = () => {
     // Only allow navigating up to today
     if (!isToday(currentViewDate)) {
-      setSelectedDate(prevDate => addDays(prevDate, 1));
+      const newDate = addDays(currentViewDate, 1);
+      setSelectedDate(newDate);
+      if (user?.id) {
+        useAppStore.getState().loadDailyMeals(newDate);
+      }
     }
   };
 
@@ -172,11 +179,18 @@ export default function HomeScreen() {
       // Set the date and close the picker
       setSelectedDate(dateInput);
       setShowDatePicker(false);
+      if (user?.id) {
+        useAppStore.getState().loadDailyMeals(dateInput);
+      }
     } catch (error) {
       Alert.alert('Error', 'Invalid date format. Please use YYYY-MM-DD');
     }
   };
-
+  useEffect(() => {
+    if (user?.id) {
+      useAppStore.getState().loadDailyMeals(currentViewDate);
+    }
+  }, [user?.id]); // Only depend on user?.id, not currentViewDate
   const toggleMealExpansion = (mealId: string) => {
     setExpandedMeals(prev => ({
       ...prev,
@@ -204,8 +218,8 @@ const handleUpdateWaterIntake = async (glasses: number) => {
     // Refresh functionality if needed
   };
 
-  const styles = StyleSheet.create({
-  container: {
+  const styles = useMemo(() => StyleSheet.create({
+    container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
@@ -486,7 +500,7 @@ const handleUpdateWaterIntake = async (glasses: number) => {
       marginLeft: isRTL ? 0 : 8,
       marginRight: isRTL ? 8 : 0,
     },
-  });
+  }), [isRTL, useKurdishFont]);
 
   // Show skeleton while loading
   if (!showContent) {

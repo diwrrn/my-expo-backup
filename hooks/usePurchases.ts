@@ -195,14 +195,6 @@ useAppStore.getState().setSubscriptionLoading(false);
         console.log(' Premium status for user', user.id + ':', currentHasPremium);
         console.log('📦 Available offerings for user', user.id + ':', offerings?.current?.availablePackages?.length || 0);
         
-        // Add detailed premium debugging with user ID
-        console.log('🔍 Premium Debug Details for user', user.id + ':');
-        console.log('  - Active entitlements:', Object.keys(customerInfo?.entitlements?.active || {}));
-        console.log('  - Premium entitlement:', customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium]);
-        console.log('  - All entitlements:', Object.keys(customerInfo?.entitlements?.all || {}));
-        console.log('  - Premium in all:', customerInfo?.entitlements?.all?.[ENTITLEMENTS.premium]);
-        console.log('  - RevenueCat App User ID:', customerInfo?.originalAppUserId);
-
       } catch (error) {
         console.error('❌ Error loading RevenueCat data for user', user.id + ':', error);
       } finally {
@@ -255,7 +247,9 @@ useAppStore.getState().setSubscriptionLoading(false);
       
       console.log('✅ Purchase successful for user:', user?.id);
       console.log('🎉 Premium status immediately updated to:', newPremiumStatus);
+      useAppStore.getState().setPremium(true); // Add this line
       return { success: true };
+
     } catch (error: any) {
       console.error('❌ Purchase failed for user', user?.id + ':', error);
       return { 
@@ -278,7 +272,8 @@ useAppStore.getState().setSubscriptionLoading(false);
       
       setCustomerInfo(customerInfo);
       useAppStore.getState().setCustomerInfo(customerInfo);
-            setCachedPremium(newPremiumStatus);
+      useAppStore.getState().setPremium(newPremiumStatus); // Add this line
+      setCachedPremium(newPremiumStatus);
       console.log('✅ Purchases restored successfully for user:', user?.id);
       return { success: true, customerInfo };
     } catch (error: any) {
@@ -308,8 +303,9 @@ useAppStore.getState().setSubscriptionLoading(false);
       
       setCustomerInfo(customerInfo);
       useAppStore.getState().setCustomerInfo(customerInfo);
+      useAppStore.getState().setPremium(currentHasPremium); // Add this line
       setCachedPremium(currentHasPremium);
-      console.log('✅ Customer info refreshed for user:', user?.id);
+            console.log('✅ Customer info refreshed for user:', user?.id);
       console.log('📱 Updated premium status for user', user?.id + ':', currentHasPremium);
       
       // Add detailed debugging for refresh with user ID

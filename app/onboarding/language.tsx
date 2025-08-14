@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react'; // Import useState
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native'; // Import Alert
 import { OnboardingLayout } from '@/components/onboarding/OnboardingLayout';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useAppStore } from '@/store/appStore';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 export default function LanguageScreen() {
   const { t } = useTranslation();
-  const { currentLanguage, changeLanguage, isRTL } = useLanguage();
+  const { currentLanguage, changeLanguage, isRTL } = useAppStore();
 
   // New state to hold the temporarily selected language
   const [tempSelectedLanguage, setTempSelectedLanguage] = useState(currentLanguage);

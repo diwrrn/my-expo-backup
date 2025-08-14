@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Droplet, Plus, Minus, LocationEdit as Edit3, RefreshCw } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
@@ -30,7 +30,7 @@ const { user } = useAuth();
     console.log('WaterIntakeCard: dailyGoal prop updated to:', dailyGoal);
   }, [dailyGoal]);
 
-  const styles = StyleSheet.create({
+  const styles = useMemo(() => StyleSheet.create({
     container: {
       backgroundColor: '#FFFFFF',
       borderRadius: 16,
@@ -206,7 +206,7 @@ const { user } = useAuth();
           fontFamily: isKurdish ? 'rudawregular2' : undefined, // Add this line
 
     },
-  });
+  }), [isKurdish, isRTL]);
 
   // Update local state when prop changes
   useEffect(() => {

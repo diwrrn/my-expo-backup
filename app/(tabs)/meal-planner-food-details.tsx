@@ -9,7 +9,8 @@ import { Food, NutritionPer100 } from '@/types/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useTranslation, TFunction } from 'react-i18next';
-import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
+import { useAppStore } from '@/store/appStore';
+
 export default function MealPlannerFoodDetailsScreen() {
   const { foodId, quantity: quantityParam, unit: unitParam, fromMealPlan, origin, planId } = useLocalSearchParams<{
     foodId: string;
@@ -20,7 +21,7 @@ export default function MealPlannerFoodDetailsScreen() {
     planId?: string;
   }>();  
    
-  const { addFoodToDailyMeal } = useDailyMealsContext();
+  const { addFoodToMeal } = useAppStore();
   const { foodCache } = useFirebaseData();  
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();

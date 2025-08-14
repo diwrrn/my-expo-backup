@@ -9,7 +9,8 @@ import { Food, NutritionPer100 } from '@/types/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useTranslation, TFunction } from 'react-i18next';
-import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
+import { useAppStore } from '@/store/appStore';
+
 export default function FoodEntryScreen() {
   const { foodId, fromMealFoodSearch, mealType, mealTitle, fromMealPlan } = useLocalSearchParams<{
     foodId: string; 
@@ -19,7 +20,7 @@ export default function FoodEntryScreen() {
     fromMealPlan?: string;
   }>(); 
    
-  const { addFoodToDailyMeal } = useDailyMealsContext();
+  const { addFoodToMeal } = useAppStore();
   const { foodCache } = useFirebaseData();  
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();
@@ -448,7 +449,7 @@ export default function FoodEntryScreen() {
       setIsAdding(true);
       
       if (fromMealFoodSearch === 'true' && mealType) {
-        await addFoodToDailyMeal(mealType as 'breakfast' | 'lunch' | 'dinner' | 'snacks', {
+        await addFoodToMeal(mealType as 'breakfast' | 'lunch' | 'dinner' | 'snacks', {
           foodId: food.id,
           foodName: food.name,
           kurdishName: food.kurdishName || '',
@@ -488,14 +489,7 @@ export default function FoodEntryScreen() {
   const getCompleteNutrition = () => {
     if (!food?.nutritionPer100) return null;
     
-    // DEBUGGING: Log the food category and nutrition data
-    console.log('Food category:', food.category);
-    console.log('Food nutritionPer100:', food.nutritionPer100);
-    console.log('Nutrition totalGrams:', nutrition.totalGrams);
-    console.log('Vitamin A value:', food.nutritionPer100.vitaminA);
-    console.log('Vitamin C value:', food.nutritionPer100.vitaminC);
-    console.log('Vitamin D value:', food.nutritionPer100.vitaminD);
-    console.log('Vitamin E value:', food.nutritionPer100.vitaminE);
+
     
     const baseNutrition = food.nutritionPer100;
     const multiplier = nutrition.totalGrams / 100;
@@ -536,7 +530,6 @@ export default function FoodEntryScreen() {
       }
     });
     
-    console.log('Final result for grains:', result);
     return result;
   };
 

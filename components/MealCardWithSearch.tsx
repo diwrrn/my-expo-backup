@@ -13,8 +13,7 @@ import { Food } from '@/types/api';
 import { router } from 'expo-router';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useTranslation, TFunction } from 'react-i18next';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
+  import { useAppStore } from '@/store/appStore';
   
  interface MealCardWithSearchProps {
   title: string;
@@ -48,7 +47,7 @@ export function MealCardWithSearch({
   const animatedHeight = useSharedValue(0);
   const animatedOpacity = useSharedValue(0);
   
-  const { addFoodToDailyMeal } = useDailyMealsContext();
+  const { addFoodToMeal } = useAppStore();
   const { searchFoods, getPopularFoods } = useFirebaseData();
   const styles = StyleSheet.create({
   container: {

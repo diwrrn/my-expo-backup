@@ -6,6 +6,7 @@ export interface User {
   name: string;
   createdAt?: string;
   onboardingCompleted?: boolean;
+  profile?: UserProfile; // Add this line
 }
 
 export interface UserProfile {
@@ -79,10 +80,14 @@ export interface Food {
   allowDuplication?: boolean; // Whether this food can appear multiple times in the same meal plan
   vegan?: boolean; // Whether the food is suitable for vegans
   vegetarian?: boolean; // Whether the food is suitable for vegetarians
-  glutenFree?: boolean; // Whether the food is gluten-free
-  dairyFree?: boolean; // Whether the food is dairy-free
+  glutenFree?: boolean; // Whether this food is gluten-free
+  dairyFree?: boolean; // Whether this food is dairy-free
   calorieAdjustment?: boolean; // Whether this food is suitable for calorie-focused adjustments (high-calorie, low-protein foods)
   lowCalorie?: boolean; // Whether this food is high-protein but low-calorie (ideal for protein adjustments without calorie overshoot)
+  // Add these properties for multilingual support and popularity
+  name_ar?: string;
+  name_ku?: string;
+  popular?: boolean;
 }
 
 export interface NutritionPer100 {

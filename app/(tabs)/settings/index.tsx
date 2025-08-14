@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { LanguageSelectionModal } from '@/components/LanguageSelectionModal';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { Alert } from 'react-native';
 import i18n from '@/services/i18n';
 import { useAppStore } from '@/store/appStore';

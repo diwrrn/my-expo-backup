@@ -13,8 +13,7 @@ import {
 } from 'react-native';
 import { X, Crown, Check, Heart, Target, TrendingUp, Users, Zap, Apple, Award } from 'lucide-react-native';
 import { usePurchases } from '@/hooks/usePurchases';
-import { usePremiumContext } from '@/contexts/PremiumContext';
-
+import { useAppStore } from '@/store/appStore';
 import { useTranslation } from 'react-i18next';
 import { PurchasesPackage } from 'react-native-purchases';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -41,8 +40,7 @@ export function CustomPaywall({ visible, onClose, onPurchaseSuccess }: CustomPay
   const { getAvailablePackages, purchasePackage } = usePurchases();
   const { t } = useTranslation();
   const [purchasing, setPurchasing] = React.useState(false);
-  const { loading } = usePremiumContext();
-
+  const { hasPremium, premiumLoading: loading, refreshPremium, setImmediatePremium } = useAppStore();
   // Simplified animations that won't interfere with scrolling
   const breathingScale = useSharedValue(1);
   const calorieCounter = useSharedValue(0);

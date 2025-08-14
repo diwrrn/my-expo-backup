@@ -9,8 +9,7 @@ import { SavedMealPlan, ProcessedFood } from '@/types/api';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { getTodayDateString } from '@/utils/dateUtils';
-import { useFirebaseData } from '@/hooks/useFirebaseData';
-import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
+import { useAppStore } from '@/store/appStore';
 
 // Helper function to get display name based on language
 const getDisplayName = (food: any, i18n: any) => {
@@ -31,7 +30,7 @@ export default function MealPlanDetailsScreen() {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();
-  const { addFoodToDailyMeal } = useDailyMealsContext();
+  const { addFoodToMeal } = useAppStore();
   const [savedMealPlan, setSavedMealPlan] = useState<SavedMealPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingAllMeals, setLoggingAllMeals] = useState(false);
@@ -90,7 +89,7 @@ export default function MealPlanDetailsScreen() {
                 const foodsInMeal = mealsToLog[mealType as keyof typeof mealsToLog];
                 if (foodsInMeal && foodsInMeal.length > 0) {
                   for (const food of foodsInMeal) {
-                    await addFoodToDailyMeal(mealType as any, {
+                    await addFoodToMeal(mealType as any, {
                       foodId: food.id,
                       foodName: food.name,
                       kurdishName: food.kurdishName || '',
@@ -136,9 +135,9 @@ export default function MealPlanDetailsScreen() {
       // Add a small delay to prevent race conditions when clicking multiple checkmarks quickly
       await new Promise(resolve => setTimeout(resolve, 50));
       
-      await addFoodToDailyMeal(mealType, {
+      await addFoodToMeal(mealType, {
         foodId: food.id,
-        foodName: food.name,
+        foodName: food.name, 
         kurdishName: food.kurdishName || '',
         arabicName: food.arabicName || '',
         calories: food.calories,

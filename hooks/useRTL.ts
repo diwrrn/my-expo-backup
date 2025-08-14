@@ -1,17 +1,16 @@
 import { I18nManager, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useMemo } from 'react';
 
 export const useRTL = () => {
   const { i18n } = useTranslation();
   
-  // Guard I18nManager access for web compatibility
-  if (Platform.OS === 'web') {
-    return ['ar', 'ku'].includes(i18n.language); // Check current language
-  }
-  
-  // For native, check both I18nManager and current language
-  const isLanguageRTL = ['ar', 'ku'].includes(i18n.language);
-  return isLanguageRTL;
+  return useMemo(() => {
+    if (Platform.OS === 'web') {
+      return ['ar', 'ku'].includes(i18n.language);
+    }
+    return ['ar', 'ku'].includes(i18n.language);
+  }, [i18n.language]); // Only recalculate when language actually changes
 };
 // Helper for conditional styling
 export const getDirectionalStyle = (isRTL: boolean, ltrStyle: any, rtlStyle: any) => {

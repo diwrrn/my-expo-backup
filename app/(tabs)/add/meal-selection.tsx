@@ -9,7 +9,7 @@ import { Food } from '@/types/api';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
+import { useAppStore } from '@/store/appStore';
 // Helper function to get display name based on language
 const getDisplayName = (food: any, language: string) => {
   if (language === 'ku' && food.kurdishName) {
@@ -31,7 +31,7 @@ export default function MealSelectionScreen() {
 
   const currentViewDate = useLocalSearchParams().currentViewDate || getTodayDateString();
   const { user, loading: authLoading } = useAuth();
-  const { addFoodToDailyMeal } = useDailyMealsContext();
+  const { addFoodToMeal } = useAppStore();
     const { t, i18n } = useTranslation();
   const isRTL = useRTL();
   const [isAdding, setIsAdding] = useState<string | null>(null);
@@ -275,8 +275,8 @@ const handleMealSelect = async (mealId: 'breakfast' | 'lunch' | 'dinner' | 'snac
           console.log(`🔍 meal-selection handleMealSelect - Adding food: ${food.name}, Kurdish: ${food.kurdishName || 'N/A'}, Arabic: ${food.arabicName || 'N/A'}`);
 
           // Fire and forget the database operation
-          addFoodToDailyMeal(mealId, {
-            foodId: food.id,
+          addFoodToMeal(mealId, {
+            foodId: food.id, 
             foodName: food.name,
             kurdishName: food.kurdishName || '',
             arabicName: food.arabicName || '',
