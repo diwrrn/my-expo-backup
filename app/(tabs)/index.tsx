@@ -1,31 +1,23 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Target, Flame, Zap, Plus, Trash2, ChevronDown, ChevronUp, TrendingUp, Award, Droplet, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react-native';
-import { ProgressRingSkeleton } from '@/components/ProgressRingSkeleton';
 import { ProgressRing } from '@/components/ProgressRing';
-import { QuickStatsSkeleton } from '@/components/QuickStatsSkeleton';
 import { QuickStats } from '@/components/QuickStats';
-import { MealCardSkeleton } from '@/components/MealCardSkeleton';
 import { MealCardWithSearch } from '@/components/MealCardWithSearch';
-import { WaterIntakeCardSkeleton } from '@/components/WaterIntakeCardSkeleton';
 import { WaterIntakeCard } from '@/components/WaterIntakeCard';
 import { HomeSkeleton } from '@/components/HomeSkeleton';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { useDailyMealsContext } from '@/contexts/DailyMealsProvider';
 import { useAuth } from '@/hooks/useAuth';
-import { useStreak } from '@/hooks/useStreak';
-import { useProfileContext } from '@/contexts/ProfileContext';
 import { useState, useEffect, useMemo } from 'react';
 import { getTodayDateString, addDays, formatDisplayDate, isToday, parseDateString, formatDateToString } from '@/utils/dateUtils';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next'; 
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFirebaseData } from '@/hooks/useFirebaseData';
-import { useStreakGlobal } from '@/hooks/useStreakGlobal';
-import { streakGlobal } from '@/contexts/StreakGlobal';
-import { StreakService } from '@/services/streakService';
-import { router } from 'expo-router';
+import { useAppStore } from '@/store/appStore';
+import { FirebaseService } from '@/services/firebaseService';
+import { useStreakManager } from '@/contexts/StreakGlobal';
+
 // Simplified function to check if homepage data is ready
 const isHomeDataReady = (
   authLoading: boolean,
@@ -49,11 +41,14 @@ const isHomeDataReady = (
 };
 
 export default function HomeScreen() {
-  const { user, loading: authLoading } = useAuth();
-  const { updateProfile } = useProfileContext();
+  console.log('HomeScreen rendering');
+  const { user, userLoading } = useAppStore();
+
+  const { updateProfile } = useAuth();
   const { t, i18n } = useTranslation();
   const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
   const isRTL = useRTL();
+  const { initializeUser } = useStreakManager();
 
   // Stable currentViewDate with useMemo
   const [selectedDate, setSelectedDate] = useState(() => getTodayDateString());
@@ -62,22 +57,49 @@ export default function HomeScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateInput, setDateInput] = useState('');
   
-  const { 
-    dailyTotals, 
-    mealTotals, 
-    getFoodsFromMeal, 
-    removeFoodFromDailyMeal, 
-    dailyMeals,
-    changeDate,
-    addFoodToDailyMeal, // Rename this
+  const { dailyTotals, mealTotals, dailyMeals } = useAppStore();
+  const removeFoodFromDailyMeal = async (mealType: string, foodKey: string) => {
+    if (!user?.id) return;
+    await FirebaseService.removeFoodFromDailyMeal(user.id, currentViewDate, mealType, foodKey);
+  };
+  
+  const addFoodToDailyMeal = async (mealType: string, foodData: any) => {
+    if (!user?.id) return;
+    await FirebaseService.addDailyMeal(user.id, currentViewDate, mealType, foodData);
+  };
+  
+  const changeDate = async (newDate: string) => {
+    setSelectedDate(newDate);
+    // The DailyMealsProvider will automatically sync new date data to Zustand
+  };
+  
+  
+  // Get foods from Zustand instead
+  const getFoodsFromMeal = (mealName: string) => {
+    const mealData = dailyMeals?.meals?.[mealName];
+    if (!mealData || typeof mealData !== 'object') return [];
+    
+    const foods: any[] = [];
+    Object.keys(mealData).forEach(foodKey => {
+      if (foodKey.startsWith('food')) {
+        const foodItem = mealData[foodKey];
+        if (foodItem && foodItem["0"]) {
+          foods.push({
+            ...foodItem["0"],
+            foodKey: foodKey
+          });
+        }
+      }
+    });
+    return foods;
+  };
 
-  } = useDailyMealsContext(); 
-  const { 
-    updateWaterIntake, 
-    loading 
-  } = useFirebaseData(currentViewDate);
-  const { currentStreak, bestStreak, isLoading: streakLoading, error: streakError } = useStreakGlobal();
-      const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>({
+  const updateWaterIntake = async (glasses: number) => {
+    if (!user?.id) return;
+    await FirebaseService.updateWaterIntake(user.id, currentViewDate, glasses);
+  };
+  const { currentStreak, bestStreak, streakLoading } = useAppStore();
+  const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>({
     breakfast: false,
     lunch: false,  
     dinner: false,
@@ -87,12 +109,8 @@ export default function HomeScreen() {
   const [showContent, setShowContent] = useState(false);
 
   // Simplified data ready check
-  const dataReady = isHomeDataReady(
-    authLoading, 
-    loading, 
-    user, 
-    dailyMeals
-  );
+  const dataReady = !userLoading && user && dailyMeals;
+
   useEffect(() => {
     changeDate(currentViewDate);
   }, [currentViewDate, changeDate]);
@@ -102,6 +120,13 @@ export default function HomeScreen() {
       setShowContent(true);
     }
   }, [dataReady]);
+
+  useEffect(() => {
+    if (user?.id) {
+      initializeUser(user.id);
+    }
+  }, [user?.id, initializeUser]);
+  
   // DEBUG: Check AsyncStorage contents
   // Navigation functions for date
   const handlePreviousDay = () => {

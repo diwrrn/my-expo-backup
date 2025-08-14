@@ -44,4 +44,4 @@ if (typeof window !== 'undefined') {
 }
 
 export { analytics };
-export default app;
+export default app; 

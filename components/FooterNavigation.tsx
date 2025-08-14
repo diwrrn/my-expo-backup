@@ -82,6 +82,7 @@ export function FooterNavigation() {
   }, [pathname]);
 
   const handleNavPress = useCallback((route: string, itemId: string) => {
+    console.log('🚀 handleNavPress called at:', Date.now());
     const now = Date.now();
     if (now - lastPressTime.current < DOUBLE_TAP_DELAY) {
       return; // Prevent double-tap
@@ -89,6 +90,7 @@ export function FooterNavigation() {
     lastPressTime.current = now;
     
     router.push(route as any);
+    console.log('✅ router.push called at:', Date.now());
   }, []);
 
   const getAnimationValue = (itemId: string) => {
@@ -229,11 +231,11 @@ export function FooterNavigation() {
     </View>
   );
 }
-
+console.log('🎯 CalculatorScreen component fully rendered at:', Date.now());
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 0, 
     left: 0,
     right: 0,
     zIndex: 9999, // Increase z-index significantly

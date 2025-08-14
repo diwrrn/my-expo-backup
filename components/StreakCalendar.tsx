@@ -1,16 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, LayoutAnimation, UIManager, Platform } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRTL } from '@/hooks/useRTL';
-import { streakGlobal } from '@/contexts/StreakGlobal';
+import { useStreakManager } from '@/contexts/StreakGlobal';
 import { Flame, Trophy, Target, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react-native';
-
-// Enable LayoutAnimation on Android
-if (Platform.OS === 'android') {
-  if (UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-  }
-}
 
 interface StreakCalendarProps {
   userId: string;
@@ -20,11 +13,18 @@ export function StreakCalendar({ userId }: StreakCalendarProps) {
   const { t } = useTranslation();
   const isRTL = useRTL();
 
+  // Use our bulletproof streak system
+  const { 
+    currentStreak, 
+    bestStreak, 
+    isLoading, 
+    error, 
+    getMonthlyDates,
+    initializeUser 
+  } = useStreakManager();
+
   const [markedDates, setMarkedDates] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState(() => new Date());
-  const [isVisible, setIsVisible] = useState(false); // NUCLEAR: Visibility control
   const [monthStats, setMonthStats] = useState({
     totalDays: 0,
     loggedDays: 0,
@@ -32,18 +32,17 @@ export function StreakCalendar({ userId }: StreakCalendarProps) {
     bestStreak: 0
   });
 
-  // Fetch data function - stable and reliable
-  const fetchLoggedDates = async (year: number, month: number, userIdParam: string) => {
-    if (!userIdParam) return;
-  
+  // Initialize user when component mounts
+  useEffect(() => {
+    if (userId) {
+      initializeUser(userId);
+    }
+  }, [userId, initializeUser]);
+
+  // Fetch monthly dates
+  const fetchMonthlyDates = async (year: number, month: number) => {
     try {
-      setLoading(true);
-      setError(null);
-      
-      streakGlobal.setUser(userIdParam);
-      const dates = await streakGlobal.getMonthlyDates(year, month);
-      
-      // Simple array update - no complex objects
+      const dates = await getMonthlyDates(year, month);
       setMarkedDates(dates);
       
       // Calculate stats
@@ -55,35 +54,31 @@ export function StreakCalendar({ userId }: StreakCalendarProps) {
       setMonthStats({
         totalDays: currentDay,
         loggedDays: dates.length,
-        currentStreak: dates.length > 0 ? Math.min(dates.length, 7) : 0,
-        bestStreak: Math.max(dates.length, 5)
+        currentStreak: currentStreak, // Use from global state
+        bestStreak: bestStreak // Use from global state
       });
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load streak data.');
-      console.error('❌ StreakCalendar: Error fetching logged dates:', err);
-    } finally {
-      setLoading(false);
-      
-      // NUCLEAR: Force layout invalidation and show component
-      setTimeout(() => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setIsVisible(true);
-      }, 50);
+      console.error('❌ StreakCalendar: Error fetching dates:', err);
     }
   };
 
-  // Single useEffect for initialization
+  // Load initial data
   useEffect(() => {
     if (userId) {
       const today = new Date();
-      
-      // NUCLEAR: Start invisible, show after everything loads
-      setIsVisible(false);
-      
-      fetchLoggedDates(today.getFullYear(), today.getMonth() + 1, userId);
+      fetchMonthlyDates(today.getFullYear(), today.getMonth() + 1);
     }
   }, [userId]);
+
+  // Update stats when global streak changes
+  useEffect(() => {
+    setMonthStats(prev => ({
+      ...prev,
+      currentStreak,
+      bestStreak
+    }));
+  }, [currentStreak, bestStreak]);
 
   // Navigation handler
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -94,10 +89,10 @@ export function StreakCalendar({ userId }: StreakCalendarProps) {
       newDate.setMonth(newDate.getMonth() + 1);
     }
     setCurrentDate(newDate);
-    fetchLoggedDates(newDate.getFullYear(), newDate.getMonth() + 1, userId);
+    fetchMonthlyDates(newDate.getFullYear(), newDate.getMonth() + 1);
   };
 
-  // Generate calendar days - memoized for performance
+  // Generate calendar days - simplified
   const calendarDays = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -141,10 +136,11 @@ export function StreakCalendar({ userId }: StreakCalendarProps) {
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  if (loading || !isVisible) {
+  // Simple loading state
+  if (isLoading) {
     return (
       <View style={styles.container}>
-      <View style={styles.loadingContainer}>
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#10B981" />
           <Text style={styles.loadingText}>Loading your progress...</Text>
         </View>
@@ -152,6 +148,7 @@ export function StreakCalendar({ userId }: StreakCalendarProps) {
     );
   }
 
+  // Simple error state
   if (error) {
     return (
       <View style={styles.container}>
@@ -168,12 +165,8 @@ export function StreakCalendar({ userId }: StreakCalendarProps) {
     <ScrollView 
       style={styles.scrollContainer} 
       showsVerticalScrollIndicator={false}
-      onLayout={() => {
-        // NUCLEAR: Force native layout recalculation
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.linear);
-      }}
     >
-    <View style={styles.container}>
+      <View style={styles.container}>
         {/* Header Stats */}
         <View style={styles.headerStats}>
           <Text style={styles.sectionTitle}>Streaks</Text>
@@ -183,7 +176,7 @@ export function StreakCalendar({ userId }: StreakCalendarProps) {
               <View style={styles.statIconLarge}>
                 <Flame size={20} color="#F59E0B" />
               </View>
-              <Text style={styles.mainStatValue}>{monthStats.currentStreak}</Text>
+              <Text style={styles.mainStatValue}>{currentStreak}</Text>
               <Text style={styles.mainStatLabel}>Day Streak</Text>
             </View>
             
@@ -276,11 +269,12 @@ export function StreakCalendar({ userId }: StreakCalendarProps) {
             ))}
           </View>
         </View>
-    </View>
+      </View>
     </ScrollView>
   );
 }
 
+// Keep your existing styles - they're fine!
 const styles = StyleSheet.create({
   scrollContainer: {
     flex: 1,
@@ -290,14 +284,14 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     marginHorizontal: 6,
     marginBottom: 20,
-    marginTop:5,
+    marginTop: 5,
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 16,
     elevation: 6,
     overflow: 'hidden',
-    minHeight: 400, // Force minimum height
+    minHeight: 400,
   },
   headerStats: {
     padding: 20,

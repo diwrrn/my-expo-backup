@@ -5,6 +5,7 @@ import { revenueCatService } from '@/services/revenueCatService';
 import { useAuth } from '@/hooks/useAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
+import { useAppStore } from '@/store/appStore';
 
 // Entitlement identifiers (configure these in RevenueCat dashboard)
 export const ENTITLEMENTS = {
@@ -134,7 +135,8 @@ const hasPremium = useMemo(() => {
       // If we have cached data, we can show it immediately
       if (cached !== null) {
         setLoading(false);
-      }
+        useAppStore.getState().setSubscriptionLoading(false);
+              }
     };
 
     loadCachedPremium();
@@ -147,6 +149,8 @@ const hasPremium = useMemo(() => {
     setOfferings(null);
     setCachedPremium(null);
     setLoading(true);
+    useAppStore.getState().setSubscriptionLoading(true);
+        
   }, [user?.id]);
 
   // Load RevenueCat data
@@ -154,12 +158,15 @@ const hasPremium = useMemo(() => {
     const loadRevenueCatData = async () => {
       if (!user?.id) {
         setLoading(false);
+useAppStore.getState().setSubscriptionLoading(false);
+
         return;
       }
 
       try {
         setLoading(true);
-        console.log(' Loading RevenueCat data for user:', user.id);
+        useAppStore.getState().setSubscriptionLoading(true);
+                console.log(' Loading RevenueCat data for user:', user.id);
         
         // FIRST: Switch RevenueCat user to match Firebase user
         console.log('🔄 Switching RevenueCat user to:', user.id);
@@ -179,6 +186,8 @@ const hasPremium = useMemo(() => {
         await savePremiumStatusToCache(user.id, currentHasPremium, customerInfo);
         
         setCustomerInfo(customerInfo);
+        useAppStore.getState().setCustomerInfo(customerInfo);
+        
         setOfferings(offerings);
         setCachedPremium(currentHasPremium);
 
@@ -198,7 +207,8 @@ const hasPremium = useMemo(() => {
         console.error('❌ Error loading RevenueCat data for user', user.id + ':', error);
       } finally {
         setLoading(false);
-      }
+        useAppStore.getState().setSubscriptionLoading(false);
+              }
     };
 
     loadRevenueCatData();
@@ -234,7 +244,8 @@ const hasPremium = useMemo(() => {
       
       // IMMEDIATELY update state before cache operations
       setCustomerInfo(customerInfo);
-      const newPremiumStatus = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium] != null;
+      useAppStore.getState().setCustomerInfo(customerInfo);
+            const newPremiumStatus = customerInfo?.entitlements?.active?.[ENTITLEMENTS.premium] != null;
       setCachedPremium(newPremiumStatus);
       
       // Update cache after successful purchase
@@ -266,7 +277,8 @@ const hasPremium = useMemo(() => {
       }
       
       setCustomerInfo(customerInfo);
-      setCachedPremium(newPremiumStatus);
+      useAppStore.getState().setCustomerInfo(customerInfo);
+            setCachedPremium(newPremiumStatus);
       console.log('✅ Purchases restored successfully for user:', user?.id);
       return { success: true, customerInfo };
     } catch (error: any) {
@@ -295,6 +307,7 @@ const hasPremium = useMemo(() => {
       }
       
       setCustomerInfo(customerInfo);
+      useAppStore.getState().setCustomerInfo(customerInfo);
       setCachedPremium(currentHasPremium);
       console.log('✅ Customer info refreshed for user:', user?.id);
       console.log('📱 Updated premium status for user', user?.id + ':', currentHasPremium);

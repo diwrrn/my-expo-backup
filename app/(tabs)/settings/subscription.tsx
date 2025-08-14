@@ -9,16 +9,16 @@ import { useRTL } from '@/hooks/useRTL';
 import { useAuth } from '@/hooks/useAuth';
 import { usePremiumContext } from '@/contexts/PremiumContext';
 import { useSubscriptionExpirationMonitor } from '@/hooks/useSubscriptionExpirationMonitor';
-
+import { useAppStore } from '@/store/appStore';
 
 export default function SubscriptionScreen() {
   const { t, i18n } = useTranslation();
   const { isRTL } = useRTL();
   const { user } = useAuth();
-  const { customerInfo, offerings, purchasePackage, restorePurchases, refreshCustomerInfo } = usePurchases();
-    const [showPaywall, setShowPaywall] = useState(false);
-    const { hasPremium, loading, setImmediatePremium } = usePremiumContext();
-      const [localPremiumStatus, setLocalPremiumStatus] = useState<boolean | null>(null);
+  const { customerInfo, hasPremium, subscriptionLoading } = useAppStore();
+  const { offerings, purchasePackage, restorePurchases, refreshCustomerInfo } = usePurchases();
+  const { setImmediatePremium } = usePremiumContext();
+  const [showPaywall, setShowPaywall] = useState(false);
 
 // Handle expiration detection
 const handleExpirationDetected = useCallback(async () => {
@@ -90,8 +90,8 @@ const showExpirationWarning = useMemo(() => {
   };
 
   // Show fallback if RevenueCat is not available
-  if (!customerInfo && !loading && !effectiveHasPremium) {
-        return <RevenueCatFallback onRetry={handleRefresh} />;
+  if (!customerInfo && !subscriptionLoading && !hasPremium) {
+    return <RevenueCatFallback onRetry={handleRefresh} />;
   }
 
   return (
@@ -118,7 +118,7 @@ const showExpirationWarning = useMemo(() => {
           <Text style={styles.subtitle}>Manage your nutrition journey</Text>
         </View>
         
-        {loading ? (
+        {subscriptionLoading ? (
           <View style={styles.loadingContainer}>
             <Text style={styles.loading}>{t('subscription:loading')}</Text>
           </View>

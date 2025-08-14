@@ -4,16 +4,15 @@ import { useState, useEffect } from 'react';
 import { UtensilsCrossed, Target, Zap, Clock, ChefHat, Sparkles, RefreshCw, ChevronDown, ChevronUp, ListFilter as Filter, Crown } from 'lucide-react-native';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { router, usePathname } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useFirebaseData } from '@/hooks/useFirebaseData';
 import { MealPlanningService, GeneratedMealPlan, ProcessedFood } from '@/services/mealPlanningService';
-import { useAuth } from '@/hooks/useAuth';
 import { getTodayDateString } from '@/utils/dateUtils';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useTranslation, TFunction } from 'react-i18next';
 import { usePurchases } from '@/hooks/usePurchases';
-import { usePremiumContext } from '@/contexts/PremiumContext';
 import { CustomPaywall } from '@/components/CustomPaywall';
+import { useAppStore } from '@/store/appStore';
+import { FirebaseService } from '@/services/firebaseService';
+import i18n from '@/services/i18n';
 
 // Helper function to get display name based on language
 const getDisplayName = (food: any, i18n: any) => {
@@ -27,12 +26,14 @@ const getDisplayName = (food: any, i18n: any) => {
 };
  
 export default function MealPlannerScreen() {
-  const { user } = useAuth();
-  const { foodCache, getMealPlanCountForDate, saveMealPlan } = useFirebaseData();
-  const { customerInfo, refreshCustomerInfo } = usePurchases();  
-  const { hasPremium } = usePremiumContext();
-
-  const [calorieTarget, setCalorieTarget] = useState('');
+  console.log('MealPlannerScreen rendering');
+  
+  const saveMealPlan = async (mealPlanData: any, name: string) => {
+    if (!user?.id) throw new Error('User not authenticated');
+    await FirebaseService.saveMealPlan(user.id, mealPlanData, name);
+  };
+    const { user, hasPremium, profile, foods } = useAppStore();
+    const [calorieTarget, setCalorieTarget] = useState('');
   const [proteinTarget, setProteinTarget] = useState('');
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [isGlutenFree, setIsGlutenFree] = useState(false);
@@ -46,14 +47,19 @@ export default function MealPlannerScreen() {
   const [generatedPlan, setGeneratedPlan] = useState<GeneratedMealPlan | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
 
-  const isRTL = useRTL();
-  const { t, i18n } = useTranslation();
-  const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
-  const currentPathname = usePathname();
+ // const isRTL = useRTL();
+ // const { t, i18n } = useTranslation();
+  //const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
+  //const currentPathname = usePathname();
   
-  const checkPurchaseStatus = async () => {
-    await refreshCustomerInfo();
-  };
+  const { isRTL, currentLanguage } = useAppStore();
+  const { t } = useTranslation(); // Keep only for translation function
+  const useKurdishFont = currentLanguage === 'ku' || currentLanguage === 'ckb' || currentLanguage === 'ar';
+  console.log('🔍 Language debug:', {
+    currentLang: i18n.language,
+    isRTL: isRTL,
+    timestamp: Date.now()
+  });
   
   const toggleExcludedFood = (baseName: string) => { 
     setExcludedFoodBaseNames(prev => 
@@ -104,7 +110,7 @@ export default function MealPlannerScreen() {
       const plan = await MealPlanningService.generateMealPlan(
         calories, 
         protein, 
-        foodCache.foods,
+        foods,
         dietaryPreferences,
         excludedFoodBaseNames
       );

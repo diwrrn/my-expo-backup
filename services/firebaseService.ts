@@ -1489,7 +1489,7 @@ static calculateFiberAnalysis(weeklyStats: any) {
     foodName: string;
     calories: number;
     protein: number;
-    carbs: number;
+    carbs: number; 
     fat: number;
     quantity: number;
     unit: string;

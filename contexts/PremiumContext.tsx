@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { usePurchases } from '@/hooks/usePurchases';
+import { useAppStore } from '@/store/appStore';
 
 interface PremiumContextType {
   hasPremium: boolean;
@@ -15,9 +16,17 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   
   // ADD: Local state override (same pattern as subscription screen)
   const [localPremiumStatus, setLocalPremiumStatus] = useState<boolean | null>(null);
-  
-  // Enhanced premium status (prioritizes local state)
-  const effectiveHasPremium = localPremiumStatus !== null ? localPremiumStatus : contextHasPremium;
+    // Enhanced premium status (prioritizes local state)
+    const effectiveHasPremium = localPremiumStatus !== null ? localPremiumStatus : contextHasPremium;
+
+  // Sync to Zustand when premium status changes
+    useEffect(() => {
+      useAppStore.getState().setPremium(effectiveHasPremium);
+    }, [effectiveHasPremium]);
+    useEffect(() => {
+      useAppStore.getState().setSubscriptionLoading(loading);
+    }, [loading]);
+    
   
   // Function to set immediate premium status (for instant updates)
   const setImmediatePremium = useCallback((status: boolean) => {

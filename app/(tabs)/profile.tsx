@@ -1,51 +1,46 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Settings as SettingsIcon, User, Target, Bell, Circle as CircleHelp, LogOut, Flame, Calendar, TrendingUp, Crown } from 'lucide-react-native';
 import { ProfileCard } from '@/components/ProfileCard';
 import { ProfileSkeleton } from '@/components/ProfileSkeleton';
-import { SettingsItem } from '@/components/SettingsItem';
-import { DailyGoalsSkeleton } from '@/components/DailyGoalsSkeleton';
 import { DailyGoalsCard } from '@/components/DailyGoalsCard';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
-import { useStreak } from '@/hooks/useStreak';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { LanguageSelector } from '@/components/LanguageSelector';
 import { useState, useEffect, useMemo } from 'react';
 import { useWeightHistory } from '@/hooks/useWeightHistory';
 import { WeightChart } from '@/components/WeightChart';
-import { Scale, Plus } from 'lucide-react-native';
 import { StreakCalendar } from '@/components/StreakCalendar';
 import { useProfileContext } from '@/contexts/ProfileContext';
-import { usePremiumContext } from '@/contexts/PremiumContext';
-import { useStreakGlobal } from '@/hooks/useStreakGlobal';
 import { WeightInputModal } from '@/components/WeightInputModal';
+import { useAppStore } from '@/store/appStore';
+import { useStreakManager } from '@/contexts/StreakGlobal';
+
 
 // Import the new gender images
 import manAvatar from '@/assets/icons/gender/man.png';
 import womanAvatar from '@/assets/icons/gender/woman.png';
 
 export default function ProfileScreen() { 
+  console.log('ProfileScreen rendering');
+  const { user, userLoading, profile, hasPremium } = useAppStore();
+  const { signOut } = useAuth();
+  const { currentStreak, bestStreak, isLoading: streakLoading, initializeUser, cleanup } = useStreakManager();
 
-  const { user, loading, signOut } = useAuth();
-  const { hasPremium } = usePremiumContext();
-  const { t, i18n } = useTranslation();
-
-  const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
-  const isRTL = useRTL();
+  const { isRTL, currentLanguage } = useAppStore();
+  const { t } = useTranslation(); // Keep only for translation function
+  const useKurdishFont = currentLanguage === 'ku' || currentLanguage === 'ckb' || currentLanguage === 'ar';
   const [showWeightModal, setShowWeightModal] = useState(false);
-  const { profile, isLoading, error, updateProfile } = useProfileContext();
+  const { isLoading } = useProfileContext();
+  const { updateProfile } = useAuth();
   
   // Early exit if user is null and not in a loading state
-  if (!user && !loading) {
+  if (!user && !userLoading) {
     return null;
   }
-
   const [isGoalsLoading, setIsGoalsLoading] = useState(true);
-  const { currentStreak, bestStreak, isLoading: streakLoading } = useStreakGlobal();
-  const { weightLogs, isLoading: weightLoading, logWeight, clearCache } = useWeightHistory(user?.id);
+    const { weightLogs, isLoading: weightLoading, logWeight, clearCache } = useWeightHistory(user?.id);
   
   // Calculate the latest weight from weightLogs
   const latestWeight = weightLogs.length > 0 
@@ -68,6 +63,19 @@ export default function ProfileScreen() {
     }
   }, [profile?.goals]);
   
+  // Initialize streak tracking
+useEffect(() => {
+  if (user?.id) {
+    initializeUser(user.id);
+  } else {
+    cleanup();
+  }
+  
+  return () => cleanup();
+}, [user?.id, initializeUser, cleanup]);
+
+
+
   // Check if profile data is fully loaded
   const isProfileComplete = profile && 
     profile.goals && 
@@ -294,8 +302,8 @@ export default function ProfileScreen() {
   });
 
   // Show skeleton while loading auth, profile data, or if profile is incomplete
-  const shouldShowSkeleton = (loading || isLoading || !isProfileComplete) && !profile;
-
+  const shouldShowSkeleton = userLoading || isLoading || !profile;
+   
   if (shouldShowSkeleton) {
     return (
       <SafeAreaView style={styles.container}>

@@ -8,12 +8,27 @@ import { useState } from 'react';
 import { LanguageSelectionModal } from '@/components/LanguageSelectionModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Alert } from 'react-native';
+import i18n from '@/services/i18n';
+import { useAppStore } from '@/store/appStore';
 
 export default function SettingsScreen() {
+  console.log('SettingsScreen rendering');
+  const { isRTL, currentLanguage } = useAppStore();
   const { t } = useTranslation();
-  const { currentLanguage, changeLanguage } = useLanguage();
+  const useKurdishFont = currentLanguage === 'ku' || currentLanguage === 'ckb' || currentLanguage === 'ar';
+    const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
+    // Direct language change without subscription
+const changeLanguage = async (lng: string) => {
+  try {
+    await i18n.changeLanguage(lng);
+    // Update Zustand store directly
+    useAppStore.getState().setLanguage(lng);
+    useAppStore.getState().setRTL(['ar', 'ku'].includes(lng));
+  } catch (error) {
+    console.error('Failed to change language:', error);
+  }
+};
 
-  const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
 // Replace the handleLanguageSelected function
 const handleLanguageSelected = async (languageCode: string) => {
   setIsLanguageModalVisible(false);

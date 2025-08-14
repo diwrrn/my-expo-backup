@@ -124,8 +124,18 @@ export default function MealPlanDetailsScreen() {
       Alert.alert(t('common:error'), 'User not authenticated.');
       return;
     }
+    
+    // Prevent multiple simultaneous calls for the same food
+    if (isLoggingFood === food.id) {
+      return;
+    }
+    
     setIsLoggingFood(food.id);
+    
     try {
+      // Add a small delay to prevent race conditions when clicking multiple checkmarks quickly
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
       await addFoodToDailyMeal(mealType, {
         foodId: food.id,
         foodName: food.name,
@@ -139,8 +149,10 @@ export default function MealPlanDetailsScreen() {
         unit: 'g',
         category: food.originalFood?.category || 'Unknown',
       });
+      
       Alert.alert(t('common:success'), `${getDisplayName(food, i18n)} logged to ${mealType}!`);
     } catch (error) {
+      console.error('Error logging food item:', error);
       Alert.alert(t('common:error'), `Failed to log ${getDisplayName(food, i18n)}.`);
     } finally {
       setIsLoggingFood(null);

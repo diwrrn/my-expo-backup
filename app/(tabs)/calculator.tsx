@@ -9,11 +9,13 @@ import { useProfileContext } from '@/contexts/ProfileContext';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAppStore } from '@/store/appStore';
 
 export default function CalculatorScreen() {
-  const { user } = useAuth();
-  const { profile, isLoading, updateProfile } = useProfileContext();
-  const { t, i18n } = useTranslation();
+  const { user } = useAppStore();  
+  const { profile, profileLoading } = useAppStore();
+  const { updateProfile } = useProfileContext();
+    const { t, i18n } = useTranslation();
   const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
   const isRTL = useRTL();
   
@@ -745,7 +747,7 @@ export default function CalculatorScreen() {
     }
   }, [profile]);
 
-  if (isLoading) {
+  if (profileLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>

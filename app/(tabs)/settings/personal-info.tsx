@@ -14,7 +14,7 @@ export default function PersonalInfoScreen() {
   const profile = contextProfile || user?.profile;
 
   // Add safety check
-  if (!profile) {
+  if (!profile) { 
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading profile...</Text>

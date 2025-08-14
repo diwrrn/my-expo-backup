@@ -17,9 +17,6 @@
   "bundleIdentifier": "com.kurddev.juulaapp",
   "infoPlist": {
     "ITSAppUsesNonExemptEncryption": false
-  },
-  "capabilities": {
-    "pushNotifications": true
   }
 },
     "android": {

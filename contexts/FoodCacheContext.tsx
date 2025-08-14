@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FirebaseService } from '@/services/firebaseService';
 import { Food } from '@/types/api';
+import { useAppStore } from '@/store/appStore';
 
 interface FoodCache {
   foods: Food[];
@@ -60,6 +61,8 @@ export function FoodCacheProvider({ children }: FoodCacheProviderProps) {
         if (Date.now() - cacheData.lastUpdated <= CACHE_DURATION) {
           console.log('🔍 FOOD CACHE CONTEXT: Using AsyncStorage cache');
           setCache(cacheData);
+          useAppStore.getState().setFoods(cacheData.foods);
+          useAppStore.getState().setFoodsLoading(false);
           return true;
         }
       }
@@ -94,6 +97,8 @@ export function FoodCacheProvider({ children }: FoodCacheProviderProps) {
 
     try {
       setCache(prev => ({ ...prev, isLoading: true, error: null }));
+      useAppStore.getState().setFoodsLoading(true);
+
 
       // Load all foods from Firebase
       let foods = await FirebaseService.getAllFoods();
@@ -112,10 +117,12 @@ export function FoodCacheProvider({ children }: FoodCacheProviderProps) {
       };
 
       setCache(newCache);
+      useAppStore.getState().setFoods(newCache.foods);
+      useAppStore.getState().setFoodsLoading(false);
       
       // Save to AsyncStorage
       await saveFoodsToAsyncStorage(newCache);
-
+      
     } catch (error) {
       console.error('Error loading foods to cache:', error);
       setCache(prev => ({

@@ -189,13 +189,13 @@ const isRTL = useRTL();
         {/* Nutrition info row */}
        <View style={styles.nutritionRow}>
           <View style={styles.macros}>
+          <Text style={styles.macro}>P: {Math.round(displayProtein * 10) / 10}g</Text>
+          <Text style={styles.macro}>C: {Math.round(displayCarbs * 10) / 10}g</Text>
             <Text style={styles.macro}>F: {Math.round(displayFat * 10) / 10}g</Text>
-            <Text style={styles.macro}>C: {Math.round(displayCarbs * 10) / 10}g</Text>
-            <Text style={styles.macro}>P: {Math.round(displayProtein * 10) / 10}g</Text>
           </View>
           <View style={styles.caloriesContainer}>
+          <Text style={styles.calories}>{displayCalories}</Text>
             <Text style={styles.caloriesLabel}>kcal/100g</Text>
-            <Text style={styles.calories}>{displayCalories}</Text>
           </View>
         </View>
       </View>

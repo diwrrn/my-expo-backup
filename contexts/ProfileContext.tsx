@@ -3,7 +3,7 @@ import { UserProfile } from '@/types/api';
 import { FirebaseService } from '@/services/firebaseService';
 import { useAuth } from '@/hooks/useAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { useAppStore } from '@/store/appStore';
 interface ProfileCache {
   profile: UserProfile | null;
   lastUpdated: number;
@@ -64,45 +64,73 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     return Date.now() - lastUpdated > CACHE_DURATION;
   }, []);
 
-  // Load profile from Firebase
-  const loadProfile = useCallback(async (forceRefresh = false) => {
-    if (!user?.id) return null;
-    
-    // First, try to load from AsyncStorage
-    if (!forceRefresh) {
-      const cachedData = await loadProfileFromAsyncStorage(user.id);
-      if (cachedData && !isCacheExpired(cachedData.lastUpdated)) {
+
+// Load profile from Firebase
+const loadProfile = useCallback(async (forceRefresh = false) => {
+  if (!user?.id) return null;
+  
+  console.log('🔍 ProfileContext: loadProfile called with forceRefresh:', forceRefresh);
+  
+  // First, try to load from AsyncStorage
+  if (!forceRefresh) {
+    const cachedData = await loadProfileFromAsyncStorage(user.id);
+    if (cachedData && !isCacheExpired(cachedData.lastUpdated)) {
+      // Check if cached data has default values
+      const hasDefaultValues = cachedData.profile?.age === 25 && 
+                              cachedData.profile?.height === 170 && 
+                              cachedData.profile?.weight === 70;
+      
+      if (hasDefaultValues) {
+        console.log('🔍 ProfileContext: Detected default values in cache, forcing refresh');
+        // Don't use cached data with defaults, fetch fresh data
+      } else {
+        console.log('🔍 ProfileContext: Using cached profile data');
         setCache(cachedData);
+        // Add this line to update the app store
+        useAppStore.getState().setProfile(cachedData.profile);
         return cachedData.profile;
       }
     }
+  }
 
-    try {
-      setCache(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      const profile = await FirebaseService.getUserProfileDocument(user.id);
-      
-      const newCache = {
-        profile,
-        lastUpdated: Date.now(),
-        isLoading: false,
-        error: null,
-      };
-      
-      setCache(newCache);
-      await saveProfileToAsyncStorage(user.id, newCache);
-      
-      return profile;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load profile';
-      setCache(prev => ({
-        ...prev,
-        isLoading: false,
-        error: errorMessage,
-      }));
-      return null;
-    }
-  }, [user?.id, loadProfileFromAsyncStorage, saveProfileToAsyncStorage, isCacheExpired]);
+  try {
+    setCache(prev => ({ ...prev, isLoading: true, error: null }));
+    
+    console.log('🔍 ProfileContext: Calling FirebaseService.getUserProfileDocument for user:', user.id);
+    const profile = await FirebaseService.getUserProfileDocument(user.id);
+    console.log('🔍 ProfileContext: Received profile from Firebase:', {
+      age: profile?.age,
+      height: profile?.height,
+      weight: profile?.weight,
+      activityLevel: profile?.activityLevel,
+      goals: profile?.goals
+    });
+    
+    const newCache = {
+      profile,
+      lastUpdated: Date.now(),
+      isLoading: false,
+      error: null,
+    };
+    
+    console.log('🔍 ProfileContext: Setting cache with profile data');
+    setCache(newCache);
+    // Add this line to update the app store
+    useAppStore.getState().setProfile(profile);
+    await saveProfileToAsyncStorage(user.id, newCache);
+    
+    return profile;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to load profile';
+    console.log('🔍 ProfileContext: Error loading profile from Firebase:', errorMessage);
+    setCache(prev => ({
+      ...prev,
+      isLoading: false,
+      error: errorMessage,
+    }));
+    return null;
+  }
+}, [user?.id, loadProfileFromAsyncStorage, saveProfileToAsyncStorage, isCacheExpired]);
 
   // Update profile in cache and Firebase
   const updateProfile = useCallback(async (updates: Partial<UserProfile>) => {
@@ -132,6 +160,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       };
 
       setCache(newCache);
+useAppStore.getState().setProfile(newCache.profile);
       await saveProfileToAsyncStorage(user.id, newCache);
 
       return updatedProfile;
@@ -142,6 +171,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         isLoading: false,
         error: errorMessage,
       }));
+      useAppStore.getState().setProfileLoading(false);
+      
       return null;
     }
   }, [user?.id, cache.profile, saveProfileToAsyncStorage]);

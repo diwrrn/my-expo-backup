@@ -12,7 +12,6 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      key={i18n.language}
       screenOptions={{
   headerShown: false,
   tabBarLabelStyle: {
@@ -32,18 +31,11 @@ export default function TabLayout() {
       <Tabs.Screen name="add" options={{ title: t('common:add') }} />
       <Tabs.Screen name="calculator" options={{ title: t('common:calculator') }} />
       <Tabs.Screen name="daily-goals" /> 
-      <Tabs.Screen name="meal-planner" options={{ title: t('common:mealPlanner'), unmountOnBlur: false,  }} />
+      <Tabs.Screen name="meal-planner" options={{ title: t('common:mealPlanner') }} />
       <Tabs.Screen name="settings" options={{ title: t('common:settings') }} />
       <Tabs.Screen name="workout" options={{ href: null }} />
-      <Tabs.Screen name="add/meal-selection"  />
-      <Tabs.Screen name="food-details"  />
-      <Tabs.Screen name="saved-meal-plans" />
-      <Tabs.Screen name="subscription" />
-      <Tabs.Screen name="meal-plan-details"  />
-      <Tabs.Screen name="meal-planner-food-details" />
       <Tabs.Screen name="profile" options={{ title: t('common:profile') }} />
-      {/* NEW: Add this line for the food request feature */}
       <Tabs.Screen name="food-request" options={{ headerShown: false }} />
     </Tabs>
   );
-}
+} 

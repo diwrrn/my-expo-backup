@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import i18n from '../services/i18n';
 import { useTranslation } from 'react-i18next';
 import { I18nManager, Platform } from 'react-native';
+import { useAppStore } from '@/store/appStore';
 
 interface LanguageContextType {
   currentLanguage: string;
@@ -20,6 +21,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const onLanguageChanged = (lng: string) => {
       setCurrentLanguage(lng);
       setIsRTL(['ar', 'ku'].includes(lng));
+      // Sync to Zustand
+      useAppStore.getState().setLanguage(lng);
+      useAppStore.getState().setRTL(['ar', 'ku'].includes(lng));
     };
 
     // Safety check: only add listener if i18n is fully initialized

@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Dimensions, StatusBar, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { Menu, X, Chrome as Home, Plus, Calculator, User, UtensilsCrossed, Target, Settings, LogOut, Dumbbell, MessageSquarePlus } from 'lucide-react-native';
@@ -6,17 +6,21 @@ import Animated, {
   useSharedValue, 
   useAnimatedStyle, 
   withTiming, 
-  withSpring,
+  withDelay,
   interpolate,
   runOnJS,
-  Easing
+  Easing,
+  FadeIn,
+  SlideInLeft,
+  SlideInRight
 } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 
-const { width: screenWidth } = Dimensions.get('window');
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface HamburgerMenuProps {
   currentRoute?: string;
@@ -30,29 +34,27 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
 
   const styles = StyleSheet.create({
     hamburgerButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
       backgroundColor: '#FFFFFF',
       justifyContent: 'center',
       alignItems: 'center',
       shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
-      borderWidth: 1,
-      borderColor: '#E5E7EB',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 8,
+      borderWidth: 0.5,
+      borderColor: 'rgba(0,0,0,0.06)',
     },
     modalContainer: {
       flex: 1,
+      backgroundColor: 'transparent',
     },
     overlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backgroundColor: 'rgba(0, 0, 0, 0.4)',
     },
     overlayTouchable: {
       flex: 1,
@@ -63,36 +65,53 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
       right: isRTL ? 0 : undefined,
       top: 0,
       bottom: 0,
-      width: screenWidth * 0.85,
+      width: Math.min(screenWidth * 0.82, 320),
       backgroundColor: '#FFFFFF',
       shadowColor: '#000',
-      shadowOffset: {
-        width: 2,
-        height: 0,
-      },
-      shadowOpacity: 0.25,
-      shadowRadius: 10,
-      elevation: 10,
+      shadowOffset: { width: isRTL ? -8 : 8, height: 0 },
+      shadowOpacity: 0.15,
+      shadowRadius: 24,
+      elevation: 20,
     },
     menuContent: {
       flex: 1,
+      backgroundColor: '#FFFFFF',
     },
     menuHeader: {
-      backgroundColor: '#F8FAFC',
-      paddingVertical: 24,
-      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 16,
+      paddingHorizontal: 16,
+      backgroundColor: '#FAFBFC',
       borderBottomWidth: 1,
-      borderBottomColor: '#E2E8F0',
-    },
-    headerContent: {
-      flexDirection: getFlexDirection(isRTL),
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-    },
-    userInfo: {
+      borderBottomColor: 'rgba(0,0,0,0.04)',
       flexDirection: getFlexDirection(isRTL),
       alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    closeButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: 'rgba(0,0,0,0.04)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      flexShrink: 0,
+    },
+    userSection: {
+      marginTop: 8,
+      flexDirection: getFlexDirection(isRTL),
+      alignItems: 'center',
+      borderRadius: 12,
+      padding: 8,
+      backgroundColor: 'transparent',
       flex: 1,
+      marginRight: isRTL ? 0 : 12,
+      marginLeft: isRTL ? 12 : 0,
+    },
+    userSectionPressable: {
+      //backgroundColor: 'rgba(34, 197, 94, 0.05)',
+      borderWidth: 1,
+      borderColor: 'transparent',
     },
     avatar: {
       width: 48,
@@ -103,6 +122,11 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
       alignItems: 'center',
       marginRight: isRTL ? 0 : 12,
       marginLeft: isRTL ? 12 : 0,
+      shadowColor: '#22C55E',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+      elevation: 4,
     },
     userDetails: {
       flex: 1,
@@ -110,102 +134,125 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
     userName: {
       fontSize: 18,
       fontWeight: '700',
-      color: '#111827',
+      color: '#0F172A',
       marginBottom: 2,
       textAlign: getTextAlign(isRTL),
+      letterSpacing: -0.3,
     },
     userPhone: {
-      fontSize: 14,
-      color: '#6B7280',
+      fontSize: 13,
+      color: '#64748B',
       fontWeight: '500',
       textAlign: getTextAlign(isRTL),
-    },
-    closeButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: '#F1F5F9',
-      justifyContent: 'center',
-      alignItems: 'center',
+      opacity: 0.8,
     },
     menuItems: {
       flex: 1,
-      paddingTop: 20,
     },
     menuItem: {
       flexDirection: getFlexDirection(isRTL),
       alignItems: 'center',
-      paddingVertical: 16,
+      paddingVertical: 14,
       paddingHorizontal: 20,
-      marginHorizontal: 12,
-      borderRadius: 12,
+      marginVertical: 1,
+      marginHorizontal: 16,
+      borderRadius: 14,
+      backgroundColor: 'transparent',
       position: 'relative',
+      overflow: 'hidden',
     },
     menuItemActive: {
       backgroundColor: '#F0FDF4',
+      borderWidth: 1,
+      borderColor: '#BBF7D0',
     },
     menuItemIcon: {
       width: 44,
       height: 44,
-      borderRadius: 22,
+      borderRadius: 12,
       backgroundColor: '#F8FAFC',
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: isRTL ? 0 : 16,
-      marginLeft: isRTL ? 16 : 0,
+      marginRight: isRTL ? 0 : 14,
+      marginLeft: isRTL ? 14 : 0,
+      borderWidth: 1,
+      borderColor: 'rgba(0,0,0,0.04)',
     },
     menuItemIconActive: {
+      backgroundColor: '#DCFCE7',
+      borderColor: '#BBF7D0',
+      transform: [{ scale: 1.05 }],
     },
     menuItemContent: {
       flex: 1,
+      paddingRight: isRTL ? 0 : 8,
+      paddingLeft: isRTL ? 8 : 0,
     },
     menuItemTitle: {
       fontSize: 16,
       fontWeight: '600',
-      color: '#374151',
+      color: '#1E293B',
       marginBottom: 2,
+      letterSpacing: -0.2,
     },
     menuItemTitleActive: {
       color: '#059669',
+      fontWeight: '700',
     },
     menuItemDescription: {
       fontSize: 13,
-      color: '#9CA3AF',
+      color: '#94A3B8',
       fontWeight: '500',
+      lineHeight: 16,
     },
     menuItemDescriptionActive: {
       color: '#10B981',
     },
+    signOutItem: {
+      backgroundColor: '#FEF2F2',
+      borderColor: '#FECACA',
+      borderWidth: 1,
+    },
+    signOutIcon: {
+      backgroundColor: '#FEE2E2',
+      borderColor: '#FECACA',
+    },
     signOutText: {
-      color: '#EF4444',
+      color: '#DC2626',
     },
     activeIndicator: {
       position: 'absolute',
-      width: 6,
-      height: 6,
-      borderRadius: 3,
+      width: 4,
+      height: 28,
+      borderRadius: 2,
       backgroundColor: '#22C55E',
+      right: isRTL ? 'auto' : 8,
+      left: isRTL ? 8 : 'auto',
+      top: '50%',
+      marginTop: -14,
     },
     appInfo: {
       alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingBottom: 20,
-      paddingTop: 20,
+      paddingHorizontal: 24,
+      paddingVertical: 20,
+      backgroundColor: '#FAFBFC',
+      borderTopWidth: 1,
+      borderTopColor: 'rgba(0,0,0,0.04)',
     },
     appName: {
       fontSize: 16,
       fontWeight: '700',
       color: '#22C55E',
       marginBottom: 4,
+      letterSpacing: 0.5,
     },
     appVersion: {
       fontSize: 12,
-      color: '#9CA3AF',
+      color: '#94A3B8',
       fontWeight: '500',
     },
   });
 
-  // FIX: Use single animation value for coordinated timing
   const mainAnimation = useSharedValue(0);
 
   const menuItems = [
@@ -231,11 +278,11 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
       description: t('hamburgerMenu:dailyGoalsDescription')
     },
     { 
-      id: 'food-request', // NEW: Add this item
-      title: t('hamburgerMenu:requestFood'), // NEW: Translation key
-      icon: <MessageSquarePlus size={24} color="#374151" />, // NEW: Icon
-      route: '/(tabs)/food-request/submit', // NEW: Route to the submit screen
-      description: t('hamburgerMenu:requestFoodDescription') // NEW: Translation key
+      id: 'food-request',
+      title: t('hamburgerMenu:requestFood'),
+      icon: <MessageSquarePlus size={24} color="#374151" />,
+      route: '/(tabs)/food-request/submit',
+      description: t('hamburgerMenu:requestFoodDescription')
     },
     {
       id: 'settings',
@@ -244,7 +291,6 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
       route: '/(tabs)/settings',
       description: t('hamburgerMenu:settingsDescription')
     },
-    
     {
       id: 'stats',
       title: t('hamburgerMenu:statsTitle'),
@@ -255,7 +301,7 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
     {
       id: 'sign-out',
       title: t('hamburgerMenu:signOut'),
-      icon: <LogOut size={24} color="#EF4444" />,
+      icon: <LogOut size={24} color="#DC2626" />,
       route: 'sign-out',
       description: t('hamburgerMenu:signOutDescription')
     },
@@ -264,42 +310,41 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
   const openMenu = () => {
     setIsOpen(true);
     
-    // FIX: Single smooth animation with consistent timing
     mainAnimation.value = withTiming(1, {
-      duration: 550,
-      easing: Easing.out(Easing.cubic), // Smooth cubic easing
+      duration: 300,
+      easing: Easing.out(Easing.cubic),
     });
   };
 
   const closeMenu = () => {
-    // FIX: Single smooth close animation
     mainAnimation.value = withTiming(0, {
-      duration: 450,
+      duration: 250,
       easing: Easing.in(Easing.cubic),
     });
     
-    // Close modal after animation completes
     setTimeout(() => {
       runOnJS(setIsOpen)(false);
-    }, 450);
+    }, 250);
   };
 
   const handleMenuItemPress = (route: string) => {
-    closeMenu();
-    
     if (route === 'sign-out') {
-      setTimeout(() => {
-        handleSignOut();
-      }, 450);
+      closeMenu();
+      setTimeout(() => handleSignOut(), 350);
     } else {
-      setTimeout(() => {
-        router.push(route as any);
-      }, 250);
+      closeMenu();
+      setTimeout(() => router.push(route as any), 200);
     }
   };
 
-  const handleSignOut = async () => {
+  const handleUserSectionPress = () => {
     closeMenu();
+    setTimeout(() => {
+      router.push('/settings/personal-info' as any);
+    }, 200);
+  };
+
+  const handleSignOut = async () => {
     try {
       await signOut();
     } catch (error) {
@@ -307,7 +352,6 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
     }
   };
 
-  // FIX: All animations driven by single shared value
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: mainAnimation.value,
   }));
@@ -316,7 +360,7 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
     const translateX = interpolate(
       mainAnimation.value,
       [0, 1],
-      isRTL ? [screenWidth * 0.85, 0] : [-screenWidth * 0.85, 0]
+      isRTL ? [screenWidth * 0.82, 0] : [-screenWidth * 0.82, 0]
     );
     
     return {
@@ -324,46 +368,80 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
     };
   });
 
-  const menuItemsStyle = useAnimatedStyle(() => {
-    // FIX: Delayed fade-in for menu items
-    const opacity = interpolate(
-      mainAnimation.value,
-      [0, 0.8, 1],
-  [0, 0, 1]
-    );
-    
-    const translateY = interpolate(
-      mainAnimation.value,
-      [0, 0.8, 1],
-  [30, 15, 0]
-    );
+  const headerStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(mainAnimation.value, [0, 0.5, 1], [0, 0, 1]);
     
     return {
       opacity,
-      transform: [{ translateY }],
     };
   });
 
+  const MenuItemComponent = ({ item, index }: { item: any; index: number }) => {
+    const isActive = currentRoute === item.route;
+    const isSignOut = item.id === 'sign-out';
+    
+    return (
+      <TouchableOpacity
+        style={[
+          styles.menuItem,
+          isActive && styles.menuItemActive,
+          isSignOut && styles.signOutItem,
+        ]}
+        onPress={() => handleMenuItemPress(item.route)}
+        activeOpacity={0.8}
+      >
+        <View style={[
+          styles.menuItemIcon,
+          isActive && styles.menuItemIconActive,
+          isSignOut && styles.signOutIcon,
+        ]}>
+          {item.icon}
+        </View>
+        
+        <View style={styles.menuItemContent}>
+          <Text style={[
+            styles.menuItemTitle,
+            isActive && styles.menuItemTitleActive,
+            isSignOut && styles.signOutText,
+            { textAlign: getTextAlign(isRTL) }
+          ]}>
+            {item.title}
+          </Text>
+          <Text style={[
+            styles.menuItemDescription,
+            isActive && styles.menuItemDescriptionActive,
+            isSignOut && styles.signOutText,
+            { textAlign: getTextAlign(isRTL) }
+          ]}>
+            {item.description}
+          </Text>
+        </View>
+        
+        {isActive && !isSignOut && (
+          <View style={styles.activeIndicator} />
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <>
-      {/* Hamburger Button */}
       <TouchableOpacity
         style={styles.hamburgerButton}
         onPress={openMenu}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
-        <Menu size={24} color="#111827" />
+        <Menu size={26} color="#1F2937" strokeWidth={2} />
       </TouchableOpacity>
 
-      {/* Menu Modal */}
       <Modal
         visible={isOpen}
         transparent
         animationType="none"
         onRequestClose={closeMenu}
+        statusBarTranslucent
       >
         <View style={styles.modalContainer}>
-          {/* Overlay */}
           <Animated.View style={[styles.overlay, overlayStyle]}>
             <TouchableOpacity
               style={styles.overlayTouchable}
@@ -372,76 +450,54 @@ export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
             />
           </Animated.View>
 
-          {/* Menu Panel */}
           <Animated.View style={[styles.menuPanel, menuStyle]}>
-            <SafeAreaView style={styles.menuContent}>
-              {/* Header */}
-              <View style={styles.menuHeader}>
-                <View style={styles.headerContent}>
-                  <View style={styles.userInfo}>
-                    <View style={styles.avatar}>
-                      <User size={20} color="#FFFFFF" />
-                    </View>
-                    <View style={styles.userDetails}>
-                      <Text style={styles.userName}>{user?.name || 'User'}</Text>
-                      <Text style={styles.userPhone}>{user?.phoneNumber || 'Welcome'}</Text>
-                    </View>
+            <SafeAreaView style={styles.menuContent} edges={['top']}>
+              <Animated.View style={[styles.menuHeader, headerStyle]}>
+                <TouchableOpacity 
+                  style={[styles.userSection, styles.userSectionPressable]}
+                  onPress={handleUserSectionPress}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.avatar}>
+                    <User size={24} color="#FFFFFF" strokeWidth={2} />
                   </View>
-                  <TouchableOpacity
-                    style={styles.closeButton}
-                    onPress={closeMenu}
-                  >
-                    <X size={24} color="#6B7280" />
-                  </TouchableOpacity>
-                </View>
-              </View>
+                  <View style={styles.userDetails}>
+                    <Text style={styles.userName}>
+                      {user?.name || 'Welcome'}
+                    </Text>
+                    <Text style={styles.userPhone}>
+                      {user?.phoneNumber || 'Guest User'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={closeMenu}
+                  activeOpacity={0.7}
+                >
+                  <X size={20} color="#64748B" strokeWidth={2.5} />
+                </TouchableOpacity>
+              </Animated.View>
 
-              {/* Menu Items - FIX: Removed individual item transforms */}
-              <Animated.View style={[styles.menuItems, menuItemsStyle]}>
-                {menuItems.map((item, index) => {
-                  const isActive = currentRoute === item.route;
-                  
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[
-                        styles.menuItem, 
-                        isActive && styles.menuItemActive,
-                        { flexDirection: getFlexDirection(isRTL) }
-                      ]}
-                      onPress={() => handleMenuItemPress(item.route)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[
-                        styles.menuItemIcon, 
-                        isActive && styles.menuItemIconActive,
-                        { marginRight: isRTL ? 0 : 16, marginLeft: isRTL ? 16 : 0 }
-                      ]}>
-                        {item.icon}
-                      </View>
-                      <View style={styles.menuItemContent}>
-                        <Text style={[
-                          styles.menuItemTitle, 
-                          isActive && styles.menuItemTitleActive,
-                          { textAlign: getTextAlign(isRTL) }
-                        ]}>
-                          <Text style={item.id === 'sign-out' ? styles.signOutText : undefined}>
-                            {item.title}
-                          </Text>
-                        </Text>
-                        <Text style={[
-                          styles.menuItemDescription, 
-                          isActive && styles.menuItemDescriptionActive,
-                          { textAlign: getTextAlign(isRTL) }
-                        ]}>
-                          {item.description}
-                        </Text>
-                        
-                      </View>
-                      {isActive && <View style={[styles.activeIndicator, { right: isRTL ? 'auto' : 20, left: isRTL ? 20 : 'auto' }]} />}
-                    </TouchableOpacity>
-                  );
-                })}
+              <ScrollView 
+                style={styles.menuItems}
+                contentContainerStyle={{ paddingTop: 8, paddingBottom: 20 }}
+                showsVerticalScrollIndicator={false}
+                bounces={true}
+              >
+                {menuItems.map((item, index) => (
+                  <MenuItemComponent 
+                    key={item.id} 
+                    item={item} 
+                    index={index} 
+                  />
+                ))}
+              </ScrollView>
+
+              <Animated.View style={[styles.appInfo, headerStyle]}>
+                <Text style={styles.appName}>FitTracker Pro</Text>
+                <Text style={styles.appVersion}>Version 2.1.0</Text>
               </Animated.View>
             </SafeAreaView>
           </Animated.View>

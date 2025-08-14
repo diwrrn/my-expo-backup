@@ -3,8 +3,8 @@ import { FirebaseService } from '@/services/firebaseService';
 import { useAuth } from '@/hooks/useAuth';
 import { getTodayDateString } from '@/utils/dateUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { StreakService } from '@/services/streakService';
-
+import { streakManager } from '@/contexts/StreakGlobal';
+import { useAppStore } from '@/store/appStore';
 const DailyMealsContext = createContext<any>(undefined);
 
 const DAILY_MEALS_CACHE_KEY = 'daily_meals_';
@@ -67,6 +67,7 @@ export function DailyMealsProvider({ children }: { children: React.ReactNode }) 
       unsubscribeRef.current = null;
     }
     setLoading(true);
+    useAppStore.getState().setMealsLoading(true);
     setError(null);
     currentDateRef.current = date;
     const today = getTodayDateString();
@@ -77,9 +78,12 @@ export function DailyMealsProvider({ children }: { children: React.ReactNode }) 
         const unsubscribe = FirebaseService.subscribeToDailyMeals(
           user.id, date, 
           (meals) => { 
-            setDailyMeals(meals); 
-            setLoading(false); 
-            setError(null); 
+            setDailyMeals(meals);
+            setLoading(false);
+            setError(null);
+            useAppStore.getState().setDailyMeals(meals);
+            useAppStore.getState().setMealsLoading(false);
+            
           },
           (error) => { 
             setLoading(false); 
@@ -109,6 +113,9 @@ export function DailyMealsProvider({ children }: { children: React.ReactNode }) 
           setDailyMeals(meals);
           setLoading(false);
           setError(null);
+          useAppStore.getState().setDailyMeals(meals);
+          useAppStore.getState().setMealsLoading(false);
+
           
           // Save to cache
           await saveToCache(user.id, date, meals);
@@ -121,77 +128,81 @@ export function DailyMealsProvider({ children }: { children: React.ReactNode }) 
     }
   }, [user?.id, loadFromCache, saveToCache]);
 
-  const addFoodToDailyMeal = useCallback(async (meal: string, foodData: any, targetDate?: string) => {
-    if (!user?.id) return;
-  
-    const dateToUse = targetDate || currentDateRef.current || defaultDate;
-    
-    try {
-      await FirebaseService.addDailyMeal(user.id, dateToUse, meal, foodData);
-      
-      // Update streak when food is added (only for today's date)
-      if (dateToUse === getTodayDateString()) {
-        try {
-          await StreakService.updateStreak(user.id, dateToUse);
-          console.log('�� Streak updated for today:', dateToUse);
-        } catch (streakError) {
-          console.log('❌ Error updating streak:', streakError);
-        }
-      }
-      
-      // If it's not today, invalidate cache so next load gets fresh data
-      if (dateToUse !== getTodayDateString()) {
-        const cacheKey = `${DAILY_MEALS_CACHE_KEY}${user.id}_${dateToUse}`;
-        await AsyncStorage.removeItem(cacheKey);
-      }
-    } catch (error) {
-      console.log('❌ addDailyMeal error:', error);
-    }
-  }, [user?.id]);
+  // REPLACE the addFoodToDailyMeal function:
+const addFoodToDailyMeal = useCallback(async (meal: string, foodData: any, targetDate?: string) => {
+  if (!user?.id) return;
 
-  const removeFoodFromDailyMeal = useCallback(async (meal: string, foodKey: string, targetDate?: string) => {
-    if (!user?.id) return;
+  const dateToUse = targetDate || currentDateRef.current || defaultDate;
   
-    const dateToUse = targetDate || currentDateRef.current || defaultDate;
+  try {
+    await FirebaseService.addDailyMeal(user.id, dateToUse, meal, foodData);
     
-    try {
-      await FirebaseService.removeFoodFromDailyMeal(user.id, dateToUse, meal, foodKey);
-      
-      // Check if this was the last food for today before updating streak
-      if (dateToUse === getTodayDateString()) {
-        try {
-          // Get the updated meals data after removal
-          const updatedMeals = await FirebaseService.getDailyMeals(user.id, dateToUse);
-          
-          // Check if there are any foods left for today
-          const hasAnyFoods = ['breakfast', 'lunch', 'dinner', 'snacks'].some(mealType => {
-            const mealData = updatedMeals.meals?.[mealType];
-            if (!mealData || typeof mealData !== 'object') return false;
-            
-            // Count foods in this meal
-            const foodCount = Object.keys(mealData).filter(key => key.startsWith('food')).length;
-            return foodCount > 0;
-          });
-          
-          // Only update streak if there are no foods left (streak should reset)
-          if (!hasAnyFoods) {
-            await StreakService.updateStreak(user.id, dateToUse);
-          } else {
-          }
-        } catch (streakError) {
-          console.log('❌ Error checking streak after food removal:', streakError);
-        }
+    // Update streak using our bulletproof system (only for today's date)
+    if (dateToUse === getTodayDateString()) {
+      try {
+        await streakManager.updateStreak(dateToUse);
+        console.log('✅ Streak updated for today:', dateToUse);
+      } catch (streakError) {
+        console.log('❌ Error updating streak:', streakError);
       }
-      
-      // If it's not today, invalidate cache so next load gets fresh data
-      if (dateToUse !== getTodayDateString()) {
-        const cacheKey = `${DAILY_MEALS_CACHE_KEY}${user.id}_${dateToUse}`;
-        await AsyncStorage.removeItem(cacheKey);
-      }
-    } catch (error) {
-      console.log('❌ removeFoodFromDailyMeal error:', error);
     }
-  }, [user?.id]);
+    
+    // If it's not today, invalidate cache so next load gets fresh data
+    if (dateToUse !== getTodayDateString()) {
+      const cacheKey = `${DAILY_MEALS_CACHE_KEY}${user.id}_${dateToUse}`;
+      await AsyncStorage.removeItem(cacheKey);
+    }
+  } catch (error) {
+    console.log('❌ addDailyMeal error:', error);
+  }
+}, [user?.id]);
+
+const removeFoodFromDailyMeal = useCallback(async (meal: string, foodKey: string, targetDate?: string) => {
+  if (!user?.id) return;
+
+  const dateToUse = targetDate || currentDateRef.current || defaultDate;
+  
+  try {
+    await FirebaseService.removeFoodFromDailyMeal(user.id, dateToUse, meal, foodKey);
+    
+    // Check if this was the last food for today before updating streak
+    if (dateToUse === getTodayDateString()) {
+      try {
+        // Get the updated meals data after removal
+        const updatedMeals = await FirebaseService.getDailyMeals(user.id, dateToUse);
+        
+        // Check if there are any foods left for today
+        const hasAnyFoods = ['breakfast', 'lunch', 'dinner', 'snacks'].some(mealType => {
+          const mealData = updatedMeals.meals?.[mealType];
+          if (!mealData || typeof mealData !== 'object') return false;
+          
+          // Count foods in this meal
+          const foodCount = Object.keys(mealData).filter(key => key.startsWith('food')).length;
+          return foodCount > 0;
+        });
+        
+        // Update streak using our bulletproof system
+        await streakManager.updateStreak(dateToUse);
+        
+        if (!hasAnyFoods) {
+          console.log('🔥 No foods left for today, streak may reset');
+        } else {
+          console.log('✅ Still have foods for today, streak maintained');
+        }
+      } catch (streakError) {
+        console.log('❌ Error checking streak after food removal:', streakError);
+      }
+    }
+    
+    // If it's not today, invalidate cache so next load gets fresh data
+    if (dateToUse !== getTodayDateString()) {
+      const cacheKey = `${DAILY_MEALS_CACHE_KEY}${user.id}_${dateToUse}`;
+      await AsyncStorage.removeItem(cacheKey);
+    }
+  } catch (error) {
+    console.log('❌ removeFoodFromDailyMeal error:', error);
+  }
+}, [user?.id]);
 
   const refreshMeals = useCallback(async () => {
     setupListener(currentDateRef.current || defaultDate);
@@ -256,7 +267,10 @@ export function DailyMealsProvider({ children }: { children: React.ReactNode }) 
       fat: Math.round(totalFat * 10) / 10,
     };
   }, [dailyMeals, getFoodsFromMeal]);
-
+// Sync to Zustand
+      useEffect(() => {
+        useAppStore.getState().setDailyTotals(dailyTotals);
+      }, [dailyTotals]);
   const mealTotals = useMemo(() => {
     const totals: { [key: string]: { calories: number; protein: number; carbs: number; fat: number; } } = {};
     
@@ -286,6 +300,12 @@ export function DailyMealsProvider({ children }: { children: React.ReactNode }) 
 
     return totals;
   }, [getFoodsFromMeal]);
+
+  // Sync to Zustand
+useEffect(() => {
+  useAppStore.getState().setMealTotals(mealTotals);
+}, [mealTotals]);
+
 
   useEffect(() => {
     if (user?.id) {
