@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { Food } from '@/types/api';
-import { useAuth } from './useAuth';
+import { useAppStore } from '@/store/appStore';
 
 // Define interfaces for feedback types
 export interface FoodCombinationFeedback {
@@ -32,7 +32,7 @@ export interface UserPreference {
 }
 
 export function useUserFeedback() {
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastFeedbackId, setLastFeedbackId] = useState<string | null>(null);

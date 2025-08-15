@@ -25,7 +25,7 @@ interface ProfileState {
   profileError: string | null
   profileLastUpdated: number
 }
-
+  
 // ===== PREMIUM STATE =====
 interface PremiumState {
   hasPremium: boolean
@@ -34,7 +34,7 @@ interface PremiumState {
   subscriptionLoading: boolean
   localPremiumOverride: boolean | null
 }
-
+  
 // ===== DAILY MEALS STATE =====
 interface DailyMealsState {
   dailyMeals: any
@@ -277,24 +277,24 @@ export const useAppStore = create<AppStore>()(
       authError: null,
       
       // Profile
-      profile: null,
-      profileLoading: false,
+  profile: null,
+  profileLoading: false,
       profileError: null,
       profileLastUpdated: 0,
       
       // Premium
-      hasPremium: false,
-      premiumLoading: false,
+  hasPremium: false,
+  premiumLoading: false,
       customerInfo: null,
       subscriptionLoading: false,
       localPremiumOverride: null,
       
       // Daily Meals
-      dailyMeals: null,
-      dailyTotals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-      mealTotals: {},
-      mealsLoading: false,
-      selectedDate: '',
+  dailyMeals: null,
+  dailyTotals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+  mealTotals: {},
+  mealsLoading: false,
+  selectedDate: '',
       mealsError: null,
       
       // Food Cache
@@ -305,16 +305,16 @@ export const useAppStore = create<AppStore>()(
       foodsLastUpdated: 0,
       
       // Streak
-      currentStreak: 0,
-      bestStreak: 0,
-      streakLoading: false,
-      streakError: null,
-      streakMonthlyData: {},
-      streakLastUpdated: 0,
-      streakUserId: null,
+  currentStreak: 0,
+  bestStreak: 0,
+  streakLoading: false,
+  streakError: null,
+  streakMonthlyData: {},
+  streakLastUpdated: 0,
+  streakUserId: null,
       
       // Water
-      waterIntake: 0,
+  waterIntake: 0,
       waterLoading: false,
       waterError: null,
       
@@ -323,7 +323,13 @@ export const useAppStore = create<AppStore>()(
       isRTL: false,
       
       // ===== AUTH ACTIONS =====
-      setUser: (user) => set({ user }),
+      setUser: (user) => set((state) => {
+        // Only update if user actually changed
+        if (JSON.stringify(state.user) === JSON.stringify(user)) {
+          return state; // No change, return same state
+        }
+        return { user };
+      }),
       setUserLoading: (loading) => set({ userLoading: loading }),
       setAuthError: (error) => set({ authError: error }),
       
@@ -777,11 +783,11 @@ export const useAppStore = create<AppStore>()(
       // ===== STREAK ACTIONS =====
       setCurrentStreak: (streak) => set({ currentStreak: streak }),
       setBestStreak: (streak) => set({ bestStreak: streak }),
-      setStreakLoading: (loading) => set({ streakLoading: loading }),
-      setStreakError: (error) => set({ streakError: error }),
-      setStreakMonthlyData: (data) => set({ streakMonthlyData: data }),
-      setStreakLastUpdated: (timestamp) => set({ streakLastUpdated: timestamp }),
-      setStreakUserId: (userId) => set({ streakUserId: userId }),
+  setStreakLoading: (loading) => set({ streakLoading: loading }),
+  setStreakError: (error) => set({ streakError: error }),
+  setStreakMonthlyData: (data) => set({ streakMonthlyData: data }),
+  setStreakLastUpdated: (timestamp) => set({ streakLastUpdated: timestamp }),
+  setStreakUserId: (userId) => set({ streakUserId: userId }),
       
       initializeStreak: async (userId) => {
         // Implementation will be added in Step 8
@@ -887,8 +893,8 @@ changeDate: async (newDate: string) => {
       // ===== UTILITY ACTIONS =====
       resetStore: () => {
         set({
-          user: null,
-          userLoading: false,
+  user: null,
+  userLoading: false,
           authError: null,
           profile: null,
           profileLoading: false,
@@ -905,9 +911,9 @@ changeDate: async (newDate: string) => {
           mealsLoading: false,
           selectedDate: '',
           mealsError: null,
-          foods: [],
+  foods: [],
           categories: [],
-          foodsLoading: false,
+  foodsLoading: false,
           foodsError: null,
           foodsLastUpdated: 0,
           currentStreak: 0,
@@ -920,7 +926,7 @@ changeDate: async (newDate: string) => {
           waterIntake: 0,
           waterLoading: false,
           waterError: null,
-          currentLanguage: 'en',
+  currentLanguage: 'en',
           isRTL: false
         })
       }

@@ -6,8 +6,6 @@ import { ArrowLeft, Send, List } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { useAuth } from '@/hooks/useAuth';
-import { FirebaseService } from '@/services/firebaseService';
 import { useFoodRequests } from '@/hooks/useFoodRequests';
 
 export default function FoodRequestSubmitScreen() {

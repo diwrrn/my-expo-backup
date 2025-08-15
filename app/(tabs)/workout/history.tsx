@@ -5,14 +5,14 @@ import { ArrowLeft, Calendar, Clock, Dumbbell } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { useAuth } from '@/hooks/useAuth';
 import { FirebaseService, WorkoutSession } from '@/services/firebaseService';
+import { useAppStore } from '@/store/appStore';
 
 export default function WorkoutHistoryScreen() {
   const { planId, planName } = useLocalSearchParams<{ planId: string; planName: string }>();
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
 
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [loading, setLoading] = useState(true);

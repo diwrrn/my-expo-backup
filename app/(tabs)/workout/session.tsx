@@ -5,7 +5,6 @@ import { ArrowLeft, Play, Pause, RotateCcw, ChevronDown, ChevronUp, Check } from
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { useAuth } from '@/hooks/useAuth';
 import { FirebaseService } from '@/services/firebaseService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WorkoutExerciseCard } from '@/components/WorkoutExerciseCard';
@@ -16,6 +15,7 @@ import Animated, {
   withTiming,
   interpolateColor
 } from 'react-native-reanimated';
+import { useAppStore } from '@/store/appStore';
 
 interface SessionExercise {
   exerciseId: string;
@@ -33,7 +33,7 @@ export default function WorkoutSessionScreen() {
   const { planId, planName } = useLocalSearchParams<{ planId: string; planName: string }>();
   const { t } = useTranslation();
   const isRTL = useRTL();
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
   
   const [sessionExercises, setSessionExercises] = useState<SessionExercise[]>([]);
   const [sessionId, setSessionId] = useState<string>('');

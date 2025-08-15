@@ -5,7 +5,6 @@ import { ArrowLeft, Download } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { useAuth } from '@/hooks/useAuth';
 import { useAppStore } from '@/store/appStore';
 import { FirebaseService } from '@/services/firebaseService';
 import { PDFService } from '@/services/pdfService';
@@ -24,8 +23,8 @@ export default function MonthlyReportScreen() {
   const { start, end } = useLocalSearchParams<{ start: string; end: string }>();
   const startDate = String(start);
   const endDate = String(end);
-  const { user } = useAuth();
-  const { profile } = useAppStore();
+  const user = useAppStore(state => state.user);
+  const profile = useAppStore(state => state.profile);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

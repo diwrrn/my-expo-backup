@@ -2,10 +2,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import Purchases, { CustomerInfo, PurchasesOfferings, PurchasesPackage } from 'react-native-purchases';
 import { revenueCatService } from '@/services/revenueCatService';
-import { useAuth } from '@/hooks/useAuth';
+import { useAppStore } from '@/store/appStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
-import { useAppStore } from '@/store/appStore';
 
 // Entitlement identifiers (configure these in RevenueCat dashboard)
 export const ENTITLEMENTS = {
@@ -93,7 +92,7 @@ const savePremiumStatusToCache = async (userId: string, isPremium: boolean, cust
 };
 
 export const usePurchases = (): UsePurchasesReturn => {
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
   const [loading, setLoading] = useState<boolean>(true);

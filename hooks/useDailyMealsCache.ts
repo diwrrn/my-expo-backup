@@ -1,8 +1,8 @@
 // hooks/useDailyMealsCache.ts
 import { useState, useEffect, useRef } from 'react';
 import { FirebaseService } from '@/services/firebaseService';
-import { useAuth } from './useAuth';
 import { getTodayDateString } from '@/utils/dateUtils';
+import { useAppStore } from '@/store/appStore';
 
 interface DailyMealsCache {
   dailyMeals: any;
@@ -12,7 +12,7 @@ interface DailyMealsCache {
 }
 
 export function useDailyMealsCache(selectedDate?: string) {
-  const { user } = useAuth();
+  const { user } = useAppStore();
   const [cache, setCache] = useState<DailyMealsCache>({
     dailyMeals: null,
     loading: false,

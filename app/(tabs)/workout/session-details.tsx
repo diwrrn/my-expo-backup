@@ -5,10 +5,10 @@ import { ArrowLeft, Clock, Calendar, Dumbbell } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { useAuth } from '@/hooks/useAuth';
 import { FirebaseService, WorkoutSession } from '@/services/firebaseService';
 import { WorkoutExerciseCard } from '@/components/WorkoutExerciseCard';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAppStore } from '@/store/appStore';
 
 export default function SessionDetailsScreen() {
   const { sessionId, planName, planId } = useLocalSearchParams<{ 
@@ -18,7 +18,7 @@ export default function SessionDetailsScreen() {
   }>();
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
 
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [loading, setLoading] = useState(true);

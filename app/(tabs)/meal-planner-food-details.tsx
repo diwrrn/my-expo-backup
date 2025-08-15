@@ -21,7 +21,7 @@ export default function MealPlannerFoodDetailsScreen() {
     planId?: string;
   }>();  
    
-  const { addFoodToMeal } = useAppStore();
+  const addFoodToMeal = useAppStore(state => state.addFoodToMeal);
   const { foodCache } = useFirebaseData();  
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();

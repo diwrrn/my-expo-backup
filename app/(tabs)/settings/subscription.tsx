@@ -6,19 +6,19 @@ import { usePurchases } from '@/hooks/usePurchases';
 import { CustomPaywall } from '@/components/CustomPaywall';
 import { RevenueCatFallback } from '@/components/RevenueCatFallback';
 import { useRTL } from '@/hooks/useRTL';
-import { useAuth } from '@/hooks/useAuth';
 import { useAppStore } from '@/store/appStore';
 import { useSubscriptionExpirationMonitor } from '@/hooks/useSubscriptionExpirationMonitor';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function SubscriptionScreen() {
   const { t, i18n } = useTranslation();
-  const { isRTL } = useRTL();
-  const { user } = useAuth();
-  const { customerInfo, hasPremium, subscriptionLoading } = useAppStore();
-  
+  const isRTL = useRTL();
+  const user = useAppStore(state => state.user);
+  const customerInfo = useAppStore(state => state.customerInfo);
+  const hasPremium = useAppStore(state => state.hasPremium);
+  const subscriptionLoading = useAppStore(state => state.subscriptionLoading);  
+  const setImmediatePremium = useAppStore(state => state.setImmediatePremium);
   const { offerings, purchasePackage, restorePurchases, refreshCustomerInfo } = usePurchases();
-  const { setImmediatePremium } = useAppStore();
   const [showPaywall, setShowPaywall] = useState(false);
 
   const handleExpirationDetected = useCallback(async () => {

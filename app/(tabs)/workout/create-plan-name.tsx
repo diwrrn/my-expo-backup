@@ -5,14 +5,14 @@ import { ArrowLeft, Save } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { useAuth } from '@/hooks/useAuth';
+import { useAppStore } from '@/store/appStore';
 import { FirebaseService } from '@/services/firebaseService';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function CreatePlanNameScreen() {
   const { t } = useTranslation();
   const isRTL = useRTL();
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
   
   // Get initial exercise data from params if available
   const { initialExerciseData } = useLocalSearchParams<{ initialExerciseData?: string }>();

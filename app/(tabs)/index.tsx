@@ -1,3 +1,4 @@
+import React, { useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Target, Flame, Zap, Plus, Trash2, ChevronDown, ChevronUp, TrendingUp, Award, Droplet, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react-native';
@@ -7,15 +8,15 @@ import { MealCardWithSearch } from '@/components/MealCardWithSearch';
 import { WaterIntakeCard } from '@/components/WaterIntakeCard';
 import { HomeSkeleton } from '@/components/HomeSkeleton';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
-import { useAuth } from '@/hooks/useAuth';
 import { useState, useEffect, useMemo } from 'react';
 import { getTodayDateString, addDays, formatDisplayDate, isToday, parseDateString, formatDateToString } from '@/utils/dateUtils';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTranslation } from 'react-i18next'; 
+import { useTranslation } from 'react-i18next';   
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useAppStore } from '@/store/appStore';
 import { FirebaseService } from '@/services/firebaseService';
 import { useStreakManager } from '@/contexts/StreakGlobal';
+import { useSession } from '@/ctx';
 
 // Simplified function to check if homepage data is ready
 const isHomeDataReady = (
@@ -39,11 +40,26 @@ const isHomeDataReady = (
   return true; 
 };
 
-export default function HomeScreen() {
-  console.log('HomeScreen rendering');
-  const { user, userLoading } = useAppStore();
+const HomeScreen = React.memo(function HomeScreen() {
+  const renderCount = useRef(0);
+  renderCount.current++;
+  
+  console.log(`🏠 HomeScreen render #${renderCount.current}`);
+  console.log('🏠 Render trigger check:', {
+    timestamp: Date.now(),
+    stackTrace: new Error().stack?.split('\n')[2] // Shows what triggered the render
+  });
 
-  const { updateProfile } = useAuth();
+  console.log('HomeScreen rendering');
+  const user = useAppStore(state => state.user);
+  const userLoading = useAppStore(state => state.userLoading);
+  const dailyTotals = useAppStore(state => state.dailyTotals);
+  const mealTotals = useAppStore(state => state.mealTotals);
+  const dailyMeals = useAppStore(state => state.dailyMeals);
+  const currentStreak = useAppStore(state => state.currentStreak);
+const bestStreak = useAppStore(state => state.bestStreak);
+const streakLoading = useAppStore(state => state.streakLoading);
+const updateProfile = useAppStore(state => state.updateProfileData);
   const { t, i18n } = useTranslation();
   const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
   const isRTL = useRTL();
@@ -53,7 +69,6 @@ export default function HomeScreen() {
   const currentViewDate = useMemo(() => selectedDate, [selectedDate]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateInput, setDateInput] = useState('');
-  const { dailyTotals, mealTotals, dailyMeals } = useAppStore();
   const removeFoodFromDailyMeal = async (mealType: string, foodKey: string) => {
     if (!user?.id) return;
     await FirebaseService.removeFoodFromDailyMeal(user.id, currentViewDate, mealType, foodKey);
@@ -92,7 +107,6 @@ export default function HomeScreen() {
     if (!user?.id) return;
     await FirebaseService.updateWaterIntake(user.id, currentViewDate, glasses);
   };
-  const { currentStreak, bestStreak, streakLoading } = useAppStore();
   const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>({
     breakfast: false,
     lunch: false,  
@@ -105,7 +119,6 @@ export default function HomeScreen() {
   // Simplified data ready check
   const dataReady = !userLoading && user;
 
- 
   // Wait for initial data to be ready
   useEffect(() => {
     if (dataReady) {
@@ -727,4 +740,6 @@ const progressPercentage = (caloriesConsumed / caloriesGoal) * 100;
       </Modal>
     </SafeAreaView>
   );
-}
+});
+
+export default HomeScreen;

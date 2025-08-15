@@ -7,10 +7,10 @@ import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection, getMargin } from '@/hooks/useRTL';
 import { EditExerciseSetsRepsModal } from '@/components/EditExerciseSetsRepsModal';
 import { useWorkoutPlanCache } from '@/hooks/useWorkoutPlanCache';
-import { useAuth } from '@/hooks/useAuth';
 import { FirebaseService } from '@/services/firebaseService';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useAppStore } from '@/store/appStore';
 
 interface WorkoutPlan {
   id: string;
@@ -34,7 +34,7 @@ export default function PlanDetailsScreen() {
   const { planId } = useLocalSearchParams<{ planId: string }>();
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
   
   // Use the cached hook instead of direct Firebase calls
   const { plan, isLoading, error, updatePlan, refreshPlan } = useWorkoutPlanCache(user?.id || '', planId || '');

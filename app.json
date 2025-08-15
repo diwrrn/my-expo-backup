@@ -13,12 +13,12 @@
       "assets/fonts/rudawregular2.ttf"
     ],
     "ios": {
-  "supportsTablet": true,
-  "bundleIdentifier": "com.kurddev.juulaapp",
-  "infoPlist": {
-    "ITSAppUsesNonExemptEncryption": false
-  }
-},
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kurddev.juulaapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
@@ -50,7 +50,8 @@
             "useFrameworks": "static"
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

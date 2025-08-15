@@ -3,7 +3,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from './useAuth';
+import { useAppStore } from '@/store/appStore';
 import { FirebaseService } from '@/services/firebaseService';
 
 // Configure notifications
@@ -22,7 +22,7 @@ type CacheShape = {
 };
 
 export function useNotifications() {
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
   const [permissionStatus, setPermissionStatus] = useState<string>('unknown');
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);

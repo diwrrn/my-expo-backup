@@ -3,13 +3,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Edit3, Trash2, UtensilsCrossed, Calendar, Clock, TrendingUp } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { useAuth } from '@/hooks/useAuth';
 import { FirebaseService } from '@/services/firebaseService';
 import { SavedMealPlan } from '@/types/api';
-import { formatDateToString } from '@/utils/dateUtils';
+import { useAppStore } from '@/store/appStore';
 
 export default function SavedMealPlansScreen() {
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
   const [savedPlans, setSavedPlans] = useState<SavedMealPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [groupedPlans, setGroupedPlans] = useState<{[date: string]: SavedMealPlan[]}>({});

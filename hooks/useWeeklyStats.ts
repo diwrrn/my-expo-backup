@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { FirebaseService } from '@/services/firebaseService';
-import { useAuth } from './useAuth';
+import { useAppStore } from '@/store/appStore';
 
 export const useWeeklyStats = (startDate: string, endDate: string) => {
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
   const [weeklyStats, setWeeklyStats] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

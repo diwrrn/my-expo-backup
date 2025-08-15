@@ -5,14 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { Modal, TextInput, Alert } from 'react-native';
 import { UserProfile } from '@/types/api';
-import { useAuth } from '@/hooks/useAuth';
+import { useAppStore } from '@/store/appStore';
 
 
 interface WaterIntakeCardProps {
   currentWaterIntake: number;
   onUpdateWaterIntake: (glasses: number) => void;
   dailyGoal: number;
-  onUpdateWaterGoal: (updates: { profile: Partial<UserProfile> }) => Promise<void>;
+  onUpdateWaterGoal: (updates: Partial<UserProfile>) => Promise<UserProfile | null>;
   onRefresh: () => void;
 }
 
@@ -23,7 +23,7 @@ export function WaterIntakeCard({ currentWaterIntake, onUpdateWaterIntake, daily
   const { t, i18n } = useTranslation(); // Add i18n here
   const isKurdish = i18n.language === 'ku' || i18n.language === 'ckb'; // Check if Kurdish
   const isRTL = useRTL();
-const { user } = useAuth();
+const user = useAppStore(state => state.user);
 
   // Add logging for dailyGoal prop changes
   useEffect(() => {
@@ -256,15 +256,8 @@ const { user } = useAuth();
     try {
       console.log('WaterIntakeCard: Calling onUpdateWaterGoal with:', { goalsWaterUpdate: newGoal });
       await onUpdateWaterGoal({
-    
-      
-      
-    goalsWaterUpdate: newGoal
-  
-
-      
-    
-  });
+        goalsWaterUpdate: newGoal
+      });
       
       Alert.alert(
         t('common:success'),

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FirebaseService, FoodRequest } from '@/services/firebaseService';
-import { useAuth } from './useAuth';
+import { useAppStore } from '@/store/appStore';
 
 interface UseFoodRequestsResult {
   requests: FoodRequest[];
@@ -11,7 +11,7 @@ interface UseFoodRequestsResult {
 }
 
 export function useFoodRequests(): UseFoodRequestsResult {
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
   const [requests, setRequests] = useState<FoodRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

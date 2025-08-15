@@ -9,7 +9,6 @@ import { AnimatedButton } from '@/components/onboarding/AnimatedButton';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign } from '@/hooks/useRTL';
-import { useAuth } from '@/hooks/useAuth';
 import { Activity, Dumbbell, Heart, Zap } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
@@ -18,11 +17,13 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import LottieView from 'lottie-react-native';
+import { useAppStore } from '@/store/appStore';
 
 export default function ActivityLevelScreen() {
   const { t } = useTranslation();
   const isRTL = useRTL();
-  const { updateProfile, user } = useAuth();
+  const updateProfile = useAppStore(state => state.updateProfileData);
+  const user = useAppStore(state => state.user);
   
   const [activityLevel, setActivityLevel] = useState<string>('moderate');
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
@@ -52,6 +53,13 @@ export default function ActivityLevelScreen() {
       description: t('onboarding:notActiveDesc', 'Little to no exercise'),
       icon: <Heart size={24} color="#EF4444" />,
       color: '#EF4444',
+    },
+    {
+      id: 'light',  // ← Add this missing option
+      label: t('onboarding:lightActive', 'Lightly Active'),
+      description: t('onboarding:lightActiveDesc', 'Light exercise 1-3 days/week'),
+      icon: <Activity size={24} color="#F59E0B" />,
+      color: '#F59E0B',
     },
     {
       id: 'moderate',
@@ -118,22 +126,38 @@ export default function ActivityLevelScreen() {
       const carbs = Math.round((dailyCalories * 0.45) / 4); // 4 calories per gram
       const fat = Math.round((dailyCalories * 0.30) / 9); // 9 calories per gram
       
-     await updateProfile({
-  profile: {
-    age,
-    weight,
-    height,
-    gender: personalInfo.gender,
-    activityLevel,
-    goals: {
-      calories: dailyCalories,
-      protein,
-      carbs,
-      fat,
-      water: 2.5,
-    }
-  },
-  onboardingCompleted: true  // Move this to top level
+      // Check if user exists
+if (!user?.id) {
+  Alert.alert('Error', 'User not found. Please try again.');
+  setIsSubmitting(false);
+  return;
+}
+
+// Update users collection for onboardingCompleted
+await FirebaseService.updateUserProfile(user.id, {
+  onboardingCompleted: true
+});
+
+// Update userProfiles collection for profile data
+await FirebaseService.updateUserProfileDocument(user.id, {
+  age,
+  weight,
+  height,
+  gender: personalInfo.gender,
+  activityLevel: activityLevel as 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active',
+  goals: {
+    calories: dailyCalories,
+    protein,
+    carbs,
+    fat,
+    water: 2.5,
+  }
+});
+
+// Update local state to reflect the changes
+useAppStore.getState().setUser({
+  ...user,
+  onboardingCompleted: true
 });
       // Save the initial weight to weightLogs
       if (user?.id && personalInfo.weight) {

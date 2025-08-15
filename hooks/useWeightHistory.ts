@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { FirebaseService } from '@/services/firebaseService';
-import { useAuth } from './useAuth';
 import { getTodayDateString } from '@/utils/dateUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppStore } from '@/store/appStore';

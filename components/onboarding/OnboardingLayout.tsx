@@ -3,8 +3,7 @@ import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-na
 import { ArrowLeft } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { ProgressBarTwo } from './ProgressBarTwo';
-import { useLanguage } from '@/contexts/LanguageContext';
-
+import { useAppStore } from '@/store/appStore';
 interface OnboardingLayoutProps {
   title: string;
   subtitle?: string;
@@ -26,7 +25,7 @@ export function OnboardingLayout({
   hideHeaderContent = false,
   children,
 }: OnboardingLayoutProps) {
-  const { isRTL } = useLanguage();
+  const { isRTL } = useAppStore();
 
   const handleBackPress = () => {
     if (router.canGoBack()) {

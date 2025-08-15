@@ -7,6 +7,12 @@ interface ApiResponse<T> {
   data?: T;
   error?: string;
 }
+interface PhoneExistsResponse {
+  success: boolean;
+  exists: boolean;
+  phoneNumber: string;
+  message: string;
+}
 
 class ApiService {
   private async request<T>(
@@ -98,12 +104,13 @@ class ApiService {
     });
   }
 
-  async checkPhoneExists(phoneNumber: string) {
-    return this.request('/checkPhoneExists', {  // ← Change this line
-      method: 'POST',
-      body: JSON.stringify({ phoneNumber }),
-    });
-  }
+  // Update the checkPhoneExists method
+async checkPhoneExists(phoneNumber: string) {
+  return this.request<PhoneExistsResponse>('/checkPhoneExists', {
+    method: 'POST',
+    body: JSON.stringify({ phoneNumber }),
+  });
+}
 
   async resendVerificationCode(phoneNumber: string) {
     // This re-uses the send-verification endpoint as per the requirement

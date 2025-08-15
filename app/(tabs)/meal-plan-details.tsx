@@ -3,7 +3,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { ArrowLeft, UtensilsCrossed, Check, CalendarDays, TrendingUp } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useAuth } from '@/hooks/useAuth';
 import { FirebaseService } from '@/services/firebaseService';
 import { SavedMealPlan, ProcessedFood } from '@/types/api';
 import { useTranslation } from 'react-i18next';
@@ -27,10 +26,10 @@ export default function MealPlanDetailsScreen() {
   const { planId, origin } = useLocalSearchParams<{ planId: string; origin?: string }>();
   console.log('�� Origin received:', origin);
 
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();
-  const { addFoodToMeal } = useAppStore();
+  const addFoodToMeal = useAppStore(state => state.addFoodToMeal);
   const [savedMealPlan, setSavedMealPlan] = useState<SavedMealPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingAllMeals, setLoggingAllMeals] = useState(false);

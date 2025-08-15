@@ -32,8 +32,11 @@ export default function MealPlannerScreen() {
     if (!user?.id) throw new Error('User not authenticated');
     await FirebaseService.saveMealPlan(user.id, mealPlanData, name);
   };
-    const { user, hasPremium, profile, foods } = useAppStore();
-    const [calorieTarget, setCalorieTarget] = useState('');
+  const user = useAppStore(state => state.user);
+  const hasPremium = useAppStore(state => state.hasPremium);
+  const profile = useAppStore(state => state.profile);
+  const foods = useAppStore(state => state.foods);
+  const [calorieTarget, setCalorieTarget] = useState('');
   const [proteinTarget, setProteinTarget] = useState('');
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [isGlutenFree, setIsGlutenFree] = useState(false);
@@ -52,7 +55,8 @@ export default function MealPlannerScreen() {
   //const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
   //const currentPathname = usePathname();
   
-  const { isRTL, currentLanguage } = useAppStore();
+  const isRTL = useAppStore(state => state.isRTL);
+  const currentLanguage = useAppStore(state => state.currentLanguage);
   const { t } = useTranslation(); // Keep only for translation function
   const useKurdishFont = useMemo(() => 
     currentLanguage === 'ku' || currentLanguage === 'ckb' || currentLanguage === 'ar',

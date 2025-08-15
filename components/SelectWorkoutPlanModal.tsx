@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { X, Dumbbell, Calendar } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { useAuth } from '@/hooks/useAuth';
+import { useAppStore } from '@/store/appStore';
 import { FirebaseService } from '@/services/firebaseService';
 
 interface WorkoutPlan {
@@ -45,7 +45,7 @@ export function SelectWorkoutPlanModal({
 }: SelectWorkoutPlanModalProps) {
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
 
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
   const [loading, setLoading] = useState(true);

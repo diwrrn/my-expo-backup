@@ -1,7 +1,7 @@
 // hooks/useRecentlyLoggedFoods.ts
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from '@/hooks/useAuth';
+import { useAppStore } from '@/store/appStore';
 import { useFirebaseData } from '@/hooks/useFirebaseData';
 import { FirebaseService } from '@/services/firebaseService';
 import { Food } from '@/types/api';
@@ -19,7 +19,7 @@ const getRecentlyLoggedFoodsCacheKey = (userId: string, numberOfDays: number) =>
   `recently_logged_foods_${userId}_${numberOfDays}days`;
 
 export function useRecentlyLoggedFoods(numberOfDays: number = 7) {
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
   const { foodCache } = useFirebaseData();
   
   const [recentlyLoggedFoods, setRecentlyLoggedFoods] = useState<Food[]>([]);

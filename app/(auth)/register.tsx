@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Phone, Lock, User, Eye, EyeOff, Check, Clock, RefreshCw } from 'lucide-react-native';
-import { useAuth } from '@/hooks/useAuth';
 import { usePhoneVerification } from '@/hooks/usePhoneVerification';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiService } from '@/services/api';
+import { useSession } from '@/ctx';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
@@ -22,13 +22,13 @@ export default function RegisterScreen() {
   const [verificationCode, setVerificationCode] = useState('');
   const [isPhoneNumberVerified, setIsPhoneNumberVerified] = useState(false);
   const [phoneVerificationStatus, setPhoneVerificationStatus] = useState('');
-  const [focusedInput, setFocusedInput] = useState(null);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   
   // Ref for hidden input
   const hiddenInputRef = useRef(null);
 
-  const { signUpWithPhoneVerification, error: authError } = useAuth();
+  const { signUpWithPhoneVerification } = useSession();
   const {
     status: phoneVerificationHookStatus,
     error: phoneVerificationHookError,
@@ -84,7 +84,7 @@ export default function RegisterScreen() {
     try {
       const checkResult = await apiService.checkPhoneExists(`+964${phoneNumber}`);
       
-      if (checkResult.data.exists) {
+      if (checkResult.success && checkResult.data?.exists) {
         setPhoneVerificationStatus('');
         Alert.alert(
           'Phone Already Registered', 
@@ -107,7 +107,7 @@ export default function RegisterScreen() {
     }
   };
 
-  const handleVerifyCode = async (code) => {
+  const handleVerifyCode = async (code: string) => {
     if (!code || code.length !== 6) return;
     
     setPhoneVerificationStatus('Verifying code...');
@@ -118,7 +118,7 @@ export default function RegisterScreen() {
     }
   };
 
-  const handleCodeChange = (text) => {
+  const handleCodeChange = (text: string) => {
     // Only allow digits and max 6 characters
     const cleanedText = text.replace(/[^0-9]/g, '').slice(0, 6);
     setVerificationCode(cleanedText);
@@ -167,7 +167,7 @@ export default function RegisterScreen() {
       await signUpWithPhoneVerification(`+964${phoneNumber}`, name, password);
     } catch (err) {
       console.error('RegisterScreen: Registration error caught:', err);
-      Alert.alert('Registration Failed', authError || 'Please try again');
+      Alert.alert('Registration Failed', 'Please try again');
     } finally {
       setIsLoading(false);
     }
@@ -713,22 +713,7 @@ const styles = StyleSheet.create({
   modalContent: {
     gap: 20,
   },
-  codeInputContainer: {
-    marginTop: 8,
-  },
-  codeInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
-    letterSpacing: 8,
-    color: '#111827',
-  },
+
   verifyingContainer: {
     alignItems: 'center',
     paddingVertical: 8,

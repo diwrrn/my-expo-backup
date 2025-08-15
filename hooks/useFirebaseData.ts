@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { FirebaseService } from '@/services/firebaseService';
 import { DiaryEntry, Food, UserProfile } from '@/types/api';
-import { useAuth } from './useAuth';
 import { getTodayDateString } from '@/utils/dateUtils';
 import { useAppStore } from '@/store/appStore';
 import { StreakService } from '@/services/streakService';
@@ -9,7 +8,8 @@ import { useDailyMealsCache } from './useDailyMealsCache';
 import { GeneratedMealPlan } from '@/services/mealPlanningService';
 
 export function useFirebaseData(selectedDate?: string) {
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
+
   const { 
     foods, 
     categories, 
@@ -19,7 +19,8 @@ export function useFirebaseData(selectedDate?: string) {
     getFoodsByCategoryFromCache,
     getPopularFoodsFromCache,
     refreshFoodCache,
-    clearFoodCache
+    clearFoodCache,
+    loadFoodCache
   } = useAppStore();
   const foodCache = {
     foods,
@@ -63,7 +64,12 @@ export function useFirebaseData(selectedDate?: string) {
       loadDailyMeals(date);
     }
   }, [user?.id, date]);
-
+// Load food cache on mount if empty
+    useEffect(() => {
+      if (foods.length === 0 && !foodsLoading) {
+        loadFoodCache();
+      }
+}, [foods.length, foodsLoading, loadFoodCache]);
   // Add food to daily meal - using useCallback with user?.id
   const addFoodToDailyMeal = useCallback(async (
     mealType: string,

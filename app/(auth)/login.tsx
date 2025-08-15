@@ -2,9 +2,9 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Dimensions 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { Phone, Lock, Eye, EyeOff, Check, X } from 'lucide-react-native';
-import { useAuth } from '@/hooks/useAuth';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSession } from '@/ctx';
 
 const { width } = Dimensions.get('window');
 
@@ -16,7 +16,7 @@ export default function LoginScreen() {
   const [phoneValid, setPhoneValid] = useState<boolean | null>(null);
   const [passwordValid, setPasswordValid] = useState<boolean | null>(null);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);  
-  const { signInWithPhone, error } = useAuth();
+  const { signIn } = useSession();
 
   const validatePhone = (phone: string) => {
     const phoneRegex = /^[+]?[\d\s\-\(\)]{10,}$/;
@@ -59,10 +59,10 @@ export default function LoginScreen() {
   
     try {
       setIsLoading(true);
-      await signInWithPhone(`+964${phoneNumber}`, password);
+      await signIn(`+964${phoneNumber}`, password);
       // Navigation will be handled by app/_layout.tsx based on onboarding status
     } catch (err) {
-      Alert.alert('Login Failed', error || 'Please check your credentials');
+      Alert.alert('Login Failed', 'Please check your credentials');
     } finally {
       setIsLoading(false);
     }

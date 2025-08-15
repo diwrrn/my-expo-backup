@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { UserProfile as FirebaseUserProfile } from '@/types/api';
-import { useAuth } from './useAuth';
+import { useAppStore } from '@/store/appStore';
+
 
 interface Profile extends Omit<FirebaseUserProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt'> {
   name: string;
@@ -12,7 +13,7 @@ interface Profile extends Omit<FirebaseUserProfile, 'id' | 'userId' | 'createdAt
 }
 
 export function useProfile() {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile } = useAppStore();
   
   const [profile, setProfile] = useState<Profile>({
     name: user?.name || 'User',
@@ -41,17 +42,17 @@ export function useProfile() {
         ...prev,
         name: user.name || prev.name,
         phoneNumber: user.phoneNumber || prev.phoneNumber,
-        weight: user.profile.weight || prev.weight,
-        height: user.profile.height || prev.height,
-        age: user.profile.age || prev.age,
-        activityLevel: user.profile.activityLevel || prev.activityLevel,
-        goalsWaterUpdate: user.profile.goalsWaterUpdate,
+        weight: user.profile?.weight || prev.weight,
+        height: user.profile?.height || prev.height,
+        age: user.profile?.age || prev.age,
+        activityLevel: user.profile?.activityLevel || prev.activityLevel,
+        goalsWaterUpdate: user.profile?.goalsWaterUpdate,
         goals: {
-          calories: user.profile.goals.calories || prev.goals.calories,
-          protein: user.profile.goals.protein || prev.goals.protein,
-          carbs: user.profile.goals.carbs || prev.goals.carbs,
-          fat: user.profile.goals.fat || prev.goals.fat,
-          water: user.profile.goals.water || prev.goals.water, // Sync water goal
+          calories: user.profile?.goals?.calories || prev.goals.calories,
+          protein: user.profile?.goals?.protein || prev.goals.protein,
+          carbs: user.profile?.goals?.carbs || prev.goals.carbs,
+          fat: user.profile?.goals?.fat || prev.goals.fat,
+          water: user.profile?.goals?.water || prev.goals.water, // Sync water goal
         },
       }));
     }

@@ -37,7 +37,7 @@ export default function MealFoodSearchScreen() {
   const [includeSnacks, setIncludeSnacks] = useState(false);
   const [displaySectionTitle, setDisplaySectionTitle] = useState('Loading...');
 
-  const { addFoodToMeal } = useAppStore();
+  const addFoodToMeal = useAppStore(state => state.addFoodToMeal);
   const { searchFoods, getPopularFoods } = useFirebaseData(currentViewDate);
   // Initial load when component mounts
   useEffect(() => {

@@ -3,12 +3,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, User, Phone, Lock, Eye, EyeOff, Save, Shield } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
-import { useAuth } from '@/hooks/useAuth';
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { auth } from '@/config/firebase';
+import { useAppStore } from '@/store/appStore';
 
 export default function AccountSettingsScreen() {
-  const { user, updateProfile } = useAuth();
+  const user = useAppStore(state => state.user);
+  const updateProfile = useAppStore(state => state.updateProfileData);
   
   // Profile form state
   const [name, setName] = useState(user?.name || '');

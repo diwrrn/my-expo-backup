@@ -3,12 +3,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, User, Ruler, Scale, Target, Activity, Save, Droplets } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
-import { useAuth } from '@/hooks/useAuth';
 import { useAppStore } from '@/store/appStore';
 export default function PersonalInfoScreen() {
-  const { profile: contextProfile, updateProfileData } = useAppStore();
-    const { user } = useAuth();
-
+  const contextProfile = useAppStore(state => state.profile);
+  const updateProfileData = useAppStore(state => state.updateProfileData);
+  const user = useAppStore(state => state.user);
   // Combine context profile with user data
   const profile = contextProfile || user?.profile;
 

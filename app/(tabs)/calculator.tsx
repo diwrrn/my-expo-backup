@@ -4,16 +4,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect, useRef } from 'react';
 import { Calculator, Target, Activity, User, Scale, Ruler, TrendingUp, Award, Zap, Heart, Plus, Minus } from 'lucide-react-native';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
-import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppStore } from '@/store/appStore';
 
 export default function CalculatorScreen() {
-  const { user } = useAppStore();  
-  const { profile, profileLoading } = useAppStore();
-  const { updateProfile } = useAppStore();
+  const user = useAppStore(state => state.user);
+  const profile = useAppStore(state => state.profile);
+  const profileLoading = useAppStore(state => state.profileLoading);
+  const updateProfile = useAppStore(state => state.updateProfile);
     const { t, i18n } = useTranslation();
   const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
   const isRTL = useRTL();

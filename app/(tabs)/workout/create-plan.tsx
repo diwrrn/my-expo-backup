@@ -5,17 +5,12 @@ import { ArrowLeft, Plus, Minus,Save, X, LocationEdit as Edit3, Trash2, GripVert
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { useAuth } from '@/hooks/useAuth';
 import { FirebaseService } from '@/services/firebaseService';
-import { useFirebaseData } from '@/hooks/useFirebaseData';
-import { useFocusEffect } from 'expo-router';
 import Animated, { 
   FadeInDown,
-  FadeOutRight,
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring
+  FadeOutRight
 } from 'react-native-reanimated';
+import { useAppStore } from '@/store/appStore';
 
 interface PlanExercise {
   exerciseId: string;
@@ -42,7 +37,7 @@ export default function CreatePlanScreen() {
   const { editPlanId } = useLocalSearchParams<{ editPlanId: string }>();
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
   
   const [planName, setPlanName] = useState('');
   const [exercises, setExercises] = useState<PlanExercise[]>([]);

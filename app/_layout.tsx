@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, router, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { FooterNavigation } from '@/components/FooterNavigation';
 import React, { createContext, useContext } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { router, usePathname } from 'expo-router';
+import { SessionProvider, useSession } from '../ctx';
+import { SplashScreenController } from '../splash';
 import { View, Text, Platform } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { I18nextProvider } from 'react-i18next';
@@ -35,13 +35,22 @@ configureReanimatedLogger({
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  return (
+    <SessionProvider>
+      <SplashScreenController />
+      <RootNavigator />
+    </SessionProvider>
+  );
+}
+
+function RootNavigator() {
   useEffect(() => {
     console.log('🚨 ROOT LAYOUT RE-RENDERED');
   });
 
  // Call ALL hooks first before any conditional logic
  useFrameworkReady();
- const { user, loading } = useAuth();
+ const { session, user, isLoading: authLoading } = useSession();
  const pathname = usePathname();
  
  const footerOpacity = useSharedValue(0);
@@ -53,9 +62,8 @@ export default function RootLayout() {
  console.log('🔍 Debug - User data:', { 
    userId: user?.id, 
    onboardingCompleted: user?.onboardingCompleted,
-   user: user 
+   session: !!session
  });
-
 
  const [fontsLoaded, fontError] = useFonts({
    'rudawregular2': require('../assets/fonts/rudawregular2.ttf'),
@@ -74,15 +82,15 @@ export default function RootLayout() {
      opacity: footerOpacity.value,
      pointerEvents: footerOpacity.value === 1 ? 'auto' : 'none',
    };
-   
  });
- useEffect(() => {
-  console.log('🔍 ROOT LAYOUT - user changed:', !!user, user?.id);
-}, [user]);
 
 useEffect(() => {
-  console.log('🔍 ROOT LAYOUT - loading changed:', loading);
-}, [loading]);
+  console.log('🔍 ROOT LAYOUT - session changed:', !!session);
+}, [session]);
+
+useEffect(() => {
+  console.log('🔍 ROOT LAYOUT - authLoading changed:', authLoading);
+}, [authLoading]);
 
 useEffect(() => {
   console.log('🔍 ROOT LAYOUT - pathname changed:', pathname);
@@ -90,9 +98,9 @@ useEffect(() => {
 
  // Footer visibility logic
  useEffect(() => {
-   const shouldShowFooter = !isAuthScreen && user;
+   const shouldShowFooter = !isAuthScreen && session;
    footerOpacity.value = withTiming(shouldShowFooter ? 1 : 0, { duration: 300 });
- }, [isAuthScreen, user]);
+ }, [isAuthScreen, session]);
 
  // Force show app after 2 seconds max
  useEffect(() => {
@@ -111,13 +119,15 @@ useEffect(() => {
    
    return () => clearTimeout(timer);
  }, []);
+
 // Initialize premium status from AsyncStorage
 useEffect(() => {
   useAppStore.getState().initializePremiumStatus();
 }, []);
+
  // Background initialization - don't block app
  useEffect(() => {
-   if (i18nInitialized && fontsLoaded && !loading) {
+   if (i18nInitialized && fontsLoaded && !authLoading) {
      const initRevenueCat = async () => {
        try {
          if (user?.id) {
@@ -127,21 +137,20 @@ useEffect(() => {
          }
          setRevenueCatInitialized(true);
        } catch (error) {
-         // Fail silently, retry later
          setRevenueCatInitialized(true);
        }
      };
      
-     // Initialize in background after app shows
      setTimeout(initRevenueCat, 100);
    }
- }, [user?.id, i18nInitialized, fontsLoaded, loading]);
+ }, [user?.id, i18nInitialized, fontsLoaded, authLoading]);
+
  useEffect(() => {
-  const { user } = useAppStore.getState();
   if (user?.id) {
     useAppStore.getState().loadDailyMeals();
   }
-}, []);  
+}, [user?.id]);  
+
  // Reset navigation flag on user change
  useEffect(() => {
    hasNavigatedRef.current = false;
@@ -149,18 +158,17 @@ useEffect(() => {
 
 // Simple navigation logic
 useEffect(() => {
-  if ((!i18nInitialized || !fontsLoaded || loading) && !showAppAnyway) {
+  if ((!i18nInitialized || !fontsLoaded || authLoading) && !showAppAnyway) {
     return;
   }
   if (hasNavigatedRef.current) {
     return;
   }
 
-  // Wait one frame to ensure router is ready
   setTimeout(() => {
     let targetPath: string | null = null;
 
-    if (user) {
+    if (session && user) {
       if (user.onboardingCompleted === true) {
         targetPath = '/(tabs)';
       } else { 
@@ -177,9 +185,10 @@ useEffect(() => {
       hasNavigatedRef.current = true;
     }
   }, 0);
-}, [user, i18nInitialized, fontsLoaded, pathname, loading, isAuthScreen, showAppAnyway]); 
+}, [session, user, i18nInitialized, fontsLoaded, pathname, authLoading, isAuthScreen, showAppAnyway]); 
+
  // Loading state with timeout
- if ((!i18nInitialized || !fontsLoaded || loading) && !showAppAnyway) {
+ if ((!i18nInitialized || !fontsLoaded || authLoading) && !showAppAnyway) {
    return (
      <View style={{ flex: 1, backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center' }}>
        <Text>Loading application resources...</Text>
@@ -189,25 +198,37 @@ useEffect(() => {
 
  return (
    <I18nextProvider i18n={i18n}>
-               <>
-                 <Stack>
-                   <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                   <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-                   <Stack.Screen name="+not-found" />
-                 </Stack>
-                 {!isAuthScreen && user && (
-                   <View style={{
-                     position: 'absolute',
-                     bottom: 0,
-                     left: 0,
-                     right: 0,
-                     zIndex: 9999,
-                   }}>
-                     <FooterNavigation />
-                   </View>
-                 )}
-               </>
+     <>
+     <Stack 
+        screenOptions={{
+          headerShown: false,  // Global header disable
+        }}
+      >
+        {session ? (
+          <>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="onboarding" />
+          </>
+        ) : (
+          <>
+            <Stack.Screen name="(auth)" />
+          </>
+        )}
+        
+        <Stack.Screen name="+not-found" />
+      </Stack>
+       {!isAuthScreen && session && (
+         <View style={{
+           position: 'absolute',
+           bottom: 0,
+           left: 0,
+           right: 0,
+           zIndex: 9999,
+         }}>
+           <FooterNavigation />
+         </View>
+       )}
+     </>
    </I18nextProvider>
  );
 }

@@ -3,7 +3,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Plus, X, LocationEdit as Edit3, Trash2 } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { useAuth } from '@/hooks/useAuth';
 import { useFirebaseData } from '@/hooks/useFirebaseData';
 import { MicroNutrientGoals } from '@/types/api';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -99,8 +98,10 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
 export default function DailyGoalsScreen() {
   const { t } = useTranslation();
   const isRTL = useRTL();
-  const { user } = useAuth();
-  const { dailyTotals, mealsLoading: dailyMealsLoading, profileLoading } = useAppStore();
+  const user = useAppStore(state => state.user);
+  const dailyTotals = useAppStore(state => state.dailyTotals);
+  const dailyMealsLoading = useAppStore(state => state.mealsLoading);
+  const profileLoading = useAppStore(state => state.profileLoading);
   const { getUserProfile, updateUserProfile } = useFirebaseData();  
   const [goals, setGoals] = useState({
     calories: 2000,

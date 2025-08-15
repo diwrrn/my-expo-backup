@@ -105,9 +105,8 @@ export function WeightChart({ data }: WeightChartProps) {
 
   // Create scales
   const xScale = scaleTime()
-    .domain([sortedData[0].parsedDate, sortedData[sortedData.length - 1].parsedDate])
-    .range([padding.left, chartWidth - padding.right]);
-
+  .domain([sortedData[0].parsedDate, sortedData[sortedData.length - 1].parsedDate])
+  .range([padding.left, chartWidth - padding.right]);
   const weights = sortedData.map(d => d.weight);
   const minWeight = Math.min(...weights);
   const maxWeight = Math.max(...weights);

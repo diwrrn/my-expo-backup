@@ -5,17 +5,19 @@ import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
 
 import { HamburgerMenu } from '@/components/HamburgerMenu';
-import { useAuth } from '@/hooks/useAuth';
 import { FirebaseService, WeeklyReportDocument, MonthlyReportDocument } from '@/services/firebaseService';
 import { getLastCompletedFriThuWindow, getLastCompletedMonthWindow } from '@/utils/dateUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
-const MIN_MONTH_DAYS = 10;
+import { useAppStore } from '@/store/appStore';
+
+
+const MIN_MONTH_DAYS = 10;   
 const TZ_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export default function StatsScreen() {
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
 
   // Timezone-aware windows
   const [tz, setTz] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone);

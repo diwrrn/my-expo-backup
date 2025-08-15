@@ -229,7 +229,7 @@ export function MealCardWithSearch({
     // Plus 16px for the foodsList paddingBottom
     return foods.length * 92 + 16;
   };
-const extractUnit = (unitString) => {
+  const extractUnit = (unitString: string) => {
   if (!unitString) return '';
   
   // Remove any numbers and spaces from the beginning

@@ -6,8 +6,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useWorkoutCache } from '@/hooks/useWorkoutCache';
-import { ExerciseListItem } from '@/components/ExerciseListItem';  
-import { useAuth } from '@/hooks/useAuth';
 import { AddExerciseSetsRepsModal } from '@/components/AddExerciseSetsRepsModal';
 import { ChoosePlanActionModal } from '@/components/ChoosePlanActionModal';
 import { SelectWorkoutPlanModal } from '@/components/SelectWorkoutPlanModal';
@@ -23,8 +21,8 @@ export default function ExercisesListScreen() {
   }>();
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();
-  const { user } = useAuth();
-  const { hasPremium } = useAppStore();
+  const user = useAppStore(state => state.user);
+  const hasPremium = useAppStore(state => state.hasPremium);
   const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
   
   const { exercises, exercisesLoading, exercisesError, loadExercises } = useWorkoutCache();

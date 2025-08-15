@@ -15,9 +15,9 @@ import Animated, {
   SlideInRight
 } from 'react-native-reanimated';
 import { router } from 'expo-router';
-import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
+import { useSession } from '@/ctx';
 
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -28,7 +28,7 @@ interface HamburgerMenuProps {
 
 export function HamburgerMenu({ currentRoute }: HamburgerMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user, signOut } = useSession();
   const isRTL = useRTL();
   const { t } = useTranslation();
 

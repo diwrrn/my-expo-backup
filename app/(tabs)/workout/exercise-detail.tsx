@@ -8,10 +8,10 @@ import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useExerciseCache } from '@/hooks/useExerciseCache';
 import { FirebaseService } from '@/services/firebaseService';
 import { WebView } from 'react-native-webview';
-import { useAuth } from '@/hooks/useAuth';
 import { SelectWorkoutPlanModal } from '@/components/SelectWorkoutPlanModal';
 import { AddExerciseSetsRepsModal } from '@/components/AddExerciseSetsRepsModal';
 import { ChoosePlanActionModal } from '@/components/ChoosePlanActionModal';
+import { useAppStore } from '@/store/appStore';
 
 interface Exercise {
 id: string;
@@ -46,7 +46,7 @@ exerciseNameArabic?: string;
 const { t, i18n } = useTranslation();
 const isRTL = useRTL();
 const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
-const { user } = useAuth();
+const user = useAppStore(state => state.user);
 
 // Use the cached hook instead of direct Firebase calls
 const { exercise, isLoading, error, refreshExercise } = useExerciseCache(exerciseId || '', categoryId, subcategoryId);

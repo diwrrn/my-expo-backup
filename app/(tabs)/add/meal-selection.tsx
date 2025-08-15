@@ -3,11 +3,9 @@ import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Coffee, Sun, Moon, Cookie } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useFirebaseData } from '@/hooks/useFirebaseData';
 import { getTodayDateString, formatDisplayDate } from '@/utils/dateUtils';
 import { Food } from '@/types/api';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '@/hooks/useAuth';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useAppStore } from '@/store/appStore';
 // Helper function to get display name based on language
@@ -30,8 +28,9 @@ export default function MealSelectionScreen() {
   }>();
 
   const currentViewDate = useLocalSearchParams().currentViewDate || getTodayDateString();
-  const { user, loading: authLoading } = useAuth();
-  const { addFoodToMeal } = useAppStore();
+  const user = useAppStore(state => state.user);
+const authLoading = useAppStore(state => state.userLoading);
+  const addFoodToMeal = useAppStore(state => state.addFoodToMeal);
     const { t, i18n } = useTranslation();
   const isRTL = useRTL();
   const [isAdding, setIsAdding] = useState<string | null>(null);

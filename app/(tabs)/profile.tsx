@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Settings as SettingsIcon, User, Target, Bell, Circle as CircleHelp, LogOut, Flame, Calendar, TrendingUp, Crown } from 'lucide-react-native';
@@ -5,7 +6,6 @@ import { ProfileCard } from '@/components/ProfileCard';
 import { ProfileSkeleton } from '@/components/ProfileSkeleton';
 import { DailyGoalsCard } from '@/components/DailyGoalsCard';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
-import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -15,45 +15,37 @@ import { StreakCalendar } from '@/components/StreakCalendar';
 import { WeightInputModal } from '@/components/WeightInputModal';
 import { useAppStore } from '@/store/appStore';
 import { useStreakManager } from '@/contexts/StreakGlobal';
-
+import { useSession } from '@/ctx';
 
 // Import the new gender images
 import manAvatar from '@/assets/icons/gender/man.png';
 import womanAvatar from '@/assets/icons/gender/woman.png';
 
-export default function ProfileScreen() { 
-  console.log('ProfileScreen rendering');
-  const { 
-    user, 
-    userLoading, 
-    profile, 
-    hasPremium, 
-    isRTL, 
-    currentLanguage, 
-    profileLoading, 
-    updateProfileData 
-  } = useAppStore();
-  const { signOut } = useAuth();
-  const { currentStreak, bestStreak, isLoading: streakLoading, initializeUser, cleanup } = useStreakManager();
-  const { t } = useTranslation(); // Keep only for translation function
-  const useKurdishFont = currentLanguage === 'ku' || currentLanguage === 'ckb' || currentLanguage === 'ar';
-  const [showWeightModal, setShowWeightModal] = useState(false);
-  // Early exit if user is null and not in a loading state
-  if (!user && !userLoading) {
-    return null;
-  }
-  const [isGoalsLoading, setIsGoalsLoading] = useState(true);
-    const { weightLogs, isLoading: weightLoading, logWeight, clearCache } = useWeightHistory(user?.id);
-  
-  // Calculate the latest weight from weightLogs
-  const latestWeight = weightLogs.length > 0 
-    ? weightLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].weight
-    : user?.profile?.weight || 0;
-  
-  const [weightInput, setWeightInput] = useState('');
+const ProfileScreen = React.memo(function ProfileScreen() {
+const user = useAppStore(state => state.user);
+const userLoading = useAppStore(state => state.userLoading);
+const profile = useAppStore(state => state.profile);
+const hasPremium = useAppStore(state => state.hasPremium);
+const isRTL = useAppStore(state => state.isRTL);
+const currentLanguage = useAppStore(state => state.currentLanguage);
+const profileLoading = useAppStore(state => state.profileLoading);
+const updateProfileData = useAppStore(state => state.updateProfileData);
+const { signOut } = useSession();
+const { isLoading: streakLoading, initializeUser, cleanup } = useStreakManager();
+const { t } = useTranslation(); // Keep only for translation function
+const useKurdishFont = currentLanguage === 'ku' || currentLanguage === 'ckb' || currentLanguage === 'ar';
+const [showWeightModal, setShowWeightModal] = useState(false);
+const [isGoalsLoading, setIsGoalsLoading] = useState(true);
+const { weightLogs, isLoading: weightLoading, logWeight, clearCache } = useWeightHistory(user?.id);
+const latestWeight = weightLogs.length > 0 
+? weightLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].weight
+: 0;  // ← Just use 0 if no weight logs
+// Determine the default avatar based on gender
+const defaultAvatar = user?.profile?.gender === 'female' ? womanAvatar : manAvatar;
+// Initialize streak tracking
+const streakInitializedRef = useRef(false);
 
-  // Determine the default avatar based on gender
-  const defaultAvatar = user?.profile?.gender === 'female' ? womanAvatar : manAvatar;
+
 
   // Simulate loading state for goals
   useEffect(() => {
@@ -65,9 +57,6 @@ export default function ProfileScreen() {
       return () => clearTimeout(timer);
     }
   }, [profile?.goals]);
-
-  // Initialize streak tracking
-  const streakInitializedRef = useRef(false);
 
 // With this stable version:
 useEffect(() => {
@@ -104,7 +93,11 @@ useEffect(() => {
     typeof profile.weight === 'number' && 
     typeof profile.height === 'number' && 
     typeof profile.age === 'number';
-
+  // Early exit if user is null and not in a loading state
+  if (!user && !userLoading) {
+    return null;
+  }
+ 
   const styles = StyleSheet.create({
     container: {
       flex: 1, 
@@ -447,4 +440,6 @@ useEffect(() => {
 />  
     </SafeAreaView>
   );
-}
+});
+
+export default ProfileScreen;

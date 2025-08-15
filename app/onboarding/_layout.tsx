@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { router } from 'expo-router';
-import { useAuth } from '@/hooks/useAuth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAppStore } from '@/store/appStore';
 
 export default function OnboardingLayout() {
-  const { user, loading } = useAuth();
+  const user = useAppStore(state => state.user);
+  const loading = useAppStore(state => state.userLoading);
 
   useEffect(() => {
     const checkOnboardingStatus = async () => {
@@ -17,20 +17,12 @@ export default function OnboardingLayout() {
         return;
       }
  
-      // Check if onboarding is completed
-      try {
-        const onboardingCompleted = await AsyncStorage.getItem('onboardingCompleted');
-        
-        // If user has profile data and onboarding is completed, redirect to main app
-        // Only redirect if onboarding is actually completed, regardless of profile
-if (onboardingCompleted === 'true') {
-  console.log('🎯 ONBOARDING LAYOUT: Redirecting to main app - onboarding completed');
-  router.replace('/(tabs)');
-} else {
-  console.log('🎯 ONBOARDING LAYOUT: Staying in onboarding - not completed yet');
-}
-      } catch (error) {
-        console.error('Error checking onboarding status:', error);
+      // Check if onboarding is completed using user profile (single source of truth)
+      if (user.onboardingCompleted === true) {
+        console.log('�� ONBOARDING LAYOUT: Redirecting to main app - onboarding completed');
+        router.replace('/(tabs)');
+      } else {
+        console.log('�� ONBOARDING LAYOUT: Staying in onboarding - not completed yet');
       }
     };
 

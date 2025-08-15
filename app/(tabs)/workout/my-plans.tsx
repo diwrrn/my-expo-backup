@@ -5,8 +5,8 @@ import { ArrowLeft, Plus, Calendar, Dumbbell, Trash2, Edit3, Target, Clock } fro
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useRTL, getTextAlign, getFlexDirection } from '@/hooks/useRTL';
-import { useAuth } from '@/hooks/useAuth';
 import { useWorkoutPlansCache } from '@/hooks/useWorkoutPlansCache';
+import { useAppStore } from '@/store/appStore';
 
 interface WorkoutPlan {
   id: string;
@@ -28,7 +28,7 @@ export default function MyWorkoutPlansScreen() {
   const { t, i18n } = useTranslation();
   const isRTL = useRTL();
   const useKurdishFont = i18n.language === 'ku' || i18n.language === 'ckb' || i18n.language === 'ar';
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
   
   // Use the cached hook instead of direct Firebase calls
   const { plans, isLoading, error, deletePlan, refreshPlans } = useWorkoutPlansCache(user?.id || '');

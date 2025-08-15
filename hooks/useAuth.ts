@@ -4,7 +4,8 @@ import { auth } from '@/config/firebase';
 import { FirebaseService } from '@/services/firebaseService';
 import { User as AppUser, UserProfile } from '@/types/api';
 import { useAppStore } from '@/store/appStore';
-
+let authChangeTimeout: NodeJS.Timeout | null = null;
+const AUTH_DEBOUNCE_DELAY = 1000; // 1 second delay
 interface AuthUser extends AppUser {
  profile?: UserProfile;
 }
@@ -13,7 +14,6 @@ export function useAuth() {
  const [user, setUser] = useState<AuthUser | null>(null);
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState<string | null>(null);
- const [prevUser, setPrevUser] = useState<AuthUser | null>(null);
  
  // ADD PROCESSING GUARD TO PREVENT INFINITE LOOPS
  const processingAuthChange = useRef(false);
@@ -37,7 +37,7 @@ export function useAuth() {
        // New user - create basic profile
        return {
          id: firebaseUser.uid,
-         phoneNumber: firebaseUser.phoneNumber,
+         phoneNumber: firebaseUser.phoneNumber || '',
          name: firebaseUser.displayName || 'New User',
          onboardingCompleted: false,
        };
@@ -48,7 +48,10 @@ export function useAuth() {
 
 // Add debounce ref at the component level
 const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
-
+// Clear any existing timeout
+if (debounceTimeout.current) {
+  clearTimeout(debounceTimeout.current);
+}
 // Auth state change handler
 useEffect(() => {
   const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
@@ -69,45 +72,37 @@ useEffect(() => {
           loadUserProfile(firebaseUser.uid)
         ]);
 
+        // Guard against invalid user data
+        if (!userData || !userData.id) {
+          console.log('⚠️ Invalid user data, skipping update');
+          processingAuthChange.current = false;
+          return;
+        }
+
         const finalUser = {
           ...userData,
           profile: userProfile ?? undefined,
         };
         
-        // ONLY UPDATE IF USER ACTUALLY CHANGED
-        const userChanged = !prevUser || 
-          finalUser.id !== prevUser.id ||
-          finalUser.name !== prevUser.name ||
-          finalUser.phoneNumber !== prevUser.phoneNumber ||
-          finalUser.onboardingCompleted !== prevUser.onboardingCompleted ||
-          JSON.stringify(finalUser.profile) !== JSON.stringify(prevUser.profile);
-
-        if (userChanged) {
-          // Clear any existing timeout
-          if (debounceTimeout.current) {
-            clearTimeout(debounceTimeout.current);
-          }
+        // Clear any existing timeout
+        if (debounceTimeout.current) {
+          clearTimeout(debounceTimeout.current);
+        }
+        
+        // Debounce the update
+        debounceTimeout.current = setTimeout(() => {
+          console.log('🔄 Updating user state...', {
+            userId: finalUser.id,
+            name: finalUser.name
+          });
           
-          // Debounce the update
-          debounceTimeout.current = setTimeout(() => {
-            console.log('🔄 User actually changed, updating...', {
-              id: finalUser.id !== prevUser?.id,
-              name: finalUser.name !== prevUser?.name,
-              updatedAt: finalUser.profile?.updatedAt !== prevUser?.profile?.updatedAt
-            });
-            setUser(finalUser);
-            setPrevUser(finalUser);
-            useAppStore.getState().setUser(finalUser);
-          }, 100); // 100ms debounce
-        } else {
-          console.log('🔍 User unchanged, skipping update');
-        }
+          setUser(finalUser);
+          useAppStore.getState().setUser(finalUser);
+        }, 100); // 100ms debounce
       } else {
-        if (prevUser !== null) {
-          setUser(null);
-          setPrevUser(null);
-          useAppStore.getState().setUser(null);
-        }
+        // User signed out
+        setUser(null);
+        useAppStore.getState().setUser(null);
       }
     } catch (err) {
       console.error('Auth state change error:', err);

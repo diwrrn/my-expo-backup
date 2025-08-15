@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
-import { useAuth } from '@/hooks/useAuth';
+import { useAppStore } from '@/store/appStore';
 import { FirebaseService } from '@/services/firebaseService';
 
 // Configure notifications
@@ -13,7 +13,7 @@ Notifications.setNotificationHandler({
 });
 
 export function NotificationManager() {
-  const { user } = useAuth();
+  const user = useAppStore(state => state.user);
   const isInitialized = useRef(false);
 
   useEffect(() => {

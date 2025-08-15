@@ -82,7 +82,7 @@ i18n
     },
   })
   .then(() => {
-    console.log('[i18n] i18n.init() promise resolved. i18n.isInitialized:', i18n.isInitialized);
+    console.log('18next initialized');
   })
   .catch((error) => {
     console.error('[i18n] i18n.init() promise rejected:', error);
